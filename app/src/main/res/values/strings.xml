@@ -3,13 +3,15 @@
     <string name="app_name">Lumora</string>
     <string name="brand_tagline">Your world on a brighter screen</string>
     <string name="cd_logo">Lumora</string>
+    <string name="cd_locked">Locked</string>
+    <string name="cd_moving">Moving</string>
+    <string name="cd_selected">Selected</string>
     <string name="close">Close</string>
 
     <!-- Rows -->
-    <string name="category_favorites">Pinned favourites</string>
-    <string name="category_streaming">Media &amp; cinema</string>
-    <string name="category_all_apps">Library</string>
-    <string name="category_tools">Tools</string>
+    <string name="category_favorites">Home</string>
+    <string name="category_streaming">Streaming</string>
+    <string name="category_all_apps">Apps</string>
 
     <!-- Navigation -->
     <string name="nav_home">Home</string>
@@ -18,12 +20,14 @@
     <string name="nav_streaming">Streaming</string>
     <string name="nav_quick">Quick</string>
     <string name="nav_settings">Settings</string>
+    <string name="gear_launcher_settings">Lumora settings</string>
+    <string name="gear_fire_settings">Fire TV settings</string>
 
-    <!-- Greeting -->
-    <string name="greeting_all_apps">ALL APPS</string>
-    <string name="greeting_all_apps_subtitle">Everything installed, in one calm row.</string>
+    <!-- Greeting and Home -->
+    <string name="greeting_all_apps">APPS</string>
+    <string name="greeting_all_apps_subtitle">Everything that is not a streaming service.</string>
     <string name="greeting_streaming">STREAMING</string>
-    <string name="greeting_streaming_subtitle">Your streaming services, front and centre.</string>
+    <string name="greeting_streaming_subtitle">Your streaming services in one place.</string>
     <string name="greeting_shows">TONIGHT</string>
     <string name="greeting_shows_subtitle">What is airing on TV and streaming today.</string>
     <string name="greeting_night">GOOD NIGHT</string>
@@ -31,25 +35,54 @@
     <string name="greeting_afternoon">GOOD AFTERNOON</string>
     <string name="greeting_evening">GOOD EVENING</string>
     <string name="greeting_first_launch">Everything you love, none of the noise.</string>
-    <string name="greeting_returning">Welcome back. %1$d pinned, %2$d hidden.</string>
-    <string name="featured_pinned">PINNED FAVOURITE</string>
-    <string name="featured_ready">READY TO WATCH</string>
+    <string name="greeting_returning">Welcome back. %1$d on Home, %2$d hidden.</string>
+    <string name="hero_hint">OK to open  ·  Menu or long-press for options</string>
+    <string name="hero_empty_home">Suggested. Add apps to Home from the Apps or Streaming tab.</string>
+    <string name="hero_no_apps">No apps yet</string>
+    <string name="grid_empty_apps">No other apps. Streaming apps are in the Streaming tab.</string>
+    <string name="grid_empty_streaming">No streaming apps. Move an app here from the Apps tab.</string>
+    <string name="move_hint">Use the arrows to move  ·  OK or Back when done</string>
 
-    <!-- App actions -->
-    <string name="action_open">Launch</string>
-    <string name="action_move_left">◀  Move left</string>
-    <string name="action_move_right">Move right  ▶</string>
-    <string name="action_favorite">Pin to favourites</string>
-    <string name="action_unfavorite">Unpin from favourites</string>
-    <string name="action_uninstall">Uninstall</string>
-    <string name="action_force_uninstall">Show ADB uninstall command</string>
-    <string name="action_hide">Hide from Lumora</string>
+    <!-- App menu -->
+    <string name="action_open">Open</string>
+    <string name="action_move">Move</string>
+    <string name="action_add_home">Add to Home</string>
+    <string name="action_remove_home">Remove from Home</string>
+    <string name="action_move_to_apps">Move to Apps</string>
+    <string name="action_move_to_streaming">Move to Streaming</string>
+    <string name="action_lock">Lock with code</string>
+    <string name="action_unlock">Unlock</string>
+    <string name="action_hide">Hide</string>
     <string name="action_info">App details</string>
-    <string name="force_uninstall_message">Protected apps can only be removed over ADB. Run this from a computer connected to the device:\n\n%1$s</string>
-    <string name="error_cannot_launch">Cannot launch %1$s</string>
-    <string name="error_launch">Could not launch the app: %1$s</string>
+    <string name="action_uninstall">Uninstall</string>
+    <string name="toast_added_home">%1$s added to Home</string>
+    <string name="toast_removed_home">%1$s removed from Home</string>
+    <string name="toast_moved_apps">%1$s moved to Apps</string>
+    <string name="toast_moved_streaming">%1$s moved to Streaming</string>
+    <string name="toast_locked">%1$s is locked</string>
+    <string name="force_uninstall_message">This is a Fire OS system app. It can only be removed over ADB from a connected computer:</string>
+    <string name="error_not_installed">%1$s is no longer installed.</string>
+    <string name="error_launch_short">%1$s could not be opened.</string>
     <string name="error_app_details">Could not open app details</string>
     <string name="error_uninstall">Unable to open the system uninstall screen.</string>
+
+    <!-- Lock pad -->
+    <string name="lock_title_verify">Enter your code</string>
+    <string name="lock_title_create">Create a code</string>
+    <string name="lock_sub_verify">Use the arrow keys on the remote.</string>
+    <string name="lock_sub_create">Press 4 to 8 arrows, then OK.</string>
+    <string name="lock_sub_confirm">Repeat the same arrows, then OK.</string>
+    <string name="lock_sub_app">%1$s is locked.</string>
+    <string name="lock_sub_unlock">Unlock %1$s.</string>
+    <string name="lock_sub_settings">Lumora settings are locked.</string>
+    <string name="lock_sub_manage">Confirm to change locks.</string>
+    <string name="lock_enter_current">Enter your current code.</string>
+    <string name="lock_hint">▲ ▼ ◀ ▶ enter the code  ·  OK confirms  ·  Back cancels</string>
+    <string name="lock_wrong">Wrong code. Try again.</string>
+    <string name="lock_wait">Too many attempts. Wait 30 seconds.</string>
+    <string name="lock_too_short">Use at least 4 arrows.</string>
+    <string name="lock_mismatch">The codes did not match. Start again.</string>
+    <string name="lock_saved">Code saved</string>
 
     <!-- Shows -->
     <string name="shows_all">All</string>
@@ -64,63 +97,85 @@
     <string name="show_episode">Season %1$d, episode %2$d · %3$s</string>
     <string name="show_rating">★ %1$.1f</string>
     <string name="show_no_summary">No summary available.</string>
-    <string name="show_open_in">Open %1$s</string>
+    <string name="show_watch_on">Watch on %1$s</string>
+    <string name="show_get_app">Get %1$s</string>
+    <string name="show_find_app">Find %1$s in the Appstore</string>
+    <string name="show_other_apps">Other apps</string>
+    <string name="show_search_in">Search in…</string>
+    <string name="show_search_manually">Search for “%1$s” in the app.</string>
+    <string name="show_install_title">Install %1$s?</string>
+    <string name="show_install_message">%1$s is not installed. Lumora will open its Amazon Appstore page; choose Get or Download there to install it. Android does not let other apps install silently.</string>
+    <string name="show_install_open">Open Appstore</string>
     <string name="show_close">Close</string>
+    <string name="store_unavailable">No app store is available on this device.</string>
 
     <!-- Quick menu -->
     <string name="quick_title">Quick menu</string>
-    <string name="quick_subtitle">Handy tools. More control.</string>
-    <string name="quick_permission_hint">Screenshot, Sleep, Restart and Power off ask for a one-time permission on first use.</string>
-    <string name="qa_recent">Recent apps</string>
+    <string name="quick_subtitle">Handy tools, one press away.</string>
+    <string name="qa_recent">Recent</string>
+    <string name="qa_recent_sub">Apps opened from Lumora</string>
     <string name="qa_memory">Clear memory</string>
     <string name="qa_screenshot">Screenshot</string>
-    <string name="qa_sleep">Sleep</string>
     <string name="qa_restart">Restart</string>
-    <string name="qa_power">Power off</string>
     <string name="qa_wifi">Wi-Fi</string>
-    <string name="qa_bluetooth">Bluetooth</string>
     <string name="qa_recent_empty">No apps launched from Lumora yet.</string>
     <string name="qa_memory_running">Closing background apps…</string>
     <string name="qa_memory_done">About %1$d MB of memory freed.</string>
     <string name="qa_memory_none">Background apps closed. Free memory did not change measurably.</string>
-    <string name="qa_power_hint">Choose Restart or Power off in the system menu.</string>
+    <string name="qa_power_hint">Choose Restart in the system menu.</string>
     <string name="qa_open_failed">The system did not accept this action.</string>
     <string name="qa_unsupported">This action needs Android 9 or newer.</string>
-    <string name="perm_title">Allow quick actions</string>
-    <string name="perm_message">Screenshot, Sleep, Restart and Power off use an Android accessibility service. Lumora uses it only to trigger these system actions; it never reads what is on screen.\n\nOn the next screen, open Lumora Quick Actions and turn it on.</string>
-    <string name="perm_open">Open settings</string>
-    <string name="perm_cancel">Not now</string>
-    <string name="perm_adb_title">Enable over ADB</string>
-    <string name="perm_adb_message">This device hides accessibility settings. Run from a connected computer:\n\n%1$s\n\nThe first command replaces any other enabled accessibility services.</string>
+    <string name="quick_status_ready">Quick actions are ready.</string>
+    <string name="quick_status_setup">Screenshot and Restart need a one-time setup.</string>
+    <string name="quick_setup_button">Set up</string>
+    <string name="quick_setup_title">One-time setup</string>
+    <string name="quick_setup_message">Fire OS hides accessibility switches for apps outside the Appstore, so the permission cannot be granted on the TV. Run these two commands once from a computer on the same network (ADB debugging must be on in Developer options). Lumora then turns quick actions and the Home button redirect on by itself, and keeps them on.</string>
+    <string name="quick_setup_check">Check again</string>
+    <string name="quick_enabled">Quick actions are on.</string>
+    <string name="quick_enabling">Quick actions turned on. Try again in a moment.</string>
+    <string name="quick_still_missing">The permission is not granted yet. Run the commands, then check again.</string>
     <string name="a11y_service_label">Lumora Quick Actions</string>
-    <string name="a11y_service_description">Lets the Lumora quick menu take screenshots, put the device to sleep and open the power menu. It does not read screen content.</string>
+    <string name="a11y_service_description">Lets Lumora take screenshots, open the power menu and return to Lumora when the Home button opens the stock Fire TV home. It does not read screen content.</string>
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>
     <string name="settings_back">Back to Lumora</string>
-    <string name="settings_sections">Sections</string>
     <string name="sec_appearance">Appearance</string>
     <string name="sec_wallpaper">Wallpaper</string>
     <string name="sec_audio">Audio</string>
     <string name="sec_shows">TV listings</string>
+    <string name="sec_lock">App lock</string>
+    <string name="sec_system">Home &amp; system</string>
     <string name="sec_adb">ADB tools</string>
-    <string name="sec_system">System</string>
-    <string name="settings_stats">Accent: %1$s   •   Hidden apps: %2$d   •   Apps launched: %3$d</string>
+    <string name="sec_about">About</string>
+    <string name="settings_stats">Theme: %1$s   •   Hidden apps: %2$d   •   Apps launched: %3$d</string>
     <string name="version_label">Lumora %1$s</string>
 
-    <string name="accent_label">Accent</string>
+    <string name="theme_label">Theme</string>
+    <string name="theme_hint">Active theme: %1$s. It colours the wallpaper grade, focus rings, icons and the selected tab.</string>
     <string name="accent_amber">Amber</string>
     <string name="accent_copper">Copper</string>
     <string name="accent_rose">Rose</string>
     <string name="accent_moonlight">Moonlight</string>
     <string name="accent_custom">Custom</string>
-    <string name="accent_hint">Active accent: %1$s. It colours focus rings, the selected tab and chips.</string>
-    <string name="accent_saved">Accent: %1$s</string>
+    <string name="accent_saved">Theme: %1$s</string>
     <string name="icon_style_label">App icons</string>
     <string name="icon_style_hd">App icons: HD icon pack (online)</string>
     <string name="icon_style_installed">App icons: Installed icons</string>
     <string name="icon_style_hint">Downloads matching logos from the open dashboard-icons collection and keeps them on the device. Apps without a match keep their installed icon.</string>
 
+    <string name="wallpaper_source_label">Source</string>
+    <string name="wallpaper_source_online">Wallpaper: Live catalog</string>
+    <string name="wallpaper_source_offline">Wallpaper: Offline scenes</string>
+    <string name="wall_categories_label">Wallpaper categories</string>
+    <string name="wall_categories_pick">Choose one or more</string>
+    <string name="wall_categories_value">Categories: %1$s</string>
+    <string name="wall_categories_none">none (offline scenes)</string>
+    <string name="wall_cat_nebulae">Nebulae</string>
+    <string name="wall_cat_galaxies">Galaxies &amp; planets</string>
+    <string name="wall_cat_night_sky">Night sky</string>
+    <string name="wall_cat_desert">Desert nights</string>
+    <string name="wallpaper_hint">Space images from ESA/Hubble, night sky and desert stills from Unsplash. Each one is graded in the theme colour and cached. Offline scenes need no network.</string>
     <string name="wallpaper_interval_label">Rotation</string>
     <string name="wall_30s">30 sec</string>
     <string name="wall_1m">1 min</string>
@@ -131,10 +186,6 @@
     <string name="wall_5m_long">5 minutes</string>
     <string name="wall_rotate">Wallpapers change every %1$s</string>
     <string name="wall_static">Wallpaper rotation off</string>
-    <string name="wallpaper_source_label">Source</string>
-    <string name="wallpaper_source_online">Wallpaper: Online stills</string>
-    <string name="wallpaper_source_offline">Wallpaper: Offline scenes</string>
-    <string name="wallpaper_hint">Offline scenes need no network. Online stills come from Unsplash at 1280 x 720 and are cached.</string>
 
     <string name="sound_label">Navigation sound</string>
     <string name="sound_on">Remote sounds: On</string>
@@ -145,29 +196,60 @@
     <string name="shows_toggle_on">TV listings: On</string>
     <string name="shows_toggle_off">TV listings: Off</string>
     <string name="shows_country">Country: %1$s</string>
-    <string name="shows_hint">Today\'s broadcast schedule for the selected country plus streaming releases, from TVmaze. No account needed.</string>
+    <string name="shows_hint">Broadcast TV and local streaming services of the selected country, plus global services (Netflix, Disney+, …) in the country\'s languages. From TVmaze, no account needed.</string>
+
+    <string name="lock_label">Arrow-key code</string>
+    <string name="lock_set_code">Set a code</string>
+    <string name="lock_change_code">Change code</string>
+    <string name="lock_apps_count">Locked apps (%1$d)</string>
+    <string name="lock_apps_title">Locked apps</string>
+    <string name="lock_apps_sub">Clear a tick to unlock</string>
+    <string name="lock_none">No locked apps. Use Lock with code in an app\'s menu.</string>
+    <string name="lock_settings_on">Code required for Lumora settings: On</string>
+    <string name="lock_settings_off">Code required for Lumora settings: Off</string>
+    <string name="lock_hint_settings">Locked apps ask for the code when opened from Lumora. Apps opened through Fire TV menus or voice are not covered.</string>
+
+    <string name="settings_quick">Quick actions</string>
+    <string name="quick_permission_on">Quick actions: On</string>
+    <string name="quick_permission_starting">Quick actions: Enabled, starting…</string>
+    <string name="quick_permission_off">Quick actions: Set up</string>
+    <string name="quick_permission_hint_settings">Needed for Screenshot, Restart and the Home button redirect.</string>
+    <string name="home_button_label">Home button</string>
+    <string name="home_redirect_on">Return to Lumora: On</string>
+    <string name="home_redirect_off">Return to Lumora: Off</string>
+    <string name="set_home">Why Home opens Fire TV</string>
+    <string name="home_redirect_hint">When the remote\'s Home button opens the Fire TV home, Lumora comes back to the front. Needs quick actions.</string>
+    <string name="home_default_title">Default home on Fire TV</string>
+    <string name="home_default_message">Fire OS always opens Amazon\'s home on the Home button and does not offer a home chooser. Lumora works around this with the quick-actions service: when the Fire TV home appears, Lumora returns. You may see the Fire TV home for a moment. Disabling the Amazon launcher over ADB is blocked on current Fire OS versions.</string>
+    <string name="home_default_setup">Set up quick actions</string>
+    <string name="settings_visibility">Visibility</string>
+    <string name="manage_hidden">Manage hidden apps</string>
+    <string name="unhide_all">Unhide all</string>
+    <string name="hidden_title">Hidden apps (%1$d)</string>
+    <string name="hidden_sub">Clear a tick to show the app again</string>
+    <string name="hidden_none">No hidden apps</string>
+    <string name="hidden_reset">All hidden apps are visible again</string>
+    <string name="settings_system">Device</string>
+    <string name="device_settings">Fire TV settings</string>
+    <string name="settings_open_failed">Could not open settings</string>
 
     <string name="adb_warning">These commands change Fire OS system packages and can leave the device without a home screen. Run them only from a computer connected over ADB, and keep the re-enable commands to hand.</string>
+    <string name="adb_quick_title">Allow quick actions (one time)</string>
     <string name="adb_disable_title">Disable the stock launcher</string>
     <string name="adb_enable_title">Re-enable the stock launcher</string>
     <string name="adb_telemetry_title">Remove telemetry for user 0</string>
 
-    <string name="settings_visibility">Visibility</string>
-    <string name="manage_hidden">Manage hidden apps</string>
-    <string name="unhide_all">Unhide all</string>
-    <string name="settings_system">System</string>
-    <string name="set_home">Set as default home</string>
-    <string name="device_settings">Fire TV settings</string>
-    <string name="settings_quick">Quick actions</string>
-    <string name="quick_permission_on">Quick actions permission: On</string>
-    <string name="quick_permission_off">Quick actions permission: Off</string>
-    <string name="quick_permission_hint_settings">Needed for Screenshot, Sleep, Restart and Power off in the quick menu. Long-press for the ADB command.</string>
-    <string name="settings_about">About</string>
-    <string name="credits">Listings and posters: TVmaze (CC BY-SA 4.0). App logos: dashboard-icons (Apache-2.0). Online wallpapers: Unsplash. Type: Poppins (SIL OFL 1.1).</string>
-    <string name="hidden_title">Hidden apps (%1$d)</string>
-    <string name="hidden_none">No hidden apps</string>
-    <string name="hidden_restored">%1$s restored</string>
-    <string name="hidden_reset">All hidden apps are visible again</string>
-    <string name="settings_open_failed">Could not open settings</string>
-    <string name="set_home_adb">This device hides the home chooser. Use ADB: adb shell cmd package set-home-activity com.firestick.aura.launcher/.MainActivity</string>
+    <string name="settings_about">Credits</string>
+    <string name="about_version">Version %1$s</string>
+    <string name="about_build">Built %1$s</string>
+    <string name="about_made_by">Made by Zakaa</string>
+    <string name="about_zakaa">Zakaa</string>
+    <string name="about_support">Support</string>
+    <string name="about_email">support@zakaa-ai.net</string>
+    <string name="about_website">zakaa-ai.net</string>
+    <string name="about_email_subject">%1$s support</string>
+    <string name="about_email_title">Email support</string>
+    <string name="about_web_title">Website</string>
+    <string name="about_no_handler">No app on this device can open it. Use another device:</string>
+    <string name="credits">Listings and posters: TVmaze (CC BY-SA 4.0). App logos: dashboard-icons (Apache-2.0). Space wallpapers: ESA/Hubble (CC BY 4.0). Night sky and desert wallpapers: Unsplash. Type: Poppins (SIL OFL 1.1).</string>
 </resources>

@@ -10,8 +10,10 @@ android {
         applicationId 'com.firestick.aura.launcher'
         minSdk 26
         targetSdk 34
-        versionCode 5
-        versionName '5.0.0'
+        versionCode 6
+        versionName '5.1.0'
+        // Shown in Settings > About.
+        resValue 'string', 'build_date', new java.text.SimpleDateFormat('yyyy-MM-dd').format(new Date())
     }
 
     buildTypes {

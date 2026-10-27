@@ -1,15 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Full-screen transparent window for glass overlays (ui/Glass). -->
+    <style name="Theme.Lumora.Overlay" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:windowAnimationStyle">@android:style/Animation.Dialog</item>
+        <item name="android:fontFamily">@font/poppins</item>
+        <item name="android:textColorPrimary">@color/nova_text</item>
+        <item name="colorAccent">@color/nova_accent</item>
+    </style>
+
     <style name="Lumora.SectionRow">
         <item name="android:layout_width">match_parent</item>
-        <item name="android:layout_height">42dp</item>
+        <item name="android:layout_height">40dp</item>
         <item name="android:layout_marginTop">4dp</item>
         <item name="android:background">@drawable/bg_nav_row</item>
         <item name="android:clickable">true</item>
         <item name="android:focusable">true</item>
         <item name="android:gravity">center_vertical</item>
-        <item name="android:paddingStart">14dp</item>
-        <item name="android:paddingEnd">14dp</item>
+        <item name="android:drawablePadding">12dp</item>
+        <item name="android:paddingStart">12dp</item>
+        <item name="android:paddingEnd">12dp</item>
         <item name="android:textColor">@color/nova_text</item>
         <item name="android:textSize">12sp</item>
     </style>

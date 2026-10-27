@@ -23,7 +23,7 @@
             android:layout_width="20dp"
             android:layout_height="20dp"
             android:contentDescription="@null"
-            android:src="@drawable/ic_lumora_mark" />
+            android:src="@drawable/ic_settings" />
 
         <TextView
             android:layout_width="0dp"

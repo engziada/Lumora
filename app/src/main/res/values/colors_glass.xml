@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Warm shade laid over blurred backdrops and the settings wallpaper. -->
+    <color name="glass_shade">#8C140A06</color>
+</resources>
