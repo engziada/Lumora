@@ -23,21 +23,9 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/**
- * Optional high-resolution logo pack.
- *
- * <p>Fire TV apps often ship a low-resolution or generic icon (sideloaded apps in particular
- * render as the green Android placeholder). When the user turns on the HD logo pack we fetch
- * the publisher's official favicon from Google's public favicon service, downscale it and
- * cache it on disk. Nothing is bundled: the trademarks stay with their owners and the network
- * call is a normal image request, exactly like a browser. If the fetch fails the app's own
- * icon stays on screen.
- */
+/** Loads optional publisher logos and caches the normalized 128 px bitmap on disk. */
 public final class IconService {
-
     private static final String ENDPOINT = "https://www.google.com/s2/favicons?sz=256&domain=";
-
-    /** package name -> publisher domain */
     private static final Map<String, String> DOMAINS;
 
     static {
@@ -72,132 +60,85 @@ public final class IconService {
     }
 
     private static volatile IconService instance;
-
-    private final Context appContext;
+    private final Context context;
     private final ExecutorService io = Executors.newFixedThreadPool(2);
     private final Handler main = new Handler(Looper.getMainLooper());
     private final LruCache<String, Bitmap> memory = new LruCache<>(48);
     private final Set<String> inFlight = Collections.synchronizedSet(new HashSet<>());
-    /** Callers that asked for an icon that was already downloading, keyed by package. */
     private final Map<String, List<Callback>> waiters = new HashMap<>();
 
-    public interface Callback {
-        void onIcon(Bitmap bitmap);
-    }
+    public interface Callback { void onIcon(Bitmap bitmap); }
 
-    private IconService(Context context) {
-        this.appContext = context.getApplicationContext();
-    }
+    private IconService(Context context) { this.context = context.getApplicationContext(); }
 
     public static IconService get(Context context) {
-        if (instance == null) {
-            synchronized (IconService.class) {
-                if (instance == null) {
-                    instance = new IconService(context);
-                }
-            }
+        if (instance == null) synchronized (IconService.class) {
+            if (instance == null) instance = new IconService(context);
         }
         return instance;
     }
 
-    public boolean hasLogo(String packageName) {
-        return DOMAINS.containsKey(packageName);
-    }
+    public boolean hasLogo(String packageName) { return DOMAINS.containsKey(packageName); }
 
-    /** Delivers the cached bitmap immediately, or fetches it in the background. */
-    public void load(final String packageName, final Callback callback) {
-        final String domain = DOMAINS.get(packageName);
+    public void load(String packageName, Callback callback) {
+        String domain = DOMAINS.get(packageName);
         if (domain == null) return;
-
         Bitmap cached = memory.get(packageName);
-        if (cached != null) {
-            callback.onIcon(cached);
-            return;
-        }
+        if (cached != null) { callback.onIcon(cached); return; }
         synchronized (waiters) {
             if (inFlight.contains(packageName)) {
-                List<Callback> queued = waiters.get(packageName);
-                if (queued == null) {
-                    queued = new ArrayList<>();
-                    waiters.put(packageName, queued);
-                }
-                queued.add(callback);
+                waiters.computeIfAbsent(packageName, ignored -> new ArrayList<>()).add(callback);
                 return;
             }
             inFlight.add(packageName);
         }
-
         io.execute(() -> {
             Bitmap bitmap = readDisk(packageName);
             if (bitmap == null) {
                 bitmap = download(domain);
-                if (bitmap != null) {
-                    writeDisk(packageName, bitmap);
-                }
+                if (bitmap != null) writeDisk(packageName, bitmap);
             }
             inFlight.remove(packageName);
-
             List<Callback> queued;
-            synchronized (waiters) {
-                queued = waiters.remove(packageName);
-            }
+            synchronized (waiters) { queued = waiters.remove(packageName); }
             if (bitmap == null) return;
-
             memory.put(packageName, bitmap);
-            final Bitmap result = bitmap;
+            Bitmap result = bitmap;
             main.post(() -> {
                 callback.onIcon(result);
-                if (queued != null) {
-                    for (Callback waiting : queued) {
-                        waiting.onIcon(result);
-                    }
-                }
+                if (queued != null) for (Callback waiter : queued) waiter.onIcon(result);
             });
         });
     }
 
     private Bitmap download(String domain) {
-        HttpURLConnection conn = null;
+        HttpURLConnection connection = null;
         try {
-            conn = (HttpURLConnection) new URL(ENDPOINT + domain).openConnection();
-            conn.setConnectTimeout(4000);
-            conn.setReadTimeout(5000);
-            conn.connect();
-            if (conn.getResponseCode() != HttpURLConnection.HTTP_OK) return null;
-            try (InputStream in = conn.getInputStream();
-                 ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-                byte[] buffer = new byte[8192];
-                int read;
-                while ((read = in.read(buffer)) != -1) {
-                    out.write(buffer, 0, read);
-                }
-                return decode(out.toByteArray());
+            connection = (HttpURLConnection) new URL(ENDPOINT + domain).openConnection();
+            connection.setConnectTimeout(4000); connection.setReadTimeout(5000); connection.connect();
+            if (connection.getResponseCode() != HttpURLConnection.HTTP_OK) return null;
+            try (InputStream in = connection.getInputStream(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+                byte[] buffer = new byte[8192]; int read;
+                while ((read = in.read(buffer)) != -1) out.write(buffer, 0, read);
+                return decode(out.toByteArray(), 2);
             }
-        } catch (Exception e) {
-            return null;
-        } finally {
-            if (conn != null) conn.disconnect();
-        }
+        } catch (Exception e) { return null; }
+        finally { if (connection != null) connection.disconnect(); }
     }
 
-    private Bitmap decode(byte[] data) {
+    private Bitmap decode(byte[] data, int sampleSize) {
         try {
             BitmapFactory.Options options = new BitmapFactory.Options();
-            options.inSampleSize = 2; // 256px source -> 128px is plenty for a 42dp tile
+            options.inSampleSize = sampleSize;
             Bitmap bitmap = BitmapFactory.decodeByteArray(data, 0, data.length, options);
             if (bitmap == null) return null;
-            if (bitmap.getWidth() < 32 || bitmap.getHeight() < 32) {
-                bitmap.recycle();
-                return null;
-            }
+            if (bitmap.getWidth() < 32 || bitmap.getHeight() < 32) { bitmap.recycle(); return null; }
             return bitmap;
-        } catch (Exception e) {
-            return null;
-        }
+        } catch (Exception e) { return null; }
     }
 
     private File iconFile(String packageName) {
-        File dir = new File(appContext.getCacheDir(), "logos");
+        File dir = new File(context.getCacheDir(), "logos");
         if (!dir.exists() && !dir.mkdirs()) return null;
         return new File(dir, packageName + ".png");
     }
@@ -205,28 +146,17 @@ public final class IconService {
     private Bitmap readDisk(String packageName) {
         File file = iconFile(packageName);
         if (file == null || !file.exists() || file.length() == 0) return null;
-        try {
-            byte[] data = new byte[(int) file.length()];
-            try (InputStream in = new java.io.FileInputStream(file)) {
-                int offset = 0;
-                while (offset < data.length) {
-                    int read = in.read(data, offset, data.length - offset);
-                    if (read < 0) break;
-                    offset += read;
-                }
-            }
-            return decode(data);
-        } catch (Exception e) {
-            return null;
-        }
+        try (InputStream in = new java.io.FileInputStream(file); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            byte[] buffer = new byte[8192]; int read;
+            while ((read = in.read(buffer)) != -1) out.write(buffer, 0, read);
+            return decode(out.toByteArray(), 1);
+        } catch (Exception e) { return null; }
     }
 
     private void writeDisk(String packageName, Bitmap bitmap) {
         File file = iconFile(packageName);
         if (file == null) return;
-        try (FileOutputStream out = new FileOutputStream(file)) {
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
-        } catch (Exception ignored) {
-        }
+        try (FileOutputStream out = new FileOutputStream(file)) { bitmap.compress(Bitmap.CompressFormat.PNG, 100, out); }
+        catch (Exception ignored) { }
     }
 }
