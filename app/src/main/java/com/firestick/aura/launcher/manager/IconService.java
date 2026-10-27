@@ -50,12 +50,6 @@ public final class IconService {
         map.put("tv.pluto.android", "pluto.tv");
         map.put("com.apple.atve.androidtv.appletv", "tv.apple.com");
         map.put("cm.aptoidetv.pt", "aptoide.com");
-        map.put("com.lagradost.cloudstream3", "github.com");
-        map.put("com.phlox.tvwebbrowser", "github.com");
-        map.put("link.unlinked", "github.com");
-        map.put("com.amazon.venezia", "amazon.com");
-        map.put("com.amazon.cloud9", "amazon.com");
-        map.put("com.amazon.bueller.music", "amazon.com");
         DOMAINS = Collections.unmodifiableMap(map);
     }
 
