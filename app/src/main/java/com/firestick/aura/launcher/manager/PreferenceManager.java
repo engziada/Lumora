@@ -32,46 +32,26 @@ public class PreferenceManager {
     }
 
     public long getHomeRevision() { return prefs.getLong(KEY_HOME_REVISION, 0L); }
-
-    private void applyHomeChange(SharedPreferences.Editor editor) {
-        editor.putLong(KEY_HOME_REVISION, getHomeRevision() + 1L).apply();
-    }
+    private void applyHomeChange(SharedPreferences.Editor editor) { editor.putLong(KEY_HOME_REVISION, getHomeRevision() + 1L).apply(); }
 
     public Set<String> getFavorites() { return new HashSet<>(prefs.getStringSet(KEY_FAVORITES, new HashSet<>())); }
     public boolean isFavorite(String packageName) { return getFavorites().contains(packageName); }
-    public void addFavorite(String packageName) {
-        Set<String> set = getFavorites();
-        if (set.add(packageName)) applyHomeChange(prefs.edit().putStringSet(KEY_FAVORITES, set));
-    }
-    public void removeFavorite(String packageName) {
-        Set<String> set = getFavorites();
-        if (set.remove(packageName)) applyHomeChange(prefs.edit().putStringSet(KEY_FAVORITES, set));
-    }
+    public void addFavorite(String packageName) { Set<String> set = getFavorites(); if (set.add(packageName)) applyHomeChange(prefs.edit().putStringSet(KEY_FAVORITES, set)); }
+    public void removeFavorite(String packageName) { Set<String> set = getFavorites(); if (set.remove(packageName)) applyHomeChange(prefs.edit().putStringSet(KEY_FAVORITES, set)); }
 
     public Set<String> getHiddenApps() { return new HashSet<>(prefs.getStringSet(KEY_HIDDEN, new HashSet<>())); }
     public boolean isHidden(String packageName) { return getHiddenApps().contains(packageName); }
-    public void hideApp(String packageName) {
-        Set<String> set = getHiddenApps();
-        if (set.add(packageName)) applyHomeChange(prefs.edit().putStringSet(KEY_HIDDEN, set));
-    }
-    public void unhideApp(String packageName) {
-        Set<String> set = getHiddenApps();
-        if (set.remove(packageName)) applyHomeChange(prefs.edit().putStringSet(KEY_HIDDEN, set));
-    }
-    public void resetHiddenApps() {
-        if (prefs.contains(KEY_HIDDEN)) applyHomeChange(prefs.edit().remove(KEY_HIDDEN));
-    }
+    public void hideApp(String packageName) { Set<String> set = getHiddenApps(); if (set.add(packageName)) applyHomeChange(prefs.edit().putStringSet(KEY_HIDDEN, set)); }
+    public void unhideApp(String packageName) { Set<String> set = getHiddenApps(); if (set.remove(packageName)) applyHomeChange(prefs.edit().putStringSet(KEY_HIDDEN, set)); }
+    public void resetHiddenApps() { if (prefs.contains(KEY_HIDDEN)) applyHomeChange(prefs.edit().remove(KEY_HIDDEN)); }
 
     public int getAccentColor(int defaultColor) { return prefs.getInt(KEY_ACCENT, defaultColor); }
     public boolean hasAccentColor() { return prefs.contains(KEY_ACCENT); }
-    public void setAccentColor(int color) {
-        if (getAccentColor(color) != color || !prefs.contains(KEY_ACCENT))
-            applyHomeChange(prefs.edit().putInt(KEY_ACCENT, color));
-    }
+    public void setAccentColor(int color) { if (getAccentColor(color) != color || !prefs.contains(KEY_ACCENT)) applyHomeChange(prefs.edit().putInt(KEY_ACCENT, color)); }
 
     public int getWallpaperIntervalSeconds() { return prefs.getInt(KEY_WALLPAPER_INTERVAL, 60); }
     public void setWallpaperIntervalSeconds(int seconds) { prefs.edit().putInt(KEY_WALLPAPER_INTERVAL, seconds).apply(); }
-    public int getWallpaperSource() { return prefs.getInt(KEY_WALLPAPER_SOURCE, WALLPAPER_SOURCE_ONLINE); }
+    public int getWallpaperSource() { return prefs.getInt(KEY_WALLPAPER_SOURCE, WALLPAPER_SOURCE_OFFLINE); }
     public void setWallpaperSource(int source) { prefs.edit().putInt(KEY_WALLPAPER_SOURCE, source).apply(); }
     public boolean isOnlineWallpapers() { return getWallpaperSource() == WALLPAPER_SOURCE_ONLINE; }
     public boolean isSoundEnabled() { return prefs.getBoolean(KEY_SOUND_ENABLED, true); }
@@ -83,19 +63,11 @@ public class PreferenceManager {
         if (raw == null || raw.isEmpty()) return new ArrayList<>();
         return new ArrayList<>(Arrays.asList(raw.split(",")));
     }
-    public void setCustomOrder(String rowId, List<String> packages) {
-        applyHomeChange(prefs.edit().putString(orderKey(rowId), String.join(",", packages)));
-    }
-    public void clearCustomOrder(String rowId) {
-        String key = orderKey(rowId);
-        if (prefs.contains(key)) applyHomeChange(prefs.edit().remove(key));
-    }
+    public void setCustomOrder(String rowId, List<String> packages) { applyHomeChange(prefs.edit().putString(orderKey(rowId), String.join(",", packages))); }
+    public void clearCustomOrder(String rowId) { String key = orderKey(rowId); if (prefs.contains(key)) applyHomeChange(prefs.edit().remove(key)); }
 
     public int getLaunchCount() { return prefs.getInt(KEY_LAUNCH_COUNT, 0); }
     public void incrementLaunchCount() { prefs.edit().putInt(KEY_LAUNCH_COUNT, getLaunchCount() + 1).apply(); }
-    public boolean isHdIconsEnabled() { return prefs.getBoolean(KEY_HD_ICONS, true); }
-    public void setHdIconsEnabled(boolean enabled) {
-        if (isHdIconsEnabled() != enabled)
-            applyHomeChange(prefs.edit().putBoolean(KEY_HD_ICONS, enabled));
-    }
+    public boolean isHdIconsEnabled() { return prefs.getBoolean(KEY_HD_ICONS, false); }
+    public void setHdIconsEnabled(boolean enabled) { if (isHdIconsEnabled() != enabled) applyHomeChange(prefs.edit().putBoolean(KEY_HD_ICONS, enabled)); }
 }
