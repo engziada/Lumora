@@ -2,16 +2,15 @@
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item>
         <shape android:shape="rectangle">
-            <solid android:color="@color/glass_nav" />
+            <gradient
+                android:angle="90"
+                android:endColor="#99140A06"
+                android:startColor="#E6140A06" />
         </shape>
     </item>
     <item android:gravity="top" android:height="1dp">
         <shape android:shape="rectangle">
-            <gradient
-                android:angle="0"
-                android:centerColor="#80E3A15A"
-                android:endColor="#00E3A15A"
-                android:startColor="#00E3A15A" />
+            <solid android:color="#2EF3E6D6" />
         </shape>
     </item>
 </layer-list>

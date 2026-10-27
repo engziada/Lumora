@@ -1,30 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- App icon: espresso tile with an amber glow and the vector mark. -->
+<!-- Full-bleed square icon. Fire OS letterboxes the square icon of sideloaded apps into its
+     16:9 tile, so the art runs edge to edge instead of floating on a rounded inset. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:width="108dp" android:height="108dp">
         <shape android:shape="rectangle">
             <gradient
                 android:angle="270"
                 android:endColor="#FF120905"
-                android:startColor="#FF2E1A10" />
-            <corners android:radius="24dp" />
+                android:startColor="#FF3A2216" />
         </shape>
     </item>
     <item android:width="108dp" android:height="108dp">
         <shape android:shape="rectangle">
             <gradient
-                android:centerX="0.52"
-                android:centerY="0.56"
+                android:centerX="0.5"
+                android:centerY="0.58"
                 android:endColor="#00E3A15A"
-                android:gradientRadius="60dp"
-                android:startColor="#47E3A15A"
+                android:gradientRadius="70dp"
+                android:startColor="#5CE3A15A"
                 android:type="radial" />
-            <corners android:radius="24dp" />
         </shape>
     </item>
     <item
-        android:width="99dp"
-        android:height="99dp"
+        android:width="104dp"
+        android:height="104dp"
         android:drawable="@drawable/ic_lumora_mark"
         android:gravity="center" />
 </layer-list>

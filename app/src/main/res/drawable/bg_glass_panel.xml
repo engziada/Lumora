@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Frosted panel: translucent espresso base, soft top highlight, hairline cream edge.
+     Fire OS has no backdrop blur, so dialogs place this over a blurred snapshot (ui/Glass). -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#B81E110B" />
+            <corners android:radius="26dp" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="270"
+                android:endColor="#00F3E6D6"
+                android:startColor="#1FF3E6D6" />
+            <stroke android:width="1dp" android:color="#38F3E6D6" />
+            <corners android:radius="26dp" />
+        </shape>
+    </item>
+</layer-list>
