@@ -1,5 +1,32 @@
 # Changelog
 
+## 5.0.0 — Lumora
+
+### Added
+- Lumora brand: warm espresso / amber palette, vector mark, wordmark, app icon and TV banner
+  (`brand/` holds the identity docs and SVGs).
+- Shows tab: today's TVmaze schedule for a selectable country plus streaming releases, poster grid,
+  channel chips, details dialog with *Open in <app>*. Country and on/off in Settings › TV listings.
+- Quick menu: Recent apps, Clear memory, Screenshot, Sleep, Restart, Power off, Wi-Fi, Bluetooth,
+  with a first-use accessibility permission prompt and an ADB fallback.
+- HD app icons from dashboard-icons via jsDelivr, resolved by package, name and alias index; falls
+  back to the installed icon.
+- Settings: six sections (Appearance, Wallpaper, Audio, TV listings, ADB tools, System), all text in
+  `strings.xml`.
+
+### Changed
+- Tabs are Home / Shows / Apps / Streaming; the Live TV and Music tabs were dropped.
+- HD icons now default to on (online wallpapers stay off).
+- `QUERY_ALL_PACKAGES` replaced by `<queries>` for launcher intents.
+- Back handling uses `OnBackPressedDispatcher`; `lint.xml` suppressions removed.
+- Version 5.0.0, version code 5. Application id unchanged.
+
+### Removed
+- Z TV / Aura drawables (`ic_logo_z`, `banner_aura`, `ic_launcher_aura`).
+
+### Correction
+- The 4.0.0 entry below says `gradle.properties` pins JDK 21; it does not. Set `JAVA_HOME` to a JDK 21.
+
 ## 4.0.0 — 2026-10-27 (NOVA-style redesign)
 
 ### Added

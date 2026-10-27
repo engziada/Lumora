@@ -81,7 +81,7 @@
     <string name="qa_bluetooth">Bluetooth</string>
     <string name="qa_recent_empty">No apps launched from Lumora yet.</string>
     <string name="qa_memory_running">Closing background apps…</string>
-    <string name="qa_memory_done">About %1$d MB freed by closing %2$d background apps.</string>
+    <string name="qa_memory_done">About %1$d MB of memory freed.</string>
     <string name="qa_memory_none">Background apps closed. Free memory did not change measurably.</string>
     <string name="qa_power_hint">Choose Restart or Power off in the system menu.</string>
     <string name="qa_open_failed">The system did not accept this action.</string>
@@ -161,7 +161,7 @@
     <string name="settings_quick">Quick actions</string>
     <string name="quick_permission_on">Quick actions permission: On</string>
     <string name="quick_permission_off">Quick actions permission: Off</string>
-    <string name="quick_permission_hint_settings">Needed for Screenshot, Sleep, Restart and Power off in the quick menu.</string>
+    <string name="quick_permission_hint_settings">Needed for Screenshot, Sleep, Restart and Power off in the quick menu. Long-press for the ADB command.</string>
     <string name="settings_about">About</string>
     <string name="credits">Listings and posters: TVmaze (CC BY-SA 4.0). App logos: dashboard-icons (Apache-2.0). Online wallpapers: Unsplash. Type: Poppins (SIL OFL 1.1).</string>
     <string name="hidden_title">Hidden apps (%1$d)</string>
