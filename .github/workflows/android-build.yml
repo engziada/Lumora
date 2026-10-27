@@ -1,4 +1,4 @@
-name: Android CI 
+name: Android CI
 
 on:
   push:
@@ -51,7 +51,18 @@ jobs:
           fi
 
       - name: Lint debug
-        run: ./gradlew lintDebug --no-daemon --stacktrace
+        shell: bash
+        run: |
+          set -o pipefail
+          if ! ./gradlew lintDebug --no-daemon --stacktrace --console=plain 2>&1 | tee lint-output.log; then
+            tail -n 100 lint-output.log | while IFS= read -r line; do
+              line=${line//'%'/'%25'}
+              line=${line//$'\r'/'%0D'}
+              line=${line//$'\n'/'%0A'}
+              echo "::error::$line"
+            done
+            exit 1
+          fi
 
       - name: Assemble release
         run: ./gradlew assembleRelease --no-daemon --stacktrace
@@ -62,7 +73,7 @@ jobs:
       - name: Show APK
         run: |
           ls -lh build-out/app/outputs/apk/debug/
-          echo "APK_SHA256=$(sha256sum build-out/app/outputs/apk/debug/app-debug.apk | cut -d" " -f1)" >> "$GITHUB_ENV"
+          echo "APK_SHA256=$(sha256sum build-out/app/outputs/apk/debug/app-debug.apk | cut -d' ' -f1)" >> "$GITHUB_ENV"
 
       - name: Upload APK
         uses: actions/upload-artifact@v7
