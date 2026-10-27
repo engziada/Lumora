@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Z TV Crimson Brand Accents -->
+    <color name="brand_z_red">#FF1E46</color>
+    <color name="brand_z_red_glow">#4DFF1E46</color>
+    <color name="brand_z_ruby">#E50914</color>
+
+    <!-- NOVA-style surface palette -->
+    <color name="nova_bg">#05070E</color>
+    <color name="nova_surface">#0B1120</color>
+    <color name="nova_surface_2">#101828</color>
+    <color name="nova_card">#141C2E</color>
+    <color name="nova_card_hi">#1B2438</color>
+    <color name="nova_stroke">#243149</color>
+    <color name="nova_stroke_soft">#162033</color>
+
+    <color name="nova_text">#F3F7FF</color>
+    <color name="nova_text_dim">#9DAAC2</color>
+    <color name="nova_text_muted">#65738C</color>
+
+    <color name="nova_accent">#8B7CFF</color>
+    <color name="nova_accent_2">#5AA9FF</color>
+    <color name="nova_accent_soft">#338B7CFF</color>
+    <color name="accent_amber">#FFB020</color>
+
+    <!-- Backgrounds & OLED Glass Surfaces -->
+    <color name="bg_ambient">#06080E</color>
+    <color name="bg_surface">#0D121F</color>
+    <color name="bg_card">#141A29</color>
+    <color name="bg_card_focused">#20293D</color>
+    <color name="bg_card_border">#222D42</color>
+
+    <!-- Neon Themes -->
+    <color name="accent_cyan">#00E5FF</color>
+    <color name="accent_cyan_glow">#4D00E5FF</color>
+    <color name="accent_fire">#FF5722</color>
+    <color name="accent_emerald">#00E676</color>
+    <color name="accent_violet">#8B7CFF</color>
+    <color name="accent_silver">#F8FAFC</color>
+
+    <!-- Text colors -->
+    <color name="text_primary">#F3F7FF</color>
+    <color name="text_secondary">#9DAAC2</color>
+    <color name="text_muted">#65738C</color>
+
+    <!-- Overlay & Glass -->
+    <color name="glass_scrim">#CC05070E</color>
+    <color name="glass_card_stroke">#22FFFFFF</color>
+    <color name="glass_card_stroke_focused">#CC8B7CFF</color>
+</resources>

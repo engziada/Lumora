@@ -1,0 +1,637 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/nova_bg"
+    android:orientation="vertical">
+
+    <!-- Header -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="38dp"
+        android:paddingTop="18dp"
+        android:paddingEnd="38dp"
+        android:paddingBottom="10dp">
+
+        <ImageView
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:contentDescription="Z"
+            android:src="@drawable/ic_logo_z" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:letterSpacing="0.06"
+            android:text="Settings"
+            android:textColor="@color/nova_text"
+            android:textSize="19sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/txtStats"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="14dp"
+            android:layout_weight="1"
+            android:letterSpacing="0.03"
+            android:text="Theme: Violet   •   Hidden apps: 0   •   Apps launched: 0"
+            android:textColor="@color/nova_text_muted"
+            android:textSize="9sp" />
+
+        <Button
+            android:id="@+id/btnDone"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:background="@drawable/bg_option_selector"
+            android:focusable="true"
+            android:minWidth="120dp"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:text="Back to Z TV"
+            android:textColor="@color/nova_text"
+            android:textSize="11sp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="horizontal"
+        android:paddingStart="38dp"
+        android:paddingEnd="38dp"
+        android:paddingBottom="18dp">
+
+        <!-- Left navigation -->
+        <LinearLayout
+            android:layout_width="210dp"
+            android:layout_height="match_parent"
+            android:background="@drawable/bg_panel"
+            android:orientation="vertical"
+            android:padding="10dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:letterSpacing="0.2"
+                android:paddingStart="10dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="8dp"
+                android:text="SECTIONS"
+                android:textColor="@color/nova_text_muted"
+                android:textSize="7sp" />
+
+            <LinearLayout
+                android:id="@+id/secAppearance"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:background="@drawable/bg_nav_row"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Appearance"
+                    android:textColor="@color/nova_text"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/secWallpaper"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:layout_marginTop="4dp"
+                android:background="@drawable/bg_nav_row"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Wallpaper"
+                    android:textColor="@color/nova_text"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/secAudio"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:layout_marginTop="4dp"
+                android:background="@drawable/bg_nav_row"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Audio"
+                    android:textColor="@color/nova_text"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/secDebloat"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:layout_marginTop="4dp"
+                android:background="@drawable/bg_nav_row"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Debloat"
+                    android:textColor="@color/nova_text"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/secSystem"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:layout_marginTop="4dp"
+                android:background="@drawable/bg_nav_row"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="System"
+                    android:textColor="@color/nova_text"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <TextView
+                android:id="@+id/txtVersion"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingStart="10dp"
+                android:paddingBottom="6dp"
+                android:text="Z TV 4.0"
+                android:textColor="@color/nova_text_muted"
+                android:textSize="8sp" />
+        </LinearLayout>
+
+        <!-- Right panel -->
+        <FrameLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_marginStart="12dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_panel">
+
+            <!-- APPEARANCE -->
+            <LinearLayout
+                android:id="@+id/panelAppearance"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:padding="22dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:letterSpacing="0.18"
+                    android:text="ACCENT COLOR"
+                    android:textColor="@color/nova_text_muted"
+                    android:textSize="8sp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/btnThemeViolet"
+                        android:layout_width="0dp"
+                        android:layout_height="44dp"
+                        android:layout_marginEnd="8dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_option_selector"
+                        android:focusable="true"
+                        android:text="Violet"
+                        android:textColor="@color/nova_accent"
+                        android:textSize="11sp" />
+
+                    <Button
+                        android:id="@+id/btnThemeCrimson"
+                        android:layout_width="0dp"
+                        android:layout_height="44dp"
+                        android:layout_marginEnd="8dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_option_selector"
+                        android:focusable="true"
+                        android:text="Crimson"
+                        android:textColor="@color/brand_z_red"
+                        android:textSize="11sp" />
+
+                    <Button
+                        android:id="@+id/btnThemeCyan"
+                        android:layout_width="0dp"
+                        android:layout_height="44dp"
+                        android:layout_marginEnd="8dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_option_selector"
+                        android:focusable="true"
+                        android:text="Cyan"
+                        android:textColor="@color/accent_cyan"
+                        android:textSize="11sp" />
+
+                    <Button
+                        android:id="@+id/btnThemeEmerald"
+                        android:layout_width="0dp"
+                        android:layout_height="44dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_option_selector"
+                        android:focusable="true"
+                        android:text="Emerald"
+                        android:textColor="@color/accent_emerald"
+                        android:textSize="11sp" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/txtThemeHint"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="The accent drives the focus ring, the active tab and the favourites row."
+                    android:textColor="@color/nova_text_dim"
+                    android:textSize="10sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    android:letterSpacing="0.18"
+                    android:text="ICON STYLE"
+                    android:textColor="@color/nova_text_muted"
+                    android:textSize="8sp" />
+
+                <Button
+                    android:id="@+id/btnIconStyle"
+                    android:layout_width="match_parent"
+                    android:layout_height="44dp"
+                    android:layout_marginTop="10dp"
+                    android:background="@drawable/bg_option_selector"
+                    android:focusable="true"
+                    android:text="Icon Style: HD Logos (online)"
+                    android:textColor="@color/nova_accent"
+                    android:textSize="11sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Fetches the publisher logo from Google's favicon service and caches it on the stick. Falls back to the installed icon when offline or unknown."
+                    android:textColor="@color/nova_text_dim"
+                    android:textSize="9sp" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="More themes arrive with the icon packs in the next build."
+                    android:textColor="@color/nova_text_muted"
+                    android:textSize="9sp" />
+            </LinearLayout>
+
+            <!-- WALLPAPER -->
+            <LinearLayout
+                android:id="@+id/panelWallpaper"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:padding="22dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:letterSpacing="0.18"
+                    android:text="ROTATION INTERVAL"
+                    android:textColor="@color/nova_text_muted"
+                    android:textSize="8sp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/btnWall30s"
+                        android:layout_width="0dp"
+                        android:layout_height="42dp"
+                        android:layout_marginEnd="8dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_option_selector"
+                        android:focusable="true"
+                        android:text="30 SEC"
+                        android:textColor="@color/nova_text"
+                        android:textSize="11sp" />
+
+                    <Button
+                        android:id="@+id/btnWall1m"
+                        android:layout_width="0dp"
+                        android:layout_height="42dp"
+                        android:layout_marginEnd="8dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_option_selector"
+                        android:focusable="true"
+                        android:text="1 MIN"
+                        android:textColor="@color/nova_text"
+                        android:textSize="11sp" />
+
+                    <Button
+                        android:id="@+id/btnWall5m"
+                        android:layout_width="0dp"
+                        android:layout_height="42dp"
+                        android:layout_marginEnd="8dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_option_selector"
+                        android:focusable="true"
+                        android:text="5 MIN"
+                        android:textColor="@color/nova_text"
+                        android:textSize="11sp" />
+
+                    <Button
+                        android:id="@+id/btnWallOff"
+                        android:layout_width="0dp"
+                        android:layout_height="42dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_option_selector"
+                        android:focusable="true"
+                        android:text="OFF"
+                        android:textColor="@color/nova_text_dim"
+                        android:textSize="11sp" />
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    android:letterSpacing="0.18"
+                    android:text="SOURCE"
+                    android:textColor="@color/nova_text_muted"
+                    android:textSize="8sp" />
+
+                <Button
+                    android:id="@+id/btnWallpaperSource"
+                    android:layout_width="match_parent"
+                    android:layout_height="44dp"
+                    android:layout_marginTop="10dp"
+                    android:background="@drawable/bg_option_selector"
+                    android:focusable="true"
+                    android:text="Wallpaper Source: Online 4K Stills"
+                    android:textColor="@color/accent_cyan"
+                    android:textSize="11sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="Offline scenes need no network and appear instantly; online stills are downloaded once and cached."
+                    android:textColor="@color/nova_text_dim"
+                    android:textSize="9sp" />
+            </LinearLayout>
+
+            <!-- AUDIO -->
+            <LinearLayout
+                android:id="@+id/panelAudio"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:padding="22dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:letterSpacing="0.18"
+                    android:text="NAVIGATION SOUND"
+                    android:textColor="@color/nova_text_muted"
+                    android:textSize="8sp" />
+
+                <Button
+                    android:id="@+id/btnToggleSound"
+                    android:layout_width="match_parent"
+                    android:layout_height="44dp"
+                    android:layout_marginTop="10dp"
+                    android:background="@drawable/bg_option_selector"
+                    android:focusable="true"
+                    android:text="Remote Sounds: ENABLED"
+                    android:textColor="@color/accent_emerald"
+                    android:textSize="11sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="Short synthesised blips on focus and launch. No audio files are shipped."
+                    android:textColor="@color/nova_text_dim"
+                    android:textSize="9sp" />
+            </LinearLayout>
+
+            <!-- DEBLOAT -->
+            <LinearLayout
+                android:id="@+id/panelDebloat"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:padding="22dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:letterSpacing="0.18"
+                    android:text="STOCK LAUNCHER"
+                    android:textColor="@color/nova_text_muted"
+                    android:textSize="8sp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/btnDisableStockLauncher"
+                        android:layout_width="0dp"
+                        android:layout_height="44dp"
+                        android:layout_marginEnd="8dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_option_selector"
+                        android:focusable="true"
+                        android:text="Disable Stock Launcher"
+                        android:textColor="#FF7A7A"
+                        android:textSize="11sp" />
+
+                    <Button
+                        android:id="@+id/btnEnableStockLauncher"
+                        android:layout_width="0dp"
+                        android:layout_height="44dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_option_selector"
+                        android:focusable="true"
+                        android:text="Re-enable Stock"
+                        android:textColor="@color/nova_text_dim"
+                        android:textSize="11sp" />
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="18dp"
+                    android:letterSpacing="0.18"
+                    android:text="TELEMETRY"
+                    android:textColor="@color/nova_text_muted"
+                    android:textSize="8sp" />
+
+                <Button
+                    android:id="@+id/btnDebloatTelemetry"
+                    android:layout_width="match_parent"
+                    android:layout_height="44dp"
+                    android:layout_marginTop="10dp"
+                    android:background="@drawable/bg_option_selector"
+                    android:focusable="true"
+                    android:text="Remove Amazon Telemetry &amp; Ad Trackers"
+                    android:textColor="@color/accent_amber"
+                    android:textSize="11sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="Fire OS 8 treats the stock launcher, firehomestarter and parental controls as protected packages: these buttons only work with root or Device Owner. Use Firestick-Toolkit.ps1 over ADB otherwise."
+                    android:textColor="@color/nova_text_muted"
+                    android:textSize="9sp" />
+            </LinearLayout>
+
+            <!-- SYSTEM -->
+            <LinearLayout
+                android:id="@+id/panelSystem"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:padding="22dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:letterSpacing="0.18"
+                    android:text="VISIBILITY"
+                    android:textColor="@color/nova_text_muted"
+                    android:textSize="8sp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/btnManageHidden"
+                        android:layout_width="0dp"
+                        android:layout_height="44dp"
+                        android:layout_marginEnd="8dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_option_selector"
+                        android:focusable="true"
+                        android:text="Manage Hidden Apps"
+                        android:textColor="@color/accent_cyan"
+                        android:textSize="11sp" />
+
+                    <Button
+                        android:id="@+id/btnResetHidden"
+                        android:layout_width="0dp"
+                        android:layout_height="44dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_option_selector"
+                        android:focusable="true"
+                        android:text="Unhide All"
+                        android:textColor="@color/nova_text"
+                        android:textSize="11sp" />
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="18dp"
+                    android:letterSpacing="0.18"
+                    android:text="SYSTEM"
+                    android:textColor="@color/nova_text_muted"
+                    android:textSize="8sp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/btnSetHome"
+                        android:layout_width="0dp"
+                        android:layout_height="44dp"
+                        android:layout_marginEnd="8dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_option_selector"
+                        android:focusable="true"
+                        android:text="Set as Default Home"
+                        android:textColor="@color/nova_accent"
+                        android:textSize="11sp" />
+
+                    <Button
+                        android:id="@+id/btnOpenDeviceSettings"
+                        android:layout_width="0dp"
+                        android:layout_height="44dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_option_selector"
+                        android:focusable="true"
+                        android:text="Fire TV Settings"
+                        android:textColor="@color/nova_text"
+                        android:textSize="11sp" />
+                </LinearLayout>
+            </LinearLayout>
+        </FrameLayout>
+    </LinearLayout>
+</LinearLayout>

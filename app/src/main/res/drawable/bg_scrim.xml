@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Readability scrim: heavy at the top for the header/greeting, lighter mid, heavy at the bottom bar -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="270"
+                android:centerColor="#33050A16"
+                android:endColor="#F205070E"
+                android:startColor="#E605070E"
+                android:type="linear" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="0"
+                android:endColor="#00000000"
+                android:startColor="#B3050A16"
+                android:type="linear" />
+        </shape>
+    </item>
+</layer-list>

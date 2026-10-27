@@ -1,0 +1,26 @@
+# Build output (this project redirects Gradle output to build-out/)
+.gradle/
+build/
+build-out/
+
+# Local machine configuration (contains absolute SDK paths)
+local.properties
+*.jks
+*.keystore
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Packaged artifacts
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# Logs and temp files
+*.log
+*.tmp
+.DS_Store
+Thumbs.db

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+
+    <!-- Dark rounded-square adaptive background -->
+    <path
+        android:fillColor="#0D1527"
+        android:pathData="M14,14h72v72H14z" />
+
+    <!-- Outer neon glow ring -->
+    <path
+        android:fillColor="#4DFF1E46"
+        android:pathData="M50,16 C68,16 84,32 84,50 C84,68 68,84 50,84 C32,84 16,68 16,50 C16,32 32,16 50,16 Z" />
+
+    <!-- Main Z letter - bold calligraphic crimson red -->
+    <path
+        android:strokeColor="#FF1E46"
+        android:strokeWidth="8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M26,32 L74,32 M26,32 L30,68 L74,68" />
+
+    <!-- Elegant sweeping tail curling from bottom of Z -->
+    <path
+        android:strokeColor="#FF1E46"
+        android:strokeWidth="7"
+        android:strokeLineCap="round"
+        android:pathData="M30,68 C22,78 18,90 28,96 C38,102 50,94 58,84" />
+
+    <!-- Tail inner glow fill -->
+    <path
+        android:fillColor="#33FF1E46"
+        android:pathData="M30,68 C22,78 18,90 28,96 C38,102 50,94 58,84 L60,80 C50,86 40,90 30,68 Z" />
+
+    <!-- Bright white glint highlight on upper Z -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M46,36 L56,36 L52,46 L46,36 Z" />
+
+    <!-- Small accent dot at tail end -->
+    <path
+        android:fillColor="#FF1E46"
+        android:pathData="M58,84a2,2 0 1,1 0,4 2,2 0 0,1 0,-4z" />
+</vector>

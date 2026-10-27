@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="440dp"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_dialog_glass"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <!-- Header: Icon & App Name -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingBottom="14dp">
+
+        <ImageView
+            android:id="@+id/dialogAppIcon"
+            android:layout_width="52dp"
+            android:layout_height="52dp"
+            android:contentDescription="@null" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="14dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/dialogAppTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/nova_text"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/dialogAppPackage"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/text_muted"
+                android:textSize="11sp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#20FFFFFF" />
+
+    <!-- Actions List -->
+    <Button
+        android:id="@+id/btnOptLaunch"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:layout_marginTop="12dp"
+        android:background="@drawable/bg_option_selector"
+        android:focusable="true"
+        android:text="Launch Application"
+        android:textColor="@color/nova_accent"
+        android:textStyle="bold"
+        android:textSize="10sp" />
+
+    <!-- Reorder row: Move Left & Move Right -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/btnOptMoveLeft"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="6dp"
+            android:background="@drawable/bg_option_selector"
+            android:focusable="true"
+            android:text="◀ Move Left"
+            android:textColor="@color/nova_text"
+            android:textSize="11sp" />
+
+        <Button
+            android:id="@+id/btnOptMoveRight"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_option_selector"
+            android:focusable="true"
+            android:text="Move Right ▶"
+            android:textColor="@color/nova_text"
+            android:textSize="11sp" />
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/btnOptToggleFavorite"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/bg_option_selector"
+        android:focusable="true"
+        android:text="Pin / Unpin Favorite"
+        android:textColor="@color/nova_text"
+        android:textSize="11sp" />
+
+    <Button
+        android:id="@+id/btnOptUninstall"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/bg_option_selector"
+        android:focusable="true"
+        android:text="Uninstall Application"
+        android:textColor="#FF6B6B"
+        android:textSize="11sp" />
+
+    <Button
+        android:id="@+id/btnOptForceUninstall"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/bg_option_selector"
+        android:focusable="true"
+        android:text="Force Uninstall (System / Bloat)"
+        android:textColor="#FF4D4D"
+        android:textStyle="bold"
+        android:textSize="11sp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/btnOptHide"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="6dp"
+            android:background="@drawable/bg_option_selector"
+            android:focusable="true"
+            android:text="Hide from Launcher"
+            android:textColor="@color/nova_text_dim"
+            android:textSize="10sp" />
+
+        <Button
+            android:id="@+id/btnOptAppInfo"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_option_selector"
+            android:focusable="true"
+            android:text="App Details"
+            android:textColor="@color/nova_text_dim"
+            android:textSize="10sp" />
+    </LinearLayout>
+
+</LinearLayout>

@@ -1,0 +1,26 @@
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.name = "AuraLauncher"
+include(":app")
+
+// Generated output goes to a fresh tree. The legacy "build/" folders on this
+// drive are owned by another Windows principal and reject both writes and
+// deletes, which made every Gradle invocation fail with AccessDeniedException
+// while writing build/reports/problems/problems-report.html.
+def outRoot = new File(settingsDir, "build-out")
+gradle.beforeProject { project ->
+    project.layout.buildDirectory.set(new File(outRoot, project.name))
+}
