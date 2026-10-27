@@ -1,5 +1,41 @@
 # Changelog
 
+## 5.1.0 — TV feedback round
+
+### Added
+- Glass overlays: menus, quick menu, show details and lock pad sit on a blurred snapshot of the
+  screen (Fire OS has no backdrop blur, so `ui/Glass` blurs a downscaled frame itself).
+- Gear button beside the clock with a dropdown: Lumora settings / Fire TV settings. Settings left
+  the bottom bar.
+- App lock: arrow-key code (4–8 directions, salted SHA-256), per-app lock from the app menu,
+  optional code for Lumora settings, 30 s lockout after 5 wrong tries.
+- Move mode: choose Move once, then the arrows move the app until OK or Back.
+- Apps and Streaming tabs are full grids; any app can be moved between them or added to Home.
+- Shows: *Watch on <app>* opens the app on a search for the title; missing apps open their Amazon
+  Appstore page; *Other apps* searches in any installed app that supports search.
+- Wallpaper live catalog (on by default): ESA/Hubble nebulae and galaxies, Unsplash night sky and
+  desert, graded beige/brown from the theme colour; categories selectable in Settings.
+- Home button: when the stock Fire TV home appears, the quick-actions service brings Lumora back.
+- Quick-actions setup without the hidden accessibility menu: one ADB grant of
+  `WRITE_SECURE_SETTINGS`, after which Lumora enables its own service.
+- About: version, build date, Zakaa logo, support e-mail and website.
+
+### Changed
+- Home keeps only the wide card strip, moved to the bottom, with the focused app as a hero title.
+- Context menu is a compact glass list with icons.
+- Quick menu: Recent, Clear memory, Screenshot, Restart, Wi-Fi (Sleep, Power off and Bluetooth removed).
+- TV listings: local and global streaming services instead of every country's platforms; global
+  services filtered to the country's languages (fixes Chinese titles for Egypt).
+- Accent is now a theme that also grades the wallpaper.
+- Launcher icon is full-bleed square (Fire OS letterboxes sideloaded icons; see README).
+- Version 5.1.0, version code 6.
+
+### Fixed
+- Uninstalled or disabled apps stayed listed: rows are rebuilt on every resume and launch
+  failures trigger a refresh.
+- Entries guarded by a permission Lumora lacks (for example Amazon's Alexa settings) are no longer
+  listed, which removes the "Permission Denial" toast.
+
 ## 5.0.0 — Lumora
 
 ### Added

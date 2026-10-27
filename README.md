@@ -1,4 +1,4 @@
-# Lumora — v5.0.0
+# Lumora — v5.1.0
 
 ![Android CI](https://github.com/engziada/Lumora/actions/workflows/android-build.yml/badge.svg)
 ![License: MIT](https://img.shields.io/badge/license-MIT-E3A15A)
@@ -10,17 +10,44 @@ so existing installs upgrade in place.
 
 ## Features
 
-- Warm espresso and amber identity with a vector logo (`ic_lumora_mark`, `ic_lumora_wordmark`) and a TV banner.
-- Tabs: **Home**, **Shows**, **Apps**, **Streaming**, plus **Quick** (menu) and **Settings**.
-- **Shows**: today's TV schedule for a chosen country plus streaming releases, as poster cards with
-  channel chips (All / On TV / Streaming / top channels). A details dialog offers *Open in <app>*
-  when a matching streaming app is installed.
-- **Quick menu**: Recent apps, Clear memory, Screenshot, Sleep, Restart, Power off, Wi-Fi, Bluetooth.
-- **HD app icons** from the open dashboard-icons collection, downloaded on demand and cached; apps
-  without a match keep their installed icon.
-- Pinned favourites, hidden apps and per-row ordering.
-- Offline generated wallpaper scenes; optional online stills.
-- Accents: Amber (default), Copper, Rose, Moonlight.
+- **Home**: one strip of wide glass cards at the bottom of the screen over a live, warm-graded
+  wallpaper; the focused app is shown as a large title.
+- **Shows**: today's broadcast TV and streaming releases for a chosen country, as posters with
+  channel chips. *Watch on <app>* opens the app on a search for the title; missing apps open their
+  Amazon Appstore page.
+- **Apps** / **Streaming**: full grids. Any app can be moved between the two or added to Home.
+- **Quick**: Recent, Clear memory, Screenshot, Restart, Wi-Fi.
+- **Gear** (next to the clock): Lumora settings or Fire TV settings.
+- App menu (long-press or Menu): Open, Move, Add to/Remove from Home, Move to Apps/Streaming,
+  Lock with code, Hide, App details, Uninstall.
+- **Move**: choose Move once, then the arrows move the app until OK or Back.
+- **App lock**: an arrow-key code (4–8 directions) for chosen apps and, optionally, Lumora settings.
+- Themes: Amber, Copper, Rose, Moonlight. The theme colours the wallpaper grade, focus rings and icons.
+- HD app icons from dashboard-icons, falling back to the installed icon.
+
+## One-time setup: quick actions and the Home button
+
+Fire OS always opens Amazon's home on the Home button, ignores third-party home apps, and hides
+accessibility switches for apps outside the Appstore. Lumora's accessibility service (*Lumora Quick
+Actions*) handles Screenshot, Restart and returning to Lumora when the Fire TV home appears. To
+turn it on, grant one permission once from a computer (Developer options › ADB debugging on):
+
+```powershell
+$adb = '<path-to-adb>'
+& $adb connect '<device-ip>:5555'
+& $adb shell pm grant com.firestick.aura.launcher android.permission.WRITE_SECURE_SETTINGS
+```
+
+Lumora then enables its own service, adding it to any services already enabled, and re-enables it
+if Fire OS turns it off. The service receives window events only from `com.amazon.tv.launcher`
+and `com.amazon.firehomestarter` and never reads screen content.
+
+Limits:
+
+- After Home, the Fire TV home can show briefly before Lumora returns.
+- Restart opens the system power menu; a direct reboot needs a system signature.
+- Locked apps are protected only when opened from Lumora, not from Fire TV menus or voice.
+- Recent lists apps opened from Lumora only.
 
 ## Network access
 
@@ -29,32 +56,22 @@ Lumora sends no analytics or telemetry. It contacts these hosts only for the lis
 | Host | Feature | Default | Turn off in |
 |------|---------|---------|-------------|
 | `cdn.jsdelivr.net` (homarr-labs/dashboard-icons) | HD app icons and their name index | On | Settings › Appearance › App icons |
-| `api.tvmaze.com`, `static.tvmaze.com` | Shows tab: schedule and posters | On | Settings › TV listings |
-| `images.unsplash.com` | Online wallpaper stills (1280 x 720) | Off | Settings › Wallpaper › Source |
+| `api.tvmaze.com`, `static.tvmaze.com` | Shows tab: schedules and posters | On | Settings › TV listings |
+| `cdn.esahubble.org` | Space wallpapers (nebulae, galaxies) | On | Settings › Wallpaper |
+| `images.unsplash.com` | Night sky and desert wallpapers (1280 x 720) | On | Settings › Wallpaper |
 
-All downloads are cached on the device (icons indefinitely, schedules for 3 hours, posters for 14 days).
-With every feature off, Lumora makes no network requests.
+Downloads are cached on the device (icons indefinitely, schedules 3 hours, posters 14 days,
+wallpapers until the cache is cleared). With every feature off, Lumora makes no network requests.
 
 **Movie posters:** TVmaze covers TV and streaming series only. Film posters would need TMDB, which
 requires a free account and API key; it is not integrated.
 
-## Quick menu permissions
+## Launcher icon on Fire TV
 
-Screenshot, Sleep, Restart and Power off use an accessibility service (*Lumora Quick Actions*) that
-only triggers system actions and never reads screen content. On first use Lumora explains this and
-opens Accessibility settings. If Fire OS hides third-party services there, enable it over ADB:
-
-```powershell
-& $adb shell settings put secure enabled_accessibility_services com.firestick.aura.launcher/com.firestick.aura.launcher.service.QuickActionService
-& $adb shell settings put secure accessibility_enabled 1
-```
-
-The first command replaces any other enabled accessibility services. Limits:
-
-- Restart and Power off open the system power dialog; a direct reboot needs a system signature.
-- Screenshot and Sleep need Android 9 (API 28) or newer.
-- Recent apps lists apps launched from Lumora only (no usage-access permission is requested).
-- Clear memory asks Android to stop cached background processes and reports the measured change.
+For sideloaded apps, Fire OS builds the *Your apps and channels* tile from the square app icon and
+letterboxes it; it ignores `android:banner`. Full-width tiles such as Tubi's come from Amazon
+Appstore listing art. Lumora's icon is therefore full-bleed so the letterboxed tile looks
+intentional. Fire OS caches the tile until the app is uninstalled and reinstalled.
 
 ## Build
 
@@ -84,21 +101,22 @@ $adb = '<path-to-adb>'
 & $adb shell am start -n 'com.firestick.aura.launcher/.MainActivity'
 ```
 
-Making Lumora the permanent HOME app may be blocked on Fire OS. Protected Amazon packages require
-ADB, Device Owner or root. Settings › ADB tools lists the equivalent commands; the app never runs
-privileged package-manager commands itself.
+Protected Amazon packages can only be removed over ADB, Device Owner or root. Settings › ADB tools
+lists the commands; Lumora never runs privileged package-manager commands itself.
 
 ## Project layout
 
 ```text
 app/src/main/java/com/firestick/aura/launcher/
-├── MainActivity.java       Home, Shows, Apps, Streaming tabs
-├── QuickMenu.java          Quick menu and accessibility prompt
+├── MainActivity.java       Home, Shows, Apps, Streaming, gear menu, move mode
+├── QuickMenu.java          Quick menu
+├── ShowDetails.java        Show details, watch-in-app, Appstore hand-off
 ├── SettingsActivity.java
-├── adapter/                Rows, featured strip, poster grid
-├── manager/                Apps, icons, shows, images, wallpapers, preferences
+├── adapter/                App tiles and cards, posters
+├── manager/                Apps, icons, shows, images, wallpapers, lock, preferences, quick access
 ├── model/
-└── service/QuickActionService.java
+├── service/QuickActionService.java
+└── ui/                     Glass overlays, glass menu, lock pad
 brand/                      Visual identity, palette, logo SVGs
 ```
 
@@ -110,8 +128,10 @@ release and debug builds with JDK 21, and uploads the debug APK.
 ## Credits
 
 Listings and posters: [TVmaze](https://www.tvmaze.com) (CC BY-SA 4.0). App logos:
-[dashboard-icons](https://github.com/homarr-labs/dashboard-icons) (Apache-2.0). Online wallpapers:
-Unsplash. Type: Poppins (SIL OFL 1.1).
+[dashboard-icons](https://github.com/homarr-labs/dashboard-icons) (Apache-2.0). Space wallpapers:
+ESA/Hubble (CC BY 4.0). Night sky and desert wallpapers: Unsplash. Type: Poppins (SIL OFL 1.1).
+
+Made by Zakaa — support@zakaa-ai.net — https://zakaa-ai.net
 
 ## Changelog
 
