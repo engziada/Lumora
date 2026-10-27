@@ -8,6 +8,8 @@
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Quick menu, Clear memory: ActivityManager.killBackgroundProcesses. Normal permission. -->
+    <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
 
     <!-- A launcher only needs apps that expose a launcher entry point; this replaces QUERY_ALL_PACKAGES. -->
     <queries>
@@ -23,14 +25,14 @@
 
     <application
         android:allowBackup="true"
-        android:icon="@drawable/ic_logo_z"
-        android:banner="@drawable/banner_aura"
+        android:icon="@drawable/ic_lumora_icon"
+        android:banner="@drawable/banner_lumora"
         android:label="@string/app_name"
         android:supportsRtl="false"
         android:theme="@style/Theme.AuraLauncher">
         <activity
             android:name=".MainActivity"
-            android:banner="@drawable/banner_aura"
+            android:banner="@drawable/banner_lumora"
             android:clearTaskOnLaunch="true"
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|smallestScreenSize"
             android:excludeFromRecents="true"
@@ -58,5 +60,20 @@
             android:exported="false"
             android:screenOrientation="landscape"
             android:theme="@style/Theme.AuraLauncher" />
+
+        <!-- Screenshot, Sleep and the power dialog from the quick menu. Enabled by the user in
+             Accessibility settings; it requests no window content. -->
+        <service
+            android:name=".service.QuickActionService"
+            android:exported="true"
+            android:label="@string/a11y_service_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/quick_action_service" />
+        </service>
     </application>
 </manifest>
