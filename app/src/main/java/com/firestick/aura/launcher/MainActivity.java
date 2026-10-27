@@ -1,26 +1,29 @@
 package com.firestick.aura.launcher;
 
-import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
+import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.StateListDrawable;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.provider.Settings;
 import android.view.Gravity;
+import android.view.KeyEvent;
 import android.view.View;
-import android.view.Window;
-import android.widget.Button;
+import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.PopupWindow;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -32,70 +35,67 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.firestick.aura.launcher.adapter.AppRowAdapter;
-import com.firestick.aura.launcher.adapter.CategoryRowAdapter;
-import com.firestick.aura.launcher.adapter.FeaturedRowAdapter;
 import com.firestick.aura.launcher.adapter.ShowsAdapter;
+import com.firestick.aura.launcher.manager.AppLock;
 import com.firestick.aura.launcher.manager.AppRepository;
 import com.firestick.aura.launcher.manager.DebloatManager;
 import com.firestick.aura.launcher.manager.PreferenceManager;
-import com.firestick.aura.launcher.manager.RemoteImageLoader;
+import com.firestick.aura.launcher.manager.QuickAccess;
 import com.firestick.aura.launcher.manager.ShowsRepository;
 import com.firestick.aura.launcher.manager.SoundManager;
 import com.firestick.aura.launcher.manager.WallpaperManager;
 import com.firestick.aura.launcher.model.AppCategory;
 import com.firestick.aura.launcher.model.AppModel;
 import com.firestick.aura.launcher.model.ShowItem;
+import com.firestick.aura.launcher.service.QuickActionService;
+import com.firestick.aura.launcher.ui.Glass;
+import com.firestick.aura.launcher.ui.GlassMenu;
+import com.firestick.aura.launcher.ui.LockPad;
 
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 public class MainActivity extends AppCompatActivity
-        implements AppRowAdapter.OnAppActionListener, ShowsAdapter.OnShowClickListener {
+        implements AppRowAdapter.OnAppActionListener, ShowsAdapter.OnShowClickListener, ShowDetails.Host {
     private static final int TAB_HOME = 0, TAB_SHOWS = 1, TAB_APPS = 2, TAB_STREAMING = 3;
-    private static final int FEATURED_LIMIT = 6, SHOWS_COLUMNS = 7, MAX_CHANNEL_CHIPS = 8;
+    private static final int GRID_COLUMNS = 7, SHOWS_COLUMNS = 7, MAX_CHANNEL_CHIPS = 8, HOME_FALLBACK = 8;
     private static final long SHOWS_MAX_AGE_MS = 60L * 60L * 1000L;
+    private static final long GEAR_DELAY_MS = 350L, GEAR_KEY_WINDOW_MS = 600L, GEAR_REOPEN_GUARD_MS = 900L;
     private static final String FILTER_ALL = "\u0000all", FILTER_TV = "\u0000tv", FILTER_WEB = "\u0000web";
 
-    /** Channel name (lower case) to the apps that carry it, in order of preference. */
-    private static final String[][] CHANNEL_APPS = {
-            {"netflix", "com.netflix.ninja"},
-            {"prime video", "com.amazon.avod.thirdpartyclient", "com.amazon.amazonvideo.livingroom"},
-            {"amazon", "com.amazon.avod.thirdpartyclient", "com.amazon.amazonvideo.livingroom"},
-            {"disney+", "com.disney.disneyplus"},
-            {"hulu", "com.hulu.plus"},
-            {"max", "com.wbd.stream", "com.hbo.hbonow"},
-            {"hbo", "com.wbd.stream", "com.hbo.hbonow"},
-            {"apple tv", "com.apple.atve.androidtv.appletv"},
-            {"paramount+", "com.cbs.ott"},
-            {"peacock", "com.peacocktv.peacockandroid"},
-            {"crunchyroll", "com.crunchyroll.crunchyroid"},
-            {"youtube", "com.amazon.firetv.youtube", "com.google.android.youtube.tv", "com.google.android.youtube"},
-            {"tubi", "com.tubitv.ott"},
-            {"pluto", "tv.pluto.android"}};
-
-    private RecyclerView categoriesView, featuredView, showsView;
-    private CategoryRowAdapter categoryAdapter;
-    private FeaturedRowAdapter featuredAdapter;
+    private RecyclerView homeView, gridView, showsView;
+    private AppRowAdapter homeAdapter, appsAdapter, streamingAdapter;
     private ShowsAdapter showsAdapter;
     private AppRepository repository;
     private ShowsRepository showsRepository;
     private PreferenceManager preferences;
     private WallpaperManager wallpapers;
     private QuickMenu quickMenu;
-    private TextView greeting, greetingSub, showsStatus;
-    private View showsPanel;
+    private ShowDetails showDetails;
+    private TextView greeting, greetingSub, heroTitle, heroMeta, showsStatus, gridEmpty, moveHint;
+    private View homePanel, gridPanel, showsPanel, gear;
     private LinearLayout showsChips;
-    private List<AppCategory> allCategories = new ArrayList<>(), currentCategories;
+    private PopupWindow gearMenu;
+    private final Map<String, List<AppModel>> rows = new HashMap<>();
+    private List<AppModel> homeApps = new ArrayList<>();
     private List<ShowItem> allShows;
     private String showsCountry, showsFilter = FILTER_ALL;
-    private long appliedHomeRevision = -1L, showsLoadedAt;
+    private long appliedHomeRevision = -1L, showsLoadedAt, lastKeyDownAt, gearDismissedAt;
     private int currentTab = TAB_HOME, refreshGeneration, showsGeneration;
-    private boolean packageReceiverRegistered;
+    private boolean packageReceiverRegistered, homeIsFallback, initialFocusPending = true;
+
+    // Move mode: the focused app follows the arrow keys until OK or Back.
+    private String movingRow, movingPackage;
+    private List<AppModel> movingList;
+    private AppRowAdapter movingAdapter;
+    private int movingStep;
+
+    private final Runnable openGear = () -> {
+        if (gear != null && gear.isFocused()) showGearMenu();
+    };
 
     private final BroadcastReceiver packageReceiver = new BroadcastReceiver() {
         @Override public void onReceive(Context context, Intent intent) {
@@ -115,6 +115,7 @@ public class MainActivity extends AppCompatActivity
         repository = new AppRepository(this);
         showsRepository = new ShowsRepository(this);
         quickMenu = new QuickMenu(this, preferences, this::launchPackage);
+        showDetails = new ShowDetails(this, this);
         SoundManager.init(this);
         initViews();
         registerPackageReceiver();
@@ -122,9 +123,10 @@ public class MainActivity extends AppCompatActivity
                 findViewById(R.id.imgWallpaperBack), findViewById(R.id.imgWallpaperFront));
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override public void handleOnBackPressed() {
-                // A home screen never finishes on Back: return to Home, then to the top.
-                if (currentTab != TAB_HOME) selectTab(TAB_HOME);
-                else categoriesView.smoothScrollToPosition(0);
+                // A home screen never finishes on Back: return to Home, then to the first card.
+                if (movingPackage != null) finishMove();
+                else if (currentTab != TAB_HOME) selectTab(TAB_HOME);
+                else homeView.smoothScrollToPosition(0);
             }
         });
     }
@@ -132,14 +134,25 @@ public class MainActivity extends AppCompatActivity
     private void initViews() {
         greeting = findViewById(R.id.txtGreeting);
         greetingSub = findViewById(R.id.txtGreetingSub);
-        categoriesView = findViewById(R.id.recyclerCategories);
-        categoriesView.setLayoutManager(new LinearLayoutManager(this));
-        categoryAdapter = new CategoryRowAdapter(preferences, this);
-        categoriesView.setAdapter(categoryAdapter);
-        featuredView = findViewById(R.id.recyclerFeatured);
-        featuredView.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
-        featuredAdapter = new FeaturedRowAdapter(preferences, this);
-        featuredView.setAdapter(featuredAdapter);
+        heroTitle = findViewById(R.id.txtHeroTitle);
+        heroMeta = findViewById(R.id.txtHeroMeta);
+        moveHint = findViewById(R.id.txtMoveHint);
+        homePanel = findViewById(R.id.homePanel);
+        gridPanel = findViewById(R.id.gridPanel);
+        gridEmpty = findViewById(R.id.txtGridEmpty);
+
+        homeView = findViewById(R.id.recyclerHome);
+        homeView.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
+        homeAdapter = new AppRowAdapter(preferences, this, AppRepository.ROW_HOME, AppRowAdapter.STYLE_WIDE,
+                (rowId, app) -> setHero(app));
+        homeView.setAdapter(homeAdapter);
+
+        gridView = findViewById(R.id.recyclerGrid);
+        gridView.setLayoutManager(new GridLayoutManager(this, GRID_COLUMNS));
+        RecyclerView.RecycledViewPool pool = new RecyclerView.RecycledViewPool();
+        gridView.setRecycledViewPool(pool);
+        appsAdapter = new AppRowAdapter(preferences, this, AppRepository.ROW_APPS, AppRowAdapter.STYLE_TILE, null);
+        streamingAdapter = new AppRowAdapter(preferences, this, AppRepository.ROW_STREAMING, AppRowAdapter.STYLE_TILE, null);
 
         showsPanel = findViewById(R.id.showsPanel);
         showsChips = findViewById(R.id.showsChips);
@@ -159,9 +172,20 @@ public class MainActivity extends AppCompatActivity
             quickMenu.show();
         });
         bindNavFocus(quick);
-        View settings = findViewById(R.id.navSettings);
-        settings.setOnClickListener(view -> startActivity(new Intent(this, SettingsActivity.class)));
-        bindNavFocus(settings);
+
+        gear = findViewById(R.id.btnGear);
+        gear.setOnClickListener(view -> showGearMenu());
+        gear.setOnFocusChangeListener((view, focused) -> {
+            view.animate().scaleX(focused ? 1.12f : 1f).scaleY(focused ? 1.12f : 1f).setDuration(120).start();
+            view.removeCallbacks(openGear);
+            if (!focused) return;
+            SoundManager.playFocus(view, preferences);
+            long now = SystemClock.uptimeMillis();
+            // Open on D-pad hover only: not on initial focus and not right after the menu closed.
+            if (now - lastKeyDownAt < GEAR_KEY_WINDOW_MS && now - gearDismissedAt > GEAR_REOPEN_GUARD_MS) {
+                view.postDelayed(openGear, GEAR_DELAY_MS);
+            }
+        });
     }
 
     private void bindNav(int id, int tab) {
@@ -180,37 +204,93 @@ public class MainActivity extends AppCompatActivity
         });
     }
 
+    // ------------------------------------------------------------ gear menu
+
+    private void showGearMenu() {
+        if (gearMenu != null && gearMenu.isShowing()) return;
+        View content = getLayoutInflater().inflate(R.layout.popup_gear_menu, null);
+        PopupWindow popup = new PopupWindow(content, dp(240), ViewGroup.LayoutParams.WRAP_CONTENT, true);
+        popup.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        popup.setOutsideTouchable(true);
+        popup.setElevation(dp(16));
+        int accent = accent();
+        ((ImageView) content.findViewById(R.id.gearIconLauncher)).setImageTintList(ColorStateList.valueOf(accent));
+        ((ImageView) content.findViewById(R.id.gearIconFire)).setImageTintList(ColorStateList.valueOf(accent));
+        View launcherRow = content.findViewById(R.id.gearLauncherSettings);
+        View fireRow = content.findViewById(R.id.gearFireSettings);
+        launcherRow.setOnClickListener(v -> {
+            SoundManager.playClick(v, preferences);
+            popup.dismiss();
+            openLauncherSettings();
+        });
+        fireRow.setOnClickListener(v -> {
+            SoundManager.playClick(v, preferences);
+            popup.dismiss();
+            openFireSettings();
+        });
+        popup.setOnDismissListener(() -> {
+            gearDismissedAt = SystemClock.uptimeMillis();
+            gearMenu = null;
+        });
+        gearMenu = popup;
+        popup.showAsDropDown(gear, gear.getWidth() - dp(240), dp(8));
+        launcherRow.requestFocus();
+    }
+
+    private void openLauncherSettings() {
+        if (preferences.isSettingsLocked()) {
+            LockPad.verify(this, preferences, getString(R.string.lock_sub_settings),
+                    () -> startActivity(new Intent(this, SettingsActivity.class)));
+        } else {
+            startActivity(new Intent(this, SettingsActivity.class));
+        }
+    }
+
+    private void openFireSettings() {
+        QuickActionService.suppressRedirect(15_000L);
+        try {
+            startActivity(new Intent(Settings.ACTION_SETTINGS));
+        } catch (ActivityNotFoundException exception) {
+            Toast.makeText(this, R.string.settings_open_failed, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    // ----------------------------------------------------------------- tabs
+
     private void selectTab(int tab) {
+        if (movingPackage != null) finishMove();
         if (currentTab == tab) {
             if (tab == TAB_SHOWS) showsView.smoothScrollToPosition(0);
-            else categoriesView.smoothScrollToPosition(0);
+            else if (tab == TAB_HOME) homeView.smoothScrollToPosition(0);
+            else gridView.smoothScrollToPosition(0);
             return;
         }
         currentTab = tab;
         applyTabVisibility();
         updateGreeting();
         updateNavSelection();
-        if (tab == TAB_SHOWS) {
-            loadShows(false);
-        } else {
-            refreshApps(false);
-            categoriesView.scrollToPosition(0);
-        }
+        if (tab == TAB_SHOWS) loadShows(false);
+        else applyRows();
     }
 
     private void applyTabVisibility() {
-        boolean shows = currentTab == TAB_SHOWS;
-        showsPanel.setVisibility(shows ? View.VISIBLE : View.GONE);
-        categoriesView.setVisibility(shows ? View.GONE : View.VISIBLE);
-        featuredView.setVisibility(currentTab == TAB_HOME ? View.VISIBLE : View.GONE);
+        homePanel.setVisibility(currentTab == TAB_HOME ? View.VISIBLE : View.GONE);
+        showsPanel.setVisibility(currentTab == TAB_SHOWS ? View.VISIBLE : View.GONE);
+        boolean grid = currentTab == TAB_APPS || currentTab == TAB_STREAMING;
+        gridPanel.setVisibility(grid ? View.VISIBLE : View.GONE);
+        if (grid) {
+            AppRowAdapter wanted = currentTab == TAB_APPS ? appsAdapter : streamingAdapter;
+            if (gridView.getAdapter() != wanted) gridView.setAdapter(wanted);
+        }
     }
 
     @Override protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
-        // Pressing Home while Lumora is already in front returns to the Home tab.
+        // Home pressed (or redirected) while Lumora is in front: return to the Home tab.
+        if (gearMenu != null) gearMenu.dismiss();
         if (currentTab != TAB_HOME) selectTab(TAB_HOME);
-        categoriesView.scrollToPosition(0);
+        homeView.scrollToPosition(0);
     }
 
     private void updateNavSelection() {
@@ -219,7 +299,6 @@ public class MainActivity extends AppCompatActivity
         styleNav(R.id.txtNavApps, R.id.imgNavApps, currentTab == TAB_APPS);
         styleNav(R.id.txtNavMovies, R.id.imgNavMovies, currentTab == TAB_STREAMING);
         styleNav(R.id.txtNavQuick, R.id.imgNavQuick, false);
-        styleNav(R.id.txtNavSettings, R.id.imgNavSettings, false);
     }
 
     private void styleNav(int labelId, int iconId, boolean selected) {
@@ -262,11 +341,14 @@ public class MainActivity extends AppCompatActivity
 
     @Override protected void onResume() {
         super.onResume();
+        // Keeps the quick-actions service on once WRITE_SECURE_SETTINGS has been granted over ADB.
+        QuickAccess.ensureServiceEnabled(this);
         long revision = preferences.getHomeRevision();
         boolean changed = revision != appliedHomeRevision;
         appliedHomeRevision = revision;
         applyTabVisibility();
-        refreshApps(changed);
+        // Always rebuild: packages removed for user 0 over ADB do not always broadcast.
+        refreshApps(true);
         updateGreeting();
         updateNavSelection();
         if (currentTab == TAB_SHOWS) {
@@ -280,32 +362,100 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override protected void onPause() {
+        if (movingPackage != null) finishMove();
+        if (gearMenu != null) gearMenu.dismiss();
         if (wallpapers != null) wallpapers.stop();
         super.onPause();
     }
 
-    // ---------------------------------------------------------------- apps
+    @Override public boolean dispatchKeyEvent(KeyEvent event) {
+        if (event.getAction() == KeyEvent.ACTION_DOWN) lastKeyDownAt = SystemClock.uptimeMillis();
+        if (movingPackage == null) return super.dispatchKeyEvent(event);
+        int code = event.getKeyCode();
+        boolean moveKey = code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT
+                || code == KeyEvent.KEYCODE_DPAD_UP || code == KeyEvent.KEYCODE_DPAD_DOWN
+                || code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER
+                || code == KeyEvent.KEYCODE_BACK;
+        if (!moveKey) return super.dispatchKeyEvent(event);
+        if (event.getAction() == KeyEvent.ACTION_DOWN) {
+            switch (code) {
+                case KeyEvent.KEYCODE_DPAD_LEFT:
+                    shiftMoving(-1);
+                    break;
+                case KeyEvent.KEYCODE_DPAD_RIGHT:
+                    shiftMoving(1);
+                    break;
+                case KeyEvent.KEYCODE_DPAD_UP:
+                    shiftMoving(-movingStep);
+                    break;
+                case KeyEvent.KEYCODE_DPAD_DOWN:
+                    shiftMoving(movingStep);
+                    break;
+                default:
+                    if (event.getRepeatCount() == 0) finishMove();
+                    break;
+            }
+        }
+        return true;
+    }
+
+    // ----------------------------------------------------------------- apps
+
+    private List<AppModel> row(String id) {
+        List<AppModel> apps = rows.get(id);
+        return apps == null ? new ArrayList<>() : apps;
+    }
 
     private void refreshApps(boolean force) {
         if (force) repository.invalidate();
         int request = ++refreshGeneration;
         repository.loadCategoriesAsync(categories -> {
             if (request != refreshGeneration || isFinishing() || isDestroyed()) return;
-            allCategories = categories;
-            currentCategories = filterForTab(categories);
-            categoryAdapter.setCategories(currentCategories);
+            rows.clear();
+            for (AppCategory category : categories) rows.put(category.getId(), new ArrayList<>(category.getApps()));
+            applyRows();
             updateGreeting();
-            updateFeatured();
         });
     }
 
-    private List<AppCategory> filterForTab(List<AppCategory> categories) {
-        if (currentTab != TAB_APPS && currentTab != TAB_STREAMING) return categories;
-        List<AppCategory> filtered = new ArrayList<>();
-        String wanted = currentTab == TAB_APPS ? "all" : "streaming";
-        for (AppCategory category : categories) if (wanted.equals(category.getId())) filtered.add(category);
-        if (filtered.isEmpty() && !categories.isEmpty()) filtered.add(categories.get(0));
-        return filtered;
+    private void applyRows() {
+        if (movingPackage != null) return;
+        List<AppModel> favorites = row(AppRepository.ROW_HOME);
+        List<AppModel> streaming = row(AppRepository.ROW_STREAMING);
+        List<AppModel> apps = row(AppRepository.ROW_APPS);
+        homeIsFallback = favorites.isEmpty();
+        if (homeIsFallback) {
+            List<AppModel> source = streaming.isEmpty() ? apps : streaming;
+            homeApps = new ArrayList<>(source.subList(0, Math.min(HOME_FALLBACK, source.size())));
+        } else {
+            homeApps = favorites;
+        }
+        homeAdapter.setApps(homeApps);
+        appsAdapter.setApps(apps);
+        streamingAdapter.setApps(streaming);
+
+        boolean emptyGrid = (currentTab == TAB_APPS && apps.isEmpty()) || (currentTab == TAB_STREAMING && streaming.isEmpty());
+        gridEmpty.setVisibility(emptyGrid ? View.VISIBLE : View.GONE);
+        gridEmpty.setText(currentTab == TAB_APPS ? R.string.grid_empty_apps : R.string.grid_empty_streaming);
+
+        if (homeApps.isEmpty()) {
+            heroTitle.setText(R.string.hero_no_apps);
+            heroMeta.setText("");
+        } else if (heroTitle.getText().length() == 0 || !homeView.hasFocus()) {
+            setHero(homeApps.get(0));
+        }
+        if (initialFocusPending && currentTab == TAB_HOME && !homeApps.isEmpty()) {
+            initialFocusPending = false;
+            homeView.post(() -> {
+                RecyclerView.ViewHolder first = homeView.findViewHolderForAdapterPosition(0);
+                if (first != null) first.itemView.requestFocus();
+            });
+        }
+    }
+
+    private void setHero(AppModel app) {
+        heroTitle.setText(app.getLabel());
+        heroMeta.setText(homeIsFallback ? R.string.hero_empty_home : R.string.hero_hint);
     }
 
     private void updateGreeting() {
@@ -331,30 +481,6 @@ public class MainActivity extends AppCompatActivity
                 : getString(R.string.greeting_returning, preferences.getFavorites().size(), preferences.getHiddenApps().size()));
     }
 
-    private void updateFeatured() {
-        if (currentTab != TAB_HOME) {
-            featuredView.setVisibility(View.GONE);
-            featuredAdapter.setItems(new ArrayList<>(), new ArrayList<>());
-            return;
-        }
-        featuredView.setVisibility(View.VISIBLE);
-        List<AppModel> picks = new ArrayList<>();
-        List<String> metas = new ArrayList<>();
-        for (AppCategory category : allCategories) if ("favorites".equals(category.getId())) picks.addAll(category.getApps());
-        int pinned = picks.size();
-        if (picks.isEmpty()) {
-            for (AppCategory category : allCategories) {
-                if ("streaming".equals(category.getId()) || "all".equals(category.getId())) {
-                    picks.addAll(category.getApps());
-                    break;
-                }
-            }
-        }
-        while (picks.size() > FEATURED_LIMIT) picks.remove(picks.size() - 1);
-        for (int i = 0; i < picks.size(); i++) metas.add(getString(i < pinned ? R.string.featured_pinned : R.string.featured_ready));
-        featuredAdapter.setItems(picks, metas);
-    }
-
     private Intent launchIntentFor(String packageName) {
         PackageManager pm = getPackageManager();
         Intent intent = pm.getLeanbackLaunchIntentForPackage(packageName);
@@ -370,131 +496,198 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
-    /** Launches an installed app and records it for the quick menu's Recent list. */
+    /** Launches an app, asking for the arrow code first when the app is locked. */
     void launchPackage(String packageName) {
-        try {
-            Intent launch = launchIntentFor(packageName);
-            if (launch == null) {
-                Toast.makeText(this, getString(R.string.error_cannot_launch, labelFor(packageName)), Toast.LENGTH_SHORT).show();
-                return;
-            }
-            startActivity(launch);
-            preferences.recordLaunch(packageName);
-        } catch (ActivityNotFoundException | SecurityException exception) {
-            Toast.makeText(this, getString(R.string.error_launch, exception.getMessage()), Toast.LENGTH_SHORT).show();
+        runUnlocked(packageName, () -> startApp(packageName));
+    }
+
+    private void startApp(String packageName) {
+        Intent launch = launchIntentFor(packageName);
+        if (launch == null) {
+            Toast.makeText(this, getString(R.string.error_not_installed, labelFor(packageName)), Toast.LENGTH_SHORT).show();
+            refreshApps(true);
+            return;
         }
+        try {
+            startActivity(launch);
+            onLaunched(packageName);
+        } catch (ActivityNotFoundException | SecurityException exception) {
+            Toast.makeText(this, getString(R.string.error_launch_short, labelFor(packageName)), Toast.LENGTH_SHORT).show();
+            refreshApps(true);
+        }
+    }
+
+    @Override public void runUnlocked(String packageName, Runnable action) {
+        if (preferences.isLocked(packageName)) {
+            LockPad.verify(this, preferences, getString(R.string.lock_sub_app, labelFor(packageName)), action::run);
+        } else {
+            action.run();
+        }
+    }
+
+    @Override public void onLaunched(String packageName) {
+        preferences.recordLaunch(packageName);
     }
 
     @Override public void onAppClick(AppModel app) {
-        launchPackage(app.getPackageName());
+        if (movingPackage == null) launchPackage(app.getPackageName());
     }
 
     @Override public void onAppLongClick(AppModel app, String rowId) {
-        showAppOptionsDialog(app, rowId);
+        if (movingPackage == null) showAppMenu(app, rowId);
     }
 
-    private AlertDialog buildDialog(View view) {
-        AlertDialog dialog = new AlertDialog.Builder(this, R.style.Theme_AuraLauncher_Dialog).setView(view).create();
-        Window window = dialog.getWindow();
-        // The layouts draw their own glass panel; avoid a second frame behind them.
-        if (window != null) window.setBackgroundDrawable(new ColorDrawable(0));
-        return dialog;
+    private boolean rowContains(String rowId, String packageName) {
+        for (AppModel model : row(rowId)) if (model.getPackageName().equals(packageName)) return true;
+        return false;
     }
 
-    private void showAppOptionsDialog(AppModel app, String rowId) {
-        View view = getLayoutInflater().inflate(R.layout.dialog_app_options, null);
-        AlertDialog dialog = buildDialog(view);
-        ((ImageView) view.findViewById(R.id.dialogAppIcon)).setImageDrawable(app.getIcon());
-        ((TextView) view.findViewById(R.id.dialogAppTitle)).setText(app.getLabel());
-        ((TextView) view.findViewById(R.id.dialogAppPackage)).setText(app.getPackageName());
-        Button launch = view.findViewById(R.id.btnOptLaunch);
-        Button left = view.findViewById(R.id.btnOptMoveLeft);
-        Button right = view.findViewById(R.id.btnOptMoveRight);
-        Button favorite = view.findViewById(R.id.btnOptToggleFavorite);
-        Button uninstall = view.findViewById(R.id.btnOptUninstall);
-        Button force = view.findViewById(R.id.btnOptForceUninstall);
-        Button hide = view.findViewById(R.id.btnOptHide);
-        Button info = view.findViewById(R.id.btnOptAppInfo);
-        if (rowId == null) {
-            left.setVisibility(View.GONE);
-            right.setVisibility(View.GONE);
-        }
+    private void showAppMenu(AppModel app, String rowId) {
         String pkg = app.getPackageName();
-        boolean isFavorite = preferences.isFavorite(pkg);
-        favorite.setText(isFavorite ? R.string.action_unfavorite : R.string.action_favorite);
-        launch.setOnClickListener(source -> {
-            dialog.dismiss();
-            onAppClick(app);
-        });
-        left.setOnClickListener(source -> {
-            moveApp(rowId, app, -1);
-            dialog.dismiss();
-        });
-        right.setOnClickListener(source -> {
-            moveApp(rowId, app, 1);
-            dialog.dismiss();
-        });
-        favorite.setOnClickListener(source -> {
-            if (isFavorite) preferences.removeFavorite(pkg);
+        String label = app.getLabel();
+        boolean onHome = preferences.isFavorite(pkg);
+        boolean streaming = rowContains(AppRepository.ROW_STREAMING, pkg);
+        boolean locked = preferences.isLocked(pkg);
+        // The fallback Home row shows suggestions, not a saved order, so it cannot be rearranged.
+        String moveRow = AppRepository.ROW_HOME.equals(rowId) && homeIsFallback ? null : rowId;
+
+        List<GlassMenu.Item> items = new ArrayList<>();
+        List<Runnable> actions = new ArrayList<>();
+        items.add(new GlassMenu.Item(R.drawable.ic_act_open, getString(R.string.action_open)));
+        actions.add(() -> launchPackage(pkg));
+        if (moveRow != null) {
+            items.add(new GlassMenu.Item(R.drawable.ic_act_move, getString(R.string.action_move)));
+            actions.add(() -> startMove(app, moveRow));
+        }
+        items.add(new GlassMenu.Item(R.drawable.ic_nav_home, getString(onHome ? R.string.action_remove_home : R.string.action_add_home)));
+        actions.add(() -> {
+            if (onHome) preferences.removeFavorite(pkg);
             else preferences.addFavorite(pkg);
-            dialog.dismiss();
+            Toast.makeText(this, getString(onHome ? R.string.toast_removed_home : R.string.toast_added_home, label), Toast.LENGTH_SHORT).show();
             refreshApps(true);
         });
-        uninstall.setOnClickListener(source -> {
-            dialog.dismiss();
-            DebloatManager.requestNormalUninstall(this, pkg);
+        items.add(new GlassMenu.Item(R.drawable.ic_act_swap, getString(streaming ? R.string.action_move_to_apps : R.string.action_move_to_streaming)));
+        actions.add(() -> {
+            preferences.setAppCategory(pkg, !streaming);
+            Toast.makeText(this, getString(streaming ? R.string.toast_moved_apps : R.string.toast_moved_streaming, label), Toast.LENGTH_SHORT).show();
+            refreshApps(true);
         });
-        force.setOnClickListener(source -> {
-            dialog.dismiss();
-            new AlertDialog.Builder(this, R.style.Theme_AuraLauncher_Dialog)
-                    .setTitle(app.getLabel())
-                    .setMessage(getString(R.string.force_uninstall_message, DebloatManager.forceUninstallCommand(pkg)))
-                    .setPositiveButton(R.string.close, null)
-                    .show();
-        });
-        hide.setOnClickListener(source -> {
+        items.add(new GlassMenu.Item(R.drawable.ic_act_lock, getString(locked ? R.string.action_unlock : R.string.action_lock)));
+        actions.add(() -> toggleLock(pkg, label, locked));
+        items.add(new GlassMenu.Item(R.drawable.ic_act_hide, getString(R.string.action_hide)));
+        actions.add(() -> {
             preferences.hideApp(pkg);
-            dialog.dismiss();
             refreshApps(true);
         });
-        info.setOnClickListener(source -> {
-            dialog.dismiss();
-            try {
-                startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + pkg)));
-            } catch (ActivityNotFoundException exception) {
-                Toast.makeText(this, R.string.error_app_details, Toast.LENGTH_SHORT).show();
-            }
-        });
-        dialog.show();
-        launch.requestFocus();
+        items.add(new GlassMenu.Item(R.drawable.ic_act_info, getString(R.string.action_info)));
+        actions.add(() -> openAppInfo(pkg));
+        items.add(new GlassMenu.Item(R.drawable.ic_act_delete, getString(R.string.action_uninstall)).danger());
+        actions.add(() -> uninstall(pkg, label));
+        GlassMenu.show(this, label, pkg, app.getIcon(), items, false, (index, item) -> actions.get(index).run());
     }
 
-    private void moveApp(String rowId, AppModel app, int direction) {
-        if (rowId == null || currentCategories == null) return;
-        for (AppCategory category : currentCategories) {
-            if (!rowId.equals(category.getId())) continue;
-            List<AppModel> apps = category.getApps();
-            int index = -1;
-            for (int i = 0; i < apps.size(); i++) {
-                if (apps.get(i).getPackageName().equals(app.getPackageName())) {
-                    index = i;
-                    break;
-                }
-            }
-            int target = index + direction;
-            if (index < 0 || target < 0 || target >= apps.size()) return;
-            Collections.swap(apps, index, target);
-            List<String> packages = new ArrayList<>();
-            for (AppModel model : apps) packages.add(model.getPackageName());
-            preferences.setCustomOrder(rowId, packages);
-            appliedHomeRevision = preferences.getHomeRevision();
-            repository.invalidate();
-            categoryAdapter.setCategories(currentCategories);
+    private void toggleLock(String pkg, String label, boolean locked) {
+        if (locked) {
+            LockPad.verify(this, preferences, getString(R.string.lock_sub_unlock, label), () -> {
+                preferences.setLocked(pkg, false);
+                refreshApps(true);
+            });
+        } else if (!AppLock.hasCode(preferences)) {
+            LockPad.create(this, preferences, () -> {
+                preferences.setLocked(pkg, true);
+                Toast.makeText(this, getString(R.string.toast_locked, label), Toast.LENGTH_SHORT).show();
+                refreshApps(true);
+            });
+        } else {
+            preferences.setLocked(pkg, true);
+            Toast.makeText(this, getString(R.string.toast_locked, label), Toast.LENGTH_SHORT).show();
+            refreshApps(true);
+        }
+    }
+
+    private void openAppInfo(String pkg) {
+        QuickActionService.suppressRedirect(15_000L);
+        try {
+            startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + pkg)));
+        } catch (ActivityNotFoundException exception) {
+            Toast.makeText(this, R.string.error_app_details, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /** System apps cannot be removed through the normal dialog; show the ADB command instead. */
+    private void uninstall(String pkg, String label) {
+        boolean system;
+        try {
+            ApplicationInfo info = getPackageManager().getApplicationInfo(pkg, 0);
+            system = (info.flags & ApplicationInfo.FLAG_SYSTEM) != 0;
+        } catch (PackageManager.NameNotFoundException exception) {
+            refreshApps(true);
             return;
         }
+        if (system) {
+            Glass.info(this, label, getString(R.string.force_uninstall_message), DebloatManager.forceUninstallCommand(pkg), null, null);
+        } else {
+            QuickActionService.suppressRedirect(15_000L);
+            DebloatManager.requestNormalUninstall(this, pkg);
+        }
     }
 
-    // --------------------------------------------------------------- shows
+    // ------------------------------------------------------------ move mode
+
+    private AppRowAdapter adapterFor(String rowId) {
+        if (AppRepository.ROW_HOME.equals(rowId)) return homeAdapter;
+        if (AppRepository.ROW_STREAMING.equals(rowId)) return streamingAdapter;
+        return appsAdapter;
+    }
+
+    private void startMove(AppModel app, String rowId) {
+        List<AppModel> source = AppRepository.ROW_HOME.equals(rowId) ? homeApps : row(rowId);
+        if (source.size() < 2) return;
+        movingRow = rowId;
+        movingPackage = app.getPackageName();
+        movingList = new ArrayList<>(source);
+        movingAdapter = adapterFor(rowId);
+        movingStep = AppRepository.ROW_HOME.equals(rowId) ? 0 : GRID_COLUMNS;
+        movingAdapter.setMovingPackage(movingPackage);
+        moveHint.setVisibility(View.VISIBLE);
+    }
+
+    private void shiftMoving(int delta) {
+        if (delta == 0 || movingList == null) return;
+        int index = -1;
+        for (int i = 0; i < movingList.size(); i++) {
+            if (movingList.get(i).getPackageName().equals(movingPackage)) {
+                index = i;
+                break;
+            }
+        }
+        int target = Math.max(0, Math.min(movingList.size() - 1, index + delta));
+        if (index < 0 || target == index) return;
+        AppModel item = movingList.remove(index);
+        movingList.add(target, item);
+        movingAdapter.setApps(movingList);
+        SoundManager.playFocus(moveHint, preferences);
+    }
+
+    private void finishMove() {
+        if (movingPackage == null) return;
+        List<String> order = new ArrayList<>();
+        for (AppModel model : movingList) order.add(model.getPackageName());
+        preferences.setCustomOrder(movingRow, order);
+        appliedHomeRevision = preferences.getHomeRevision();
+        rows.put(movingRow, new ArrayList<>(movingList));
+        if (AppRepository.ROW_HOME.equals(movingRow)) homeApps = new ArrayList<>(movingList);
+        AppRowAdapter adapter = movingAdapter;
+        movingPackage = null;
+        movingRow = null;
+        movingList = null;
+        movingAdapter = null;
+        adapter.setMovingPackage(null);
+        moveHint.setVisibility(View.GONE);
+        repository.invalidate();
+    }
+
+    // ---------------------------------------------------------------- shows
 
     private void loadShows(boolean force) {
         if (!preferences.isShowsEnabled()) {
@@ -641,58 +834,7 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override public void onShowClick(ShowItem show) {
-        View view = getLayoutInflater().inflate(R.layout.dialog_show_details, null);
-        AlertDialog dialog = buildDialog(view);
-        ImageView poster = view.findViewById(R.id.imgShowPoster);
-        poster.setClipToOutline(true);
-        RemoteImageLoader.get(this).load(show.posterUrl, dp(132), poster::setImageBitmap);
-        ((TextView) view.findViewById(R.id.txtShowTitle)).setText(show.title);
-
-        StringBuilder meta = new StringBuilder();
-        if (!show.channel.isEmpty() && !show.airtime.isEmpty()) meta.append(getString(R.string.show_channel_time, show.channel, show.airtime));
-        else meta.append(show.channel).append(show.airtime);
-        if (!show.genres.isEmpty()) appendMeta(meta, show.genres);
-        if (show.rating > 0d) appendMeta(meta, getString(R.string.show_rating, show.rating));
-        ((TextView) view.findViewById(R.id.txtShowMeta)).setText(meta);
-
-        TextView episode = view.findViewById(R.id.txtShowEpisode);
-        if (show.season > 0 && show.number > 0) episode.setText(getString(R.string.show_episode, show.season, show.number, show.episodeName));
-        else if (!show.episodeName.isEmpty()) episode.setText(show.episodeName);
-        else episode.setVisibility(View.GONE);
-        ((TextView) view.findViewById(R.id.txtShowSummary)).setText(
-                show.summary.isEmpty() ? getString(R.string.show_no_summary) : show.summary);
-
-        Button open = view.findViewById(R.id.btnShowOpen);
-        Button close = view.findViewById(R.id.btnShowClose);
-        String pkg = appForChannel(show.channel);
-        if (pkg != null) {
-            open.setText(getString(R.string.show_open_in, labelFor(pkg)));
-            open.setVisibility(View.VISIBLE);
-            open.setOnClickListener(source -> {
-                dialog.dismiss();
-                launchPackage(pkg);
-            });
-        }
-        close.setOnClickListener(source -> dialog.dismiss());
-        dialog.show();
-        (pkg != null ? open : close).requestFocus();
-    }
-
-    private static void appendMeta(StringBuilder meta, String part) {
-        if (meta.length() > 0) meta.append(" \u00B7 ");
-        meta.append(part);
-    }
-
-    /** First installed app that carries the channel. "max" must match exactly (it is a substring of many names). */
-    private String appForChannel(String channel) {
-        if (channel == null || channel.isEmpty()) return null;
-        String name = channel.toLowerCase(Locale.ROOT);
-        for (String[] row : CHANNEL_APPS) {
-            boolean match = "max".equals(row[0]) ? name.equals("max") : name.contains(row[0]);
-            if (!match) continue;
-            for (int i = 1; i < row.length; i++) if (launchIntentFor(row[i]) != null) return row[i];
-        }
-        return null;
+        showDetails.show(show);
     }
 
     private int dp(int value) {
