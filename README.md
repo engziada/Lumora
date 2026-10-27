@@ -1,4 +1,4 @@
-# Z TV Launcher — v4.0.0 (NOVA-style redesign)
+# Z TV Launcher — v4.0.0
 
 ![Android CI](https://github.com/engziada/Lumora/actions/workflows/android-build.yml/badge.svg)
 ![License: MIT](https://img.shields.io/badge/license-MIT-8B7CFF)
@@ -13,7 +13,6 @@ A lightweight, ad-free launcher for Fire TV and Android TV. Java only, no analyt
 - Pinned favourites, hidden apps and independent ordering within each row.
 - Offline generated wallpaper scenes.
 - Optional online publisher logos and online wallpaper stills; both are disabled by default.
-- Poppins Regular / Medium / SemiBold under the SIL Open Font License.
 
 ## Network access
 
@@ -26,24 +25,32 @@ When either feature is off, its corresponding endpoint is not contacted. Install
 
 ## Build
 
-JDK 17+ (the build is pinned to JDK 21 in `gradle.properties`; JDK 25 breaks Groovy build scripts).
+The source and target compatibility level is Java 17. Use JDK 21 to run Gradle 8.13 and AGP 8.4.2; the repository does not pin a machine-specific JDK path in `gradle.properties`.
 
 ```powershell
-.\gradlew.bat assembleDebug
+$env:JAVA_HOME = '<path-to-jdk-21>'
+.\gradlew.bat lintDebug assembleDebug assembleRelease
 ```
 
-Output: `build-out\app\outputs\apk\debug\app-debug.apk`
+Bash:
+
+```bash
+export JAVA_HOME='<path-to-jdk-21>'
+./gradlew lintDebug assembleDebug assembleRelease
+```
+
+Debug output: `build-out/app/outputs/apk/debug/app-debug.apk`
 
 ## Install
 
 ```powershell
-$adb = 'E:\Firestick-Cleanup-Windows-WinForm-v1.3.0\adb\adb.exe'
-& $adb connect 192.168.100.111:5555
-& $adb install -r build-out\app\outputs\apk\debug\app-debug.apk
-& $adb shell am start -n com.firestick.aura.launcher/.MainActivity
+$adb = '<path-to-adb>'
+& $adb connect '<device-ip>:5555'
+& $adb install -r 'build-out\app\outputs\apk\debug\app-debug.apk'
+& $adb shell am start -n 'com.firestick.aura.launcher/.MainActivity'
 ```
 
-Making it the permanent HOME app may be blocked on Fire OS. Protected Amazon packages require ADB, Device Owner or root. The app only displays the equivalent ADB commands; it does not execute privileged package-manager commands.
+Making Z TV the permanent HOME app may be blocked on Fire OS. Protected Amazon packages require ADB, Device Owner or root. The app displays equivalent ADB commands but never executes privileged package-manager commands.
 
 ## Project layout
 
@@ -52,24 +59,13 @@ app/src/main/java/com/firestick/aura/launcher/
 ├── MainActivity.java
 ├── SettingsActivity.java
 ├── adapter/
-│   ├── AppRowAdapter.java
-│   ├── FeaturedRowAdapter.java
-│   └── CategoryRowAdapter.java
 ├── manager/
-│   ├── AppRepository.java
-│   ├── PreferenceManager.java
-│   ├── IconService.java
-│   ├── WallpaperManager.java
-│   ├── DebloatManager.java
-│   └── SoundManager.java
 └── model/
 ```
 
 ## Continuous integration
 
-`.github/workflows/android-build.yml` builds the debug APK on pushes to `main` and pull requests, then uploads it as the `ztv-launcher-debug` artifact with its SHA-256.
-
-Locally, `gradlew.bat` uses the JDK selected by `JAVA_HOME`. If needed, configure a machine-specific JDK path in `%USERPROFILE%\.gradle\gradle.properties`; machine-specific paths must not be committed.
+`.github/workflows/android-build.yml` validates the Gradle wrapper, runs `lintDebug`, assembles release and debug builds with JDK 21, and uploads the debug APK.
 
 ## Changelog
 

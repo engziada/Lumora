@@ -5,22 +5,37 @@
     <string name="category_streaming">Media &amp; Cinema</string>
     <string name="category_all_apps">Applications Library</string>
     <string name="category_tools">System Tools</string>
-    
+
     <string name="action_open">Launch</string>
     <string name="action_move_left">Move Left</string>
     <string name="action_move_right">Move Right</string>
     <string name="action_favorite">Pin to Favorites</string>
     <string name="action_unfavorite">Unpin from Favorites</string>
     <string name="action_uninstall">Uninstall App</string>
-    <string name="action_force_uninstall">Force Uninstall (System / Bloat)</string>
+    <string name="action_force_uninstall">Show ADB Uninstall Command</string>
     <string name="action_hide">Hide from Launcher</string>
     <string name="action_info">Application Details</string>
-    <string name="action_settings">Z TV Customizer</string>
+
+    <string name="greeting_all_apps">ALL APPS</string>
+    <string name="greeting_all_apps_subtitle">Everything installed. One clean grid.</string>
+    <string name="greeting_cinema">CINEMA</string>
+    <string name="greeting_cinema_subtitle">Your streaming services, front and centre.</string>
+    <string name="greeting_night">GOOD NIGHT</string>
+    <string name="greeting_morning">GOOD MORNING</string>
+    <string name="greeting_afternoon">GOOD AFTERNOON</string>
+    <string name="greeting_evening">GOOD EVENING</string>
+    <string name="greeting_first_launch">Everything you love, none of the noise.</string>
+    <string name="greeting_returning">Welcome back. %1$d pinned, %2$d hidden.</string>
+    <string name="featured_pinned">PINNED FAVORITE</string>
+    <string name="featured_ready">READY TO WATCH</string>
+    <string name="error_cannot_launch">Cannot launch %1$s</string>
+    <string name="error_launch">Error launching: %1$s</string>
+    <string name="error_app_details">Could not open app details</string>
 
     <string name="settings_title">Z TV Settings &amp; Customization</string>
-    <string name="settings_wallpapers_header">Rotating 4K Wallpapers</string>
+    <string name="settings_wallpapers_header">Rotating Wallpapers</string>
     <string name="settings_sound_header">Audio Effects</string>
-    <string name="settings_debloat_header">Fire TV Bloatware &amp; Stock Launcher</string>
+    <string name="settings_debloat_header">ADB Commands</string>
     <string name="settings_hidden_apps">Unhide All Apps</string>
     <string name="settings_system_settings">Fire TV Settings</string>
 </resources>
