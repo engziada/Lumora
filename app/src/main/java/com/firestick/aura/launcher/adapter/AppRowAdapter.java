@@ -1,6 +1,5 @@
 package com.firestick.aura.launcher.adapter;
 
-import android.content.Context;
 import android.content.res.ColorStateList;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
@@ -26,10 +25,13 @@ import java.util.List;
 public class AppRowAdapter extends RecyclerView.Adapter<AppRowAdapter.AppViewHolder> {
     public interface OnAppActionListener {
         void onAppClick(AppModel app);
+
         void onAppLongClick(AppModel app, String rowId);
     }
 
-    interface OnAppFocusedListener { void onAppFocused(String rowId, String packageName); }
+    interface OnAppFocusedListener {
+        void onAppFocused(String rowId, String packageName);
+    }
 
     private static final class Entry {
         final AppModel app;
@@ -71,15 +73,25 @@ public class AppRowAdapter extends RecyclerView.Adapter<AppRowAdapter.AppViewHol
 
         List<Entry> previous = new ArrayList<>(entries);
         DiffUtil.DiffResult result = DiffUtil.calculateDiff(new DiffUtil.Callback() {
-            @Override public int getOldListSize() { return previous.size(); }
-            @Override public int getNewListSize() { return next.size(); }
-            @Override public boolean areItemsTheSame(int oldPos, int newPos) {
+            @Override
+            public int getOldListSize() {
+                return previous.size();
+            }
+
+            @Override
+            public int getNewListSize() {
+                return next.size();
+            }
+
+            @Override
+            public boolean areItemsTheSame(int oldPos, int newPos) {
                 return previous.get(oldPos).app.getPackageName().equals(next.get(newPos).app.getPackageName());
             }
-            @Override public boolean areContentsTheSame(int oldPos, int newPos) {
+
+            @Override
+            public boolean areContentsTheSame(int oldPos, int newPos) {
                 Entry old = previous.get(oldPos), fresh = next.get(newPos);
-                return old.favorite == fresh.favorite && old.hdIcons == fresh.hdIcons
-                        && old.accent == fresh.accent
+                return old.favorite == fresh.favorite && old.hdIcons == fresh.hdIcons && old.accent == fresh.accent
                         && old.app.getLabel().equals(fresh.app.getLabel());
             }
         });
@@ -89,43 +101,72 @@ public class AppRowAdapter extends RecyclerView.Adapter<AppRowAdapter.AppViewHol
         restoreFocus();
     }
 
-    void clearFocusedApp() { focusedPackage = null; }
+    void clearFocusedApp() {
+        focusedPackage = null;
+    }
 
+    /** After a refresh, D-pad focus returns to the app that had it, not to the first tile. */
     private void restoreFocus() {
         if (recyclerView == null || focusedPackage == null) return;
         int position = -1;
         for (int i = 0; i < entries.size(); i++) {
-            if (focusedPackage.equals(entries.get(i).app.getPackageName())) { position = i; break; }
+            if (focusedPackage.equals(entries.get(i).app.getPackageName())) {
+                position = i;
+                break;
+            }
         }
-        if (position < 0) { focusedPackage = null; return; }
+        if (position < 0) {
+            focusedPackage = null;
+            return;
+        }
         final int target = position;
         recyclerView.post(() -> {
+            if (recyclerView == null) return;
             recyclerView.scrollToPosition(target);
             recyclerView.post(() -> {
+                if (recyclerView == null) return;
                 RecyclerView.ViewHolder holder = recyclerView.findViewHolderForAdapterPosition(target);
                 if (holder != null && recyclerView.hasFocus()) holder.itemView.requestFocus();
             });
         });
     }
 
-    @Override public long getItemId(int position) { return entries.get(position).app.getPackageName().hashCode(); }
-    @Override public void onAttachedToRecyclerView(@NonNull RecyclerView recycler) { recyclerView = recycler; }
-    @Override public void onDetachedFromRecyclerView(@NonNull RecyclerView recycler) { if (recyclerView == recycler) recyclerView = null; }
+    @Override
+    public long getItemId(int position) {
+        return entries.get(position).app.getPackageName().hashCode();
+    }
 
-    @NonNull @Override public AppViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+    @Override
+    public void onAttachedToRecyclerView(@NonNull RecyclerView recycler) {
+        recyclerView = recycler;
+    }
+
+    @Override
+    public void onDetachedFromRecyclerView(@NonNull RecyclerView recycler) {
+        if (recyclerView == recycler) recyclerView = null;
+    }
+
+    @NonNull
+    @Override
+    public AppViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         return new AppViewHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.item_app_card, parent, false));
     }
 
-    @Override public void onBindViewHolder(@NonNull AppViewHolder holder, int position) {
+    @Override
+    public void onBindViewHolder(@NonNull AppViewHolder holder, int position) {
         holder.bind(entries.get(position));
     }
 
-    @Override public int getItemCount() { return entries.size(); }
+    @Override
+    public int getItemCount() {
+        return entries.size();
+    }
 
     final class AppViewHolder extends RecyclerView.ViewHolder {
         private final View iconContainer, plateView, focusRingView;
         private final ImageView icon, favoriteBadge;
         private final TextView label;
+        private final int labelFocused, labelIdle;
 
         AppViewHolder(View view) {
             super(view);
@@ -135,6 +176,8 @@ public class AppRowAdapter extends RecyclerView.Adapter<AppRowAdapter.AppViewHol
             icon = view.findViewById(R.id.imgAppIcon);
             favoriteBadge = view.findViewById(R.id.badgeFavorite);
             label = view.findViewById(R.id.txtAppLabel);
+            labelFocused = ContextCompat.getColor(view.getContext(), R.color.nova_text);
+            labelIdle = ContextCompat.getColor(view.getContext(), R.color.nova_text_dim);
         }
 
         void bind(Entry entry) {
@@ -145,9 +188,11 @@ public class AppRowAdapter extends RecyclerView.Adapter<AppRowAdapter.AppViewHol
             label.setText(app.getLabel());
             favoriteBadge.setVisibility(entry.favorite ? View.VISIBLE : View.GONE);
             focusRingView.setBackgroundTintList(ColorStateList.valueOf(entry.accent));
-            if (entry.hdIcons) IconService.get(itemView.getContext()).load(pkg, bitmap -> {
-                if (bitmap != null && !bitmap.isRecycled() && pkg.equals(icon.getTag())) icon.setImageBitmap(bitmap);
-            });
+            if (entry.hdIcons) {
+                IconService.get(itemView.getContext()).load(pkg, app.getLabel(), bitmap -> {
+                    if (bitmap != null && !bitmap.isRecycled() && pkg.equals(icon.getTag())) icon.setImageBitmap(bitmap);
+                });
+            }
             itemView.setOnFocusChangeListener((v, focused) -> {
                 applyFocus(focused);
                 if (focused) {
@@ -156,11 +201,19 @@ public class AppRowAdapter extends RecyclerView.Adapter<AppRowAdapter.AppViewHol
                     SoundManager.playFocus(v, preferences);
                 }
             });
-            itemView.setOnClickListener(v -> { SoundManager.playClick(v, preferences); if (listener != null) listener.onAppClick(app); });
-            itemView.setOnLongClickListener(v -> { if (listener == null) return false; listener.onAppLongClick(app, rowId); return true; });
+            itemView.setOnClickListener(v -> {
+                SoundManager.playClick(v, preferences);
+                if (listener != null) listener.onAppClick(app);
+            });
+            itemView.setOnLongClickListener(v -> {
+                if (listener == null) return false;
+                listener.onAppLongClick(app, rowId);
+                return true;
+            });
             itemView.setOnKeyListener((v, keyCode, event) -> {
                 if (listener != null && event.getAction() == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_MENU) {
-                    listener.onAppLongClick(app, rowId); return true;
+                    listener.onAppLongClick(app, rowId);
+                    return true;
                 }
                 return false;
             });
@@ -173,7 +226,7 @@ public class AppRowAdapter extends RecyclerView.Adapter<AppRowAdapter.AppViewHol
             plateView.animate().alpha(focused ? 1f : .92f).setDuration(140).start();
             focusRingView.setVisibility(focused ? View.VISIBLE : View.INVISIBLE);
             label.setSelected(focused);
-            label.setTextColor(focused ? 0xFFFFFFFF : 0xFFD6DEEC);
+            label.setTextColor(focused ? labelFocused : labelIdle);
         }
     }
 }
