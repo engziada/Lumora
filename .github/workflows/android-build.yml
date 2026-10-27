@@ -1,4 +1,4 @@
-name: Android CI
+name: Android CI 
 
 on:
   push:
@@ -16,19 +16,22 @@ concurrency:
 
 jobs:
   build:
-    name: Build debug APK
+    name: Validate and build
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 25
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@v6
+
       - name: Set up JDK 21
         uses: actions/setup-java@v6
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: 21
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
@@ -39,7 +42,7 @@ jobs:
         run: |
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           if [ -d "$ANDROID_HOME/platforms/android-34" ]; then
-            echo "Android SDK 34 already installed on the runner"
+            echo "Android SDK 34 already installed"
           elif [ -x "$SDKMANAGER" ]; then
             yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
             "$SDKMANAGER" "platforms;android-34" "build-tools;34.0.0" "platform-tools" > /dev/null
@@ -47,13 +50,19 @@ jobs:
             echo "sdkmanager not found; relying on the runner image" >&2
           fi
 
+      - name: Lint debug
+        run: ./gradlew lintDebug --no-daemon --stacktrace
+
+      - name: Assemble release
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
+
       - name: Assemble debug
         run: ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: Show APK
         run: |
           ls -lh build-out/app/outputs/apk/debug/
-          echo "APK_SHA256=$(sha256sum build-out/app/outputs/apk/debug/app-debug.apk | cut -d' ' -f1)" >> "$GITHUB_ENV"
+          echo "APK_SHA256=$(sha256sum build-out/app/outputs/apk/debug/app-debug.apk | cut -d" " -f1)" >> "$GITHUB_ENV"
 
       - name: Upload APK
         uses: actions/upload-artifact@v7
@@ -65,12 +74,5 @@ jobs:
 
       - name: Job summary
         run: |
-          {
-            echo "### Z TV Launcher"
-            echo ""
-            echo "| | |"
-            echo "| :--- | :--- |"
-            echo "| APK | \`app-debug.apk\` |"
-            echo "| Commit | \`$GITHUB_SHA\` |"
-            echo "| SHA-256 | \`$APK_SHA256\` |"
-          } >> "$GITHUB_STEP_SUMMARY"
+          echo "### Z TV Launcher" >> "$GITHUB_STEP_SUMMARY"
+          echo "Debug APK SHA-256: $APK_SHA256" >> "$GITHUB_STEP_SUMMARY"
