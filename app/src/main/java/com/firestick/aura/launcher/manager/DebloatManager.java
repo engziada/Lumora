@@ -8,6 +8,7 @@ import android.widget.Toast;
 import java.util.Arrays;
 import java.util.List;
 
+/** Provides safe uninstall intents and read-only ADB command guidance. */
 public final class DebloatManager {
     public static final List<String> TELEMETRY_PACKAGES = Arrays.asList(
             "com.amazon.tv.acr",
@@ -23,40 +24,33 @@ public final class DebloatManager {
 
     private DebloatManager() { }
 
-    public static void disableStockLauncher(CommandCallback callback) {
-        new Thread(() -> {
-            boolean first = runShellCommand("pm disable-user --user 0 com.amazon.tv.launcher");
-            boolean second = runShellCommand("pm disable-user --user 0 com.amazon.firehomestarter");
-            if (callback != null) callback.onResult(first && second,
-                    first && second ? "Stock launcher successfully disabled!" : "Disable command requires root or ADB permissions.");
-        }).start();
+    public static String disableStockLauncherCommands() {
+        return "adb shell pm disable-user --user 0 com.amazon.tv.launcher\n"
+                + "adb shell pm disable-user --user 0 com.amazon.firehomestarter";
     }
 
-    public static void enableStockLauncher(CommandCallback callback) {
-        new Thread(() -> {
-            boolean first = runShellCommand("pm enable com.amazon.tv.launcher");
-            boolean second = runShellCommand("pm enable com.amazon.firehomestarter");
-            if (callback != null) callback.onResult(first && second,
-                    first && second ? "Stock launcher re-enabled!" : "Enable command requires root or ADB permissions.");
-        }).start();
+    public static String enableStockLauncherCommands() {
+        return "adb shell pm enable com.amazon.tv.launcher\n"
+                + "adb shell pm enable com.amazon.firehomestarter";
     }
 
+    public static String forceUninstallCommand(String packageName) {
+        return "adb shell pm uninstall -k --user 0 " + packageName;
+    }
+
+    public static String telemetryCommands() {
+        StringBuilder commands = new StringBuilder();
+        for (String packageName : TELEMETRY_PACKAGES) {
+            if (commands.length() > 0) commands.append('\n');
+            commands.append(forceUninstallCommand(packageName));
+        }
+        return commands.toString();
+    }
+
+    /** Kept as a UI callback for the app-options dialog; no command is executed in-process. */
     public static void forceUninstall(String packageName, CommandCallback callback) {
-        new Thread(() -> {
-            boolean success = runShellCommand("pm uninstall -k --user 0 " + packageName);
-            if (callback != null) callback.onResult(success,
-                    success ? "Force uninstalled: " + packageName : "Unable to uninstall directly without ADB.");
-        }).start();
-    }
-
-    public static void debloatTelemetry(CommandCallback callback) {
-        new Thread(() -> {
-            int count = 0;
-            for (String pkg : TELEMETRY_PACKAGES)
-                if (runShellCommand("pm uninstall -k --user 0 " + pkg)) count++;
-            if (callback != null) callback.onResult(count > 0,
-                    "Debloated " + count + "/" + TELEMETRY_PACKAGES.size() + " tracking services.");
-        }).start();
+        if (callback != null) callback.onResult(false,
+                "Run from an ADB-connected computer:\n" + forceUninstallCommand(packageName));
     }
 
     public static void requestNormalUninstall(Context context, String packageName) {
@@ -66,15 +60,6 @@ public final class DebloatManager {
             context.startActivity(intent);
         } catch (Exception exception) {
             Toast.makeText(context, "Unable to open the system uninstall screen.", Toast.LENGTH_LONG).show();
-        }
-    }
-
-    private static boolean runShellCommand(String command) {
-        try {
-            Process process = Runtime.getRuntime().exec(new String[]{"sh", "-c", command});
-            return process.waitFor() == 0;
-        } catch (Exception exception) {
-            return false;
         }
     }
 }
