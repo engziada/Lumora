@@ -1,18 +1,62 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-<uses-feature android:name="android.software.leanback" android:required="false" />
-<uses-feature android:name="android.hardware.touchscreen" android:required="false" />
-<uses-feature android:name="android.hardware.banner" android:required="false" />
-<uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
-<uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
-<uses-permission android:name="android.permission.INTERNET" />
-<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-<application android:allowBackup="true" android:icon="@drawable/ic_logo_z" android:banner="@drawable/banner_aura" android:label="@string/app_name" android:supportsRtl="false" android:theme="@style/Theme.AuraLauncher">
-<activity android:name=".MainActivity" android:banner="@drawable/banner_aura" android:clearTaskOnLaunch="true" android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|smallestScreenSize" android:excludeFromRecents="true" android:exported="true" android:launchMode="singleTask" android:stateNotNeeded="true" android:screenOrientation="landscape" android:windowSoftInputMode="stateAlwaysHidden">
-<intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.HOME" /><category android:name="android.intent.category.DEFAULT" /></intent-filter>
-<intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LEANBACK_LAUNCHER" /></intent-filter>
-<intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
-</activity>
-<activity android:name=".SettingsActivity" android:exported="false" android:screenOrientation="landscape" android:theme="@style/Theme.AuraLauncher" />
-</application>
+
+    <uses-feature android:name="android.software.leanback" android:required="false" />
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+    <uses-feature android:name="android.hardware.banner" android:required="false" />
+
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- A launcher only needs apps that expose a launcher entry point; this replaces QUERY_ALL_PACKAGES. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+        </intent>
+    </queries>
+
+    <application
+        android:allowBackup="true"
+        android:icon="@drawable/ic_logo_z"
+        android:banner="@drawable/banner_aura"
+        android:label="@string/app_name"
+        android:supportsRtl="false"
+        android:theme="@style/Theme.AuraLauncher">
+        <activity
+            android:name=".MainActivity"
+            android:banner="@drawable/banner_aura"
+            android:clearTaskOnLaunch="true"
+            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|smallestScreenSize"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:stateNotNeeded="true"
+            android:screenOrientation="landscape"
+            android:windowSoftInputMode="stateAlwaysHidden">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="false"
+            android:screenOrientation="landscape"
+            android:theme="@style/Theme.AuraLauncher" />
+    </application>
 </manifest>

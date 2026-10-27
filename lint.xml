@@ -1,16 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <lint>
-    <!-- A launcher owns Back at its root so it remains on Home instead of finishing. -->
+    <!-- Temporary: removed when MainActivity moves to OnBackPressedDispatcher. -->
     <issue id="MissingSuperCall">
         <ignore path="app/src/main/java/com/firestick/aura/launcher/MainActivity.java" />
     </issue>
-    <!-- These two TV screens pass the documented NORMAL (0) / BOLD (1) style values. -->
+    <!-- Temporary: removed when Typeface.NORMAL / Typeface.BOLD constants are restored. -->
     <issue id="WrongConstant">
         <ignore path="app/src/main/java/com/firestick/aura/launcher/MainActivity.java" />
         <ignore path="app/src/main/java/com/firestick/aura/launcher/SettingsActivity.java" />
-    </issue>
-    <!-- A launcher must enumerate installed launchable apps; narrow package queries cannot express that catalogue. -->
-    <issue id="QueryAllPackagesPermission">
-        <ignore path="app/src/main/AndroidManifest.xml" />
     </issue>
 </lint>
