@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Implicit parent of every Lumora.* style; aapt2 requires it to exist. -->
+    <style name="Lumora" />
+</resources>
