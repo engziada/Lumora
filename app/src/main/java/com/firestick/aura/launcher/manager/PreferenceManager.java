@@ -20,10 +20,11 @@ public class PreferenceManager {
     private static final String KEY_CUSTOM_ORDER = "pref_custom_order";
     private static final String KEY_LAUNCH_COUNT = "pref_launch_count";
     private static final String KEY_HD_ICONS = "pref_hd_icons";
+    private static final String KEY_HOME_REVISION = "pref_home_revision";
 
-    /** Procedurally rendered offline scenes: zero network, instant, ~1 MB each. */
+    /** Procedurally rendered offline scenes: zero network, instant, about 1 MB each. */
     public static final int WALLPAPER_SOURCE_OFFLINE = 0;
-    /** Downloads 4K stills once, then serves them from the on-disk cache. */
+    /** Downloads online stills once, then serves them from the on-disk cache. */
     public static final int WALLPAPER_SOURCE_ONLINE = 1;
 
     private final SharedPreferences prefs;
@@ -32,20 +33,30 @@ public class PreferenceManager {
         this.prefs = context.getApplicationContext().getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
     }
 
+    public long getHomeRevision() {
+        return prefs.getLong(KEY_HOME_REVISION, 0L);
+    }
+
+    private void applyHomeChange(SharedPreferences.Editor editor) {
+        editor.putLong(KEY_HOME_REVISION, getHomeRevision() + 1L).apply();
+    }
+
     public Set<String> getFavorites() {
         return new HashSet<>(prefs.getStringSet(KEY_FAVORITES, new HashSet<>()));
     }
 
     public void addFavorite(String packageName) {
         Set<String> set = getFavorites();
-        set.add(packageName);
-        prefs.edit().putStringSet(KEY_FAVORITES, set).apply();
+        if (set.add(packageName)) {
+            applyHomeChange(prefs.edit().putStringSet(KEY_FAVORITES, set));
+        }
     }
 
     public void removeFavorite(String packageName) {
         Set<String> set = getFavorites();
-        set.remove(packageName);
-        prefs.edit().putStringSet(KEY_FAVORITES, set).apply();
+        if (set.remove(packageName)) {
+            applyHomeChange(prefs.edit().putStringSet(KEY_FAVORITES, set));
+        }
     }
 
     public boolean isFavorite(String packageName) {
@@ -58,28 +69,29 @@ public class PreferenceManager {
 
     public void hideApp(String packageName) {
         Set<String> set = getHiddenApps();
-        set.add(packageName);
-        prefs.edit().putStringSet(KEY_HIDDEN, set).apply();
+        if (set.add(packageName)) {
+            applyHomeChange(prefs.edit().putStringSet(KEY_HIDDEN, set));
+        }
     }
 
     public void unhideApp(String packageName) {
         Set<String> set = getHiddenApps();
-        set.remove(packageName);
-        prefs.edit().putStringSet(KEY_HIDDEN, set).apply();
+        if (set.remove(packageName)) {
+            applyHomeChange(prefs.edit().putStringSet(KEY_HIDDEN, set));
+        }
     }
 
     public void resetHiddenApps() {
-        prefs.edit().remove(KEY_HIDDEN).apply();
+        if (prefs.contains(KEY_HIDDEN)) {
+            applyHomeChange(prefs.edit().remove(KEY_HIDDEN));
+        }
     }
 
     public boolean isHidden(String packageName) {
         return getHiddenApps().contains(packageName);
     }
 
-    /**
-     * Returns the stored accent colour, or {@code defaultColor} when the user never
-     * picked a theme. The default is the crimson Z brand colour.
-     */
+    /** Returns the stored accent colour or the supplied default. */
     public int getAccentColor(int defaultColor) {
         return prefs.getInt(KEY_ACCENT, defaultColor);
     }
@@ -89,11 +101,13 @@ public class PreferenceManager {
     }
 
     public void setAccentColor(int color) {
-        prefs.edit().putInt(KEY_ACCENT, color).apply();
+        if (getAccentColor(color) != color || !prefs.contains(KEY_ACCENT)) {
+            applyHomeChange(prefs.edit().putInt(KEY_ACCENT, color));
+        }
     }
 
     public int getWallpaperIntervalSeconds() {
-        return prefs.getInt(KEY_WALLPAPER_INTERVAL, 60); // default 60s
+        return prefs.getInt(KEY_WALLPAPER_INTERVAL, 60);
     }
 
     public void setWallpaperIntervalSeconds(int seconds) {
@@ -122,24 +136,20 @@ public class PreferenceManager {
 
     public List<String> getCustomOrder() {
         String raw = prefs.getString(KEY_CUSTOM_ORDER, "");
-        if (raw.isEmpty()) return new ArrayList<>();
+        if (raw == null || raw.isEmpty()) return new ArrayList<>();
         return new ArrayList<>(Arrays.asList(raw.split(",")));
     }
 
     public void setCustomOrder(List<String> packages) {
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < packages.size(); i++) {
-            if (i > 0) sb.append(",");
-            sb.append(packages.get(i));
-        }
-        prefs.edit().putString(KEY_CUSTOM_ORDER, sb.toString()).apply();
+        applyHomeChange(prefs.edit().putString(KEY_CUSTOM_ORDER, String.join(",", packages)));
     }
 
     public void clearCustomOrder() {
-        prefs.edit().remove(KEY_CUSTOM_ORDER).apply();
+        if (prefs.contains(KEY_CUSTOM_ORDER)) {
+            applyHomeChange(prefs.edit().remove(KEY_CUSTOM_ORDER));
+        }
     }
 
-    /** Cheap usage counter, used by the settings screen to show lifetime launches. */
     public int getLaunchCount() {
         return prefs.getInt(KEY_LAUNCH_COUNT, 0);
     }
@@ -148,12 +158,13 @@ public class PreferenceManager {
         prefs.edit().putInt(KEY_LAUNCH_COUNT, getLaunchCount() + 1).apply();
     }
 
-    /** HD logo pack: fetch the publisher logo instead of the installed icon. */
     public boolean isHdIconsEnabled() {
         return prefs.getBoolean(KEY_HD_ICONS, true);
     }
 
     public void setHdIconsEnabled(boolean enabled) {
-        prefs.edit().putBoolean(KEY_HD_ICONS, enabled).apply();
+        if (isHdIconsEnabled() != enabled) {
+            applyHomeChange(prefs.edit().putBoolean(KEY_HD_ICONS, enabled));
+        }
     }
 }
