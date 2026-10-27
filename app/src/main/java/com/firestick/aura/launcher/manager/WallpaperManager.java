@@ -4,6 +4,9 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.ColorMatrix;
+import android.graphics.ColorMatrixColorFilter;
 import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.RadialGradient;
@@ -13,23 +16,23 @@ import android.os.Looper;
 import android.util.DisplayMetrics;
 import android.widget.ImageView;
 
+import androidx.core.content.ContextCompat;
+
+import com.firestick.aura.launcher.R;
+
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/** Rotates warm offline scenes and optional 1280 x 720 online stills. */
+/**
+ * Rotates the live wallpaper catalog (space, night sky, desert) with a warm beige/brown grade
+ * derived from the active theme, falling back to generated offline scenes when offline.
+ */
 public class WallpaperManager {
     private static final int MAX_WIDTH = 1280, MAX_HEIGHT = 720;
-    private static final List<String> ONLINE_URLS = Arrays.asList(
-            "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=1280&h=720&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1280&h=720&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?w=1280&h=720&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1550684848-fac1c5b4e853?w=1280&h=720&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=1280&h=720&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1280&h=720&fit=crop&q=80");
 
     /** Base, mid and glow colour of each offline scene, from the Lumora palette. */
     private static final int[][] SCENES = {
@@ -46,6 +49,8 @@ public class WallpaperManager {
     private final Handler main = new Handler(Looper.getMainLooper());
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final List<Bitmap> retired = new ArrayList<>();
+    private final List<String> playlist = new ArrayList<>();
+    private String playlistKey = "";
     private int sceneIndex, urlIndex, generation;
     private boolean rotating, destroyed;
     private long fadeToken;
@@ -93,8 +98,28 @@ public class WallpaperManager {
     public void next() {
         if (destroyed) return;
         int request = ++generation;
-        if (preferences.isOnlineWallpapers()) loadOnlineWallpaper(request);
+        String url = preferences.isOnlineWallpapers() ? nextUrl() : null;
+        if (url != null) loadOnlineWallpaper(url, request);
         else applyLocalScene();
+    }
+
+    /** Shuffled playlist of the selected categories, rebuilt when the selection changes. */
+    private String nextUrl() {
+        List<String> urls = WallpaperCatalog.urls(preferences.getWallpaperCategories());
+        String key = String.join("|", urls);
+        if (!key.equals(playlistKey)) {
+            playlistKey = key;
+            playlist.clear();
+            playlist.addAll(urls);
+            Collections.shuffle(playlist);
+            urlIndex = 0;
+        }
+        if (playlist.isEmpty()) return null;
+        return playlist.get(urlIndex++ % playlist.size());
+    }
+
+    private int tint() {
+        return preferences.getAccentColor(ContextCompat.getColor(context, R.color.nova_accent));
     }
 
     private void applyLocalScene() {
@@ -122,18 +147,12 @@ public class WallpaperManager {
             Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
             paint.setShader(new LinearGradient(0, 0, width, height, colors[0], colors[1], Shader.TileMode.CLAMP));
             canvas.drawRect(0, 0, width, height, paint);
-            // Horizon glow, lower right, like light behind the dunes of the logo.
             paint.setShader(new RadialGradient(width * .70f, height * .78f, Math.max(width, height) * .70f,
                     new int[]{withAlpha(colors[2], 96), withAlpha(colors[2], 0)}, new float[]{0f, 1f},
                     Shader.TileMode.CLAMP));
             canvas.drawRect(0, 0, width, height, paint);
-            // Soft moon glow, upper left.
             paint.setShader(new RadialGradient(width * .18f, height * .16f, Math.max(width, height) * .40f,
                     new int[]{withAlpha(colors[2], 40), withAlpha(colors[2], 0)}, new float[]{0f, 1f},
-                    Shader.TileMode.CLAMP));
-            canvas.drawRect(0, 0, width, height, paint);
-            paint.setShader(new LinearGradient(0, 0, 0, height,
-                    new int[]{0xB3140A06, 0x00140A06, 0x00140A06, 0xA6140A06}, new float[]{0f, .22f, .62f, 1f},
                     Shader.TileMode.CLAMP));
             canvas.drawRect(0, 0, width, height, paint);
             return bitmap;
@@ -146,16 +165,16 @@ public class WallpaperManager {
         return (color & 0x00FFFFFF) | ((alpha & 0xFF) << 24);
     }
 
-    private void loadOnlineWallpaper(int request) {
-        String url = ONLINE_URLS.get(urlIndex++ % ONLINE_URLS.size());
+    private void loadOnlineWallpaper(String url, int request) {
+        int tint = tint();
         executor.execute(() -> {
             File file = new File(new File(context.getCacheDir(), "wallpapers"), Http.sha1(url) + ".jpg");
             byte[] data = file.exists() && file.length() > 0 ? Http.readFile(file) : null;
             if (data == null) {
-                data = Http.get(url, 4000, 8000);
+                data = Http.get(url, 5000, 12000);
                 if (data != null) Http.writeFile(file, data);
             }
-            Bitmap bitmap = data == null ? null : decode(data);
+            Bitmap bitmap = data == null ? null : decodeWarm(data, tint);
             main.post(() -> {
                 if (destroyed || request != generation) {
                     if (bitmap != null && !bitmap.isRecycled()) bitmap.recycle();
@@ -168,16 +187,40 @@ public class WallpaperManager {
         });
     }
 
-    /** Unsplash already returns the requested 1280 x 720 crop; decode at full response size. */
-    private static Bitmap decode(byte[] data) {
+    /**
+     * Decodes at no more than 1280 px wide (power-of-two sampling only above that), then grades
+     * the image: saturation down to 35 %, channels scaled toward the theme colour, slightly darker.
+     */
+    static Bitmap decodeWarm(byte[] data, int tint) {
         try {
+            BitmapFactory.Options bounds = new BitmapFactory.Options();
+            bounds.inJustDecodeBounds = true;
+            BitmapFactory.decodeByteArray(data, 0, data.length, bounds);
+            if (bounds.outWidth <= 0) return null;
+            int sample = 1;
+            while (bounds.outWidth / (sample * 2) >= MAX_WIDTH) sample *= 2;
             BitmapFactory.Options options = new BitmapFactory.Options();
-            options.inSampleSize = 1;
-            options.inPreferredConfig = Bitmap.Config.ARGB_8888;
-            return BitmapFactory.decodeByteArray(data, 0, data.length, options);
-        } catch (OutOfMemoryError | Exception exception) {
+            options.inSampleSize = sample;
+            Bitmap source = BitmapFactory.decodeByteArray(data, 0, data.length, options);
+            if (source == null) return null;
+            Bitmap graded = Bitmap.createBitmap(source.getWidth(), source.getHeight(), Bitmap.Config.RGB_565);
+            ColorMatrix matrix = new ColorMatrix();
+            matrix.setSaturation(0.35f);
+            ColorMatrix warm = new ColorMatrix();
+            warm.setScale(channel(Color.red(tint)), channel(Color.green(tint)), channel(Color.blue(tint)), 1f);
+            matrix.postConcat(warm);
+            Paint paint = new Paint(Paint.FILTER_BITMAP_FLAG);
+            paint.setColorFilter(new ColorMatrixColorFilter(matrix));
+            new Canvas(graded).drawBitmap(source, 0f, 0f, paint);
+            source.recycle();
+            return graded;
+        } catch (OutOfMemoryError | RuntimeException error) {
             return null;
         }
+    }
+
+    private static float channel(int value) {
+        return (0.55f + 0.45f * value / 255f) * 0.9f;
     }
 
     private void crossfadeTo(Bitmap bitmap) {
@@ -187,7 +230,7 @@ public class WallpaperManager {
         long token = ++fadeToken;
         front.setImageBitmap(bitmap);
         front.setAlpha(0f);
-        front.animate().alpha(1f).setDuration(700).withEndAction(() -> {
+        front.animate().alpha(1f).setDuration(900).withEndAction(() -> {
             if (token != fadeToken || destroyed) return;
             back.setImageBitmap(bitmap);
             front.setImageDrawable(null);

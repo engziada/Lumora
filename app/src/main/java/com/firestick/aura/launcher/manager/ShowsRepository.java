@@ -14,6 +14,7 @@ import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -22,8 +23,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * Today's broadcast and streaming schedule from the public TVmaze API.
- * No key or account is needed; data is CC BY-SA and credited in the UI.
+ * Today's schedule from the public TVmaze API (no key; CC BY-SA, credited in the UI):
+ * broadcast TV of the chosen country, that country's streaming services, and global streaming
+ * services (Netflix, Disney+, ...) limited to the country's languages. The unfiltered web
+ * schedule lists every country's platforms, which is why v5.0 showed Chinese titles for Egypt.
  */
 public final class ShowsRepository {
     public interface Callback {
@@ -48,18 +51,40 @@ public final class ShowsRepository {
             String date = LocalDate.now().toString();
             String country = countryCode.toUpperCase(Locale.ROOT).replaceAll("[^A-Z]", "");
             String tv = fetch(API + "/schedule?country=" + country + "&date=" + date, "tv-" + country + "-" + date);
-            String web = fetch(API + "/schedule/web?date=" + date, "web-" + date);
+            String localWeb = fetch(API + "/schedule/web?date=" + date + "&country=" + country, "web-" + country + "-" + date);
+            String globalWeb = fetch(API + "/schedule/web?date=" + date + "&country=", "web-global-" + date);
             List<ShowItem> shows = new ArrayList<>();
             Set<Long> seen = new HashSet<>();
-            boolean tvOk = parse(tv, false, seen, shows);
-            boolean webOk = parse(web, true, seen, shows);
-            boolean failed = !tvOk && !webOk;
+            boolean tvOk = parse(tv, false, null, seen, shows);
+            boolean localOk = parse(localWeb, true, null, seen, shows);
+            boolean globalOk = parse(globalWeb, true, languagesFor(country), seen, shows);
+            boolean failed = !tvOk && !localOk && !globalOk;
             main.post(() -> callback.onLoaded(shows, failed));
         });
     }
 
     public void shutdown() {
         io.shutdownNow();
+    }
+
+    /** Languages accepted from global streaming services for a country. */
+    static Set<String> languagesFor(String country) {
+        switch (country) {
+            case "EG":
+            case "AE":
+            case "SA":
+                return new HashSet<>(Arrays.asList("Arabic", "English"));
+            case "DE":
+                return new HashSet<>(Arrays.asList("German", "English"));
+            case "FR":
+                return new HashSet<>(Arrays.asList("French", "English"));
+            case "NL":
+                return new HashSet<>(Arrays.asList("Dutch", "English"));
+            case "IN":
+                return new HashSet<>(Arrays.asList("Hindi", "English"));
+            default:
+                return new HashSet<>(Arrays.asList("English"));
+        }
     }
 
     /** Fresh cache first, then network, then a stale cache entry as an offline fallback. */
@@ -78,7 +103,7 @@ public final class ShowsRepository {
         return stale == null ? null : new String(stale, StandardCharsets.UTF_8);
     }
 
-    private static boolean parse(String json, boolean streaming, Set<Long> seen, List<ShowItem> out) {
+    private static boolean parse(String json, boolean streaming, Set<String> languages, Set<Long> seen, List<ShowItem> out) {
         if (json == null) return false;
         try {
             JSONArray episodes = new JSONArray(json);
@@ -92,6 +117,10 @@ public final class ShowsRepository {
                     if (embedded != null) show = embedded.optJSONObject("show");
                 }
                 if (show == null) continue;
+                if (languages != null) {
+                    String language = text(show, "language");
+                    if (!language.isEmpty() && !languages.contains(language)) continue;
+                }
                 long id = show.optLong("id", -1L);
                 if (id < 0 || seen.contains(id)) continue;
                 String poster = text(show.optJSONObject("image"), "medium");
