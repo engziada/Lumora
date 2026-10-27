@@ -6,7 +6,6 @@
     android:orientation="vertical"
     android:padding="24dp">
 
-    <!-- Header: Icon & App Name -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -39,7 +38,7 @@
                 android:id="@+id/dialogAppPackage"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="@color/text_muted"
+                android:textColor="@color/nova_text_muted"
                 android:textSize="11sp" />
         </LinearLayout>
     </LinearLayout>
@@ -47,22 +46,17 @@
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:background="#20FFFFFF" />
+        android:background="@color/glass_card_stroke" />
 
-    <!-- Actions List -->
     <Button
         android:id="@+id/btnOptLaunch"
+        style="@style/Lumora.Option"
         android:layout_width="match_parent"
-        android:layout_height="44dp"
         android:layout_marginTop="12dp"
-        android:background="@drawable/bg_option_selector"
-        android:focusable="true"
-        android:text="Launch Application"
+        android:text="@string/action_open"
         android:textColor="@color/nova_accent"
-        android:textStyle="bold"
-        android:textSize="10sp" />
+        android:textStyle="bold" />
 
-    <!-- Reorder row: Move Left & Move Right -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -71,61 +65,42 @@
 
         <Button
             android:id="@+id/btnOptMoveLeft"
+            style="@style/Lumora.Option"
             android:layout_width="0dp"
-            android:layout_height="44dp"
-            android:layout_weight="1"
             android:layout_marginEnd="6dp"
-            android:background="@drawable/bg_option_selector"
-            android:focusable="true"
-            android:text="◀ Move Left"
-            android:textColor="@color/nova_text"
-            android:textSize="11sp" />
+            android:layout_weight="1"
+            android:text="@string/action_move_left" />
 
         <Button
             android:id="@+id/btnOptMoveRight"
+            style="@style/Lumora.Option"
             android:layout_width="0dp"
-            android:layout_height="44dp"
             android:layout_weight="1"
-            android:background="@drawable/bg_option_selector"
-            android:focusable="true"
-            android:text="Move Right ▶"
-            android:textColor="@color/nova_text"
-            android:textSize="11sp" />
+            android:text="@string/action_move_right" />
     </LinearLayout>
 
     <Button
         android:id="@+id/btnOptToggleFavorite"
+        style="@style/Lumora.Option"
         android:layout_width="match_parent"
-        android:layout_height="44dp"
         android:layout_marginTop="8dp"
-        android:background="@drawable/bg_option_selector"
-        android:focusable="true"
-        android:text="Pin / Unpin Favorite"
-        android:textColor="@color/nova_text"
-        android:textSize="11sp" />
+        android:text="@string/action_favorite" />
 
     <Button
         android:id="@+id/btnOptUninstall"
+        style="@style/Lumora.Option"
         android:layout_width="match_parent"
-        android:layout_height="44dp"
         android:layout_marginTop="8dp"
-        android:background="@drawable/bg_option_selector"
-        android:focusable="true"
-        android:text="Uninstall Application"
-        android:textColor="#FF6B6B"
-        android:textSize="11sp" />
+        android:text="@string/action_uninstall"
+        android:textColor="@color/state_error" />
 
     <Button
         android:id="@+id/btnOptForceUninstall"
+        style="@style/Lumora.Option"
         android:layout_width="match_parent"
-        android:layout_height="44dp"
         android:layout_marginTop="8dp"
-        android:background="@drawable/bg_option_selector"
-        android:focusable="true"
-        android:text="Force Uninstall (System / Bloat)"
-        android:textColor="#FF4D4D"
-        android:textStyle="bold"
-        android:textSize="11sp" />
+        android:text="@string/action_force_uninstall"
+        android:textColor="@color/nova_text_dim" />
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -135,26 +110,19 @@
 
         <Button
             android:id="@+id/btnOptHide"
+            style="@style/Lumora.Option"
             android:layout_width="0dp"
-            android:layout_height="44dp"
-            android:layout_weight="1"
             android:layout_marginEnd="6dp"
-            android:background="@drawable/bg_option_selector"
-            android:focusable="true"
-            android:text="Hide from Launcher"
-            android:textColor="@color/nova_text_dim"
-            android:textSize="10sp" />
+            android:layout_weight="1"
+            android:text="@string/action_hide"
+            android:textColor="@color/nova_text_dim" />
 
         <Button
             android:id="@+id/btnOptAppInfo"
+            style="@style/Lumora.Option"
             android:layout_width="0dp"
-            android:layout_height="44dp"
             android:layout_weight="1"
-            android:background="@drawable/bg_option_selector"
-            android:focusable="true"
-            android:text="App Details"
-            android:textColor="@color/nova_text_dim"
-            android:textSize="10sp" />
+            android:text="@string/action_info"
+            android:textColor="@color/nova_text_dim" />
     </LinearLayout>
-
 </LinearLayout>

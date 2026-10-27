@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="108dp"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="6dp"
+    android:layout_marginTop="6dp"
+    android:layout_marginEnd="6dp"
+    android:layout_marginBottom="8dp"
+    android:clickable="true"
+    android:clipChildren="false"
+    android:focusable="true"
+    android:orientation="vertical">
+
+    <FrameLayout
+        android:id="@+id/posterFrame"
+        android:layout_width="108dp"
+        android:layout_height="162dp">
+
+        <ImageView
+            android:id="@+id/imgPoster"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/bg_poster_frame"
+            android:contentDescription="@null"
+            android:scaleType="centerCrop" />
+
+        <View
+            android:id="@+id/posterFocus"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/bg_poster_focus"
+            android:visibility="invisible" />
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/txtPosterTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:ellipsize="marquee"
+        android:marqueeRepeatLimit="marquee_forever"
+        android:singleLine="true"
+        android:textColor="@color/nova_text"
+        android:textSize="9sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/txtPosterMeta"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:singleLine="true"
+        android:textColor="@color/nova_text_dim"
+        android:textSize="8sp" />
+</LinearLayout>

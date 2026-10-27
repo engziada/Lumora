@@ -6,7 +6,6 @@
     android:layout_height="match_parent"
     android:background="@color/nova_bg">
 
-    <!-- Layer 1: rotating wallpaper -->
     <ImageView
         android:id="@+id/imgWallpaperBack"
         android:layout_width="match_parent"
@@ -14,7 +13,6 @@
         android:contentDescription="@null"
         android:scaleType="centerCrop" />
 
-    <!-- Layer 2: cross-fade layer -->
     <ImageView
         android:id="@+id/imgWallpaperFront"
         android:layout_width="match_parent"
@@ -22,14 +20,13 @@
         android:contentDescription="@null"
         android:scaleType="centerCrop" />
 
-    <!-- Layer 3: readability scrim -->
     <View
         android:id="@+id/vignetteOverlay"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="@drawable/bg_scrim" />
 
-    <!-- Header: brand + clock -->
+    <!-- Header: mark, wordmark, tagline, clock -->
     <LinearLayout
         android:id="@+id/headerBar"
         android:layout_width="match_parent"
@@ -42,33 +39,32 @@
         app:layout_constraintTop_toTopOf="parent">
 
         <ImageView
-            android:layout_width="30dp"
-            android:layout_height="30dp"
-            android:contentDescription="Z"
-            android:src="@drawable/ic_logo_z" />
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:contentDescription="@string/cd_logo"
+            android:src="@drawable/ic_lumora_mark" />
 
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="9dp"
+            android:layout_marginStart="8dp"
             android:orientation="vertical">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:letterSpacing="0.22"
-                android:text="Z TV"
-                android:textColor="@color/nova_text"
-                android:textSize="15sp"
-                android:textStyle="bold" />
+            <ImageView
+                android:layout_width="84dp"
+                android:layout_height="15dp"
+                android:contentDescription="@string/app_name"
+                android:scaleType="fitStart"
+                android:src="@drawable/ic_lumora_wordmark" />
 
             <TextView
+                style="@style/Lumora.Eyebrow"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:letterSpacing="0.24"
-                android:text="PURE TV · ZERO BLOAT"
-                android:textColor="@color/nova_text_muted"
-                android:textSize="7sp" />
+                android:layout_marginTop="3dp"
+                android:letterSpacing="0.18"
+                android:text="@string/brand_tagline"
+                android:textSize="6sp" />
         </LinearLayout>
 
         <View
@@ -88,8 +84,7 @@
                 android:layout_height="wrap_content"
                 android:format12Hour="h:mm"
                 android:format24Hour="HH:mm"
-                android:letterSpacing="0.02"
-                android:shadowColor="#99000000"
+                android:shadowColor="#99140A06"
                 android:shadowDy="2"
                 android:shadowRadius="8"
                 android:textColor="@color/nova_text"
@@ -108,14 +103,13 @@
         </LinearLayout>
     </LinearLayout>
 
-    <!-- Greeting -->
     <LinearLayout
         android:id="@+id/greetingBlock"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:paddingStart="38dp"
-        android:paddingTop="2dp"
+        android:paddingTop="4dp"
         android:paddingEnd="38dp"
         app:layout_constraintTop_toBottomOf="@id/headerBar">
 
@@ -124,10 +118,9 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:letterSpacing="0.04"
-            android:shadowColor="#99000000"
+            android:shadowColor="#99140A06"
             android:shadowDy="2"
             android:shadowRadius="10"
-            android:text="GOOD AFTERNOON"
             android:textColor="@color/nova_text"
             android:textSize="22sp"
             android:textStyle="bold" />
@@ -136,12 +129,10 @@
             android:id="@+id/txtGreetingSub"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Everything you love, none of the noise."
             android:textColor="@color/nova_text_dim"
             android:textSize="10sp" />
     </LinearLayout>
 
-    <!-- Featured / pinned strip -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerFeatured"
         android:layout_width="match_parent"
@@ -153,7 +144,6 @@
         android:paddingEnd="32dp"
         app:layout_constraintTop_toBottomOf="@id/greetingBlock" />
 
-    <!-- Rows -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerCategories"
         android:layout_width="match_parent"
@@ -164,6 +154,71 @@
         android:paddingBottom="6dp"
         app:layout_constraintBottom_toTopOf="@id/bottomNav"
         app:layout_constraintTop_toBottomOf="@id/recyclerFeatured" />
+
+    <!-- Shows tab: channel chips, poster grid, attribution -->
+    <LinearLayout
+        android:id="@+id/showsPanel"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="8dp"
+        android:orientation="vertical"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/bottomNav"
+        app:layout_constraintTop_toBottomOf="@id/greetingBlock">
+
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:clipToPadding="false"
+            android:paddingStart="38dp"
+            android:paddingEnd="38dp"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:id="@+id/showsChips"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp" />
+        </HorizontalScrollView>
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="6dp"
+            android:layout_weight="1">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerShows"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipChildren="false"
+                android:clipToPadding="false"
+                android:paddingStart="32dp"
+                android:paddingEnd="32dp"
+                android:paddingBottom="8dp" />
+
+            <TextView
+                android:id="@+id/txtShowsStatus"
+                style="@style/Lumora.Body"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:textSize="11sp"
+                android:visibility="gone" />
+        </FrameLayout>
+
+        <TextView
+            style="@style/Lumora.Eyebrow"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingStart="40dp"
+            android:paddingBottom="4dp"
+            android:text="@string/shows_attribution"
+            android:textAllCaps="false"
+            android:textSize="7sp" />
+    </LinearLayout>
 
     <!-- Bottom navigation -->
     <LinearLayout
@@ -176,144 +231,106 @@
         app:layout_constraintBottom_toBottomOf="parent">
 
         <LinearLayout
-            android:layout_width="640dp"
+            android:layout_width="780dp"
             android:layout_height="match_parent"
             android:gravity="center"
             android:orientation="horizontal">
 
             <LinearLayout
                 android:id="@+id/navHome"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_marginStart="8dp"
-                android:layout_marginTop="5dp"
-                android:layout_marginEnd="8dp"
-                android:layout_marginBottom="5dp"
-                android:layout_weight="1"
-                android:background="@drawable/bg_nav_item"
-                android:clickable="true"
-                android:focusable="true"
-                android:gravity="center"
-                android:orientation="vertical">
+                style="@style/Lumora.NavItem">
 
                 <ImageView
                     android:id="@+id/imgNavHome"
-                    android:layout_width="18dp"
-                    android:layout_height="18dp"
+                    style="@style/Lumora.NavIcon"
                     android:contentDescription="@null"
                     android:src="@drawable/ic_nav_home" />
 
                 <TextView
                     android:id="@+id/txtNavHome"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="3dp"
-                    android:letterSpacing="0.08"
-                    android:text="Home"
-                    android:textColor="@color/nova_text_dim"
-                    android:textSize="8sp" />
+                    style="@style/Lumora.NavLabel"
+                    android:text="@string/nav_home" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/navShows"
+                style="@style/Lumora.NavItem">
+
+                <ImageView
+                    android:id="@+id/imgNavShows"
+                    style="@style/Lumora.NavIcon"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_nav_shows" />
+
+                <TextView
+                    android:id="@+id/txtNavShows"
+                    style="@style/Lumora.NavLabel"
+                    android:text="@string/nav_shows" />
             </LinearLayout>
 
             <LinearLayout
                 android:id="@+id/navApps"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_marginStart="8dp"
-                android:layout_marginTop="5dp"
-                android:layout_marginEnd="8dp"
-                android:layout_marginBottom="5dp"
-                android:layout_weight="1"
-                android:background="@drawable/bg_nav_item"
-                android:clickable="true"
-                android:focusable="true"
-                android:gravity="center"
-                android:orientation="vertical">
+                style="@style/Lumora.NavItem">
 
                 <ImageView
                     android:id="@+id/imgNavApps"
-                    android:layout_width="18dp"
-                    android:layout_height="18dp"
+                    style="@style/Lumora.NavIcon"
                     android:contentDescription="@null"
                     android:src="@drawable/ic_nav_apps" />
 
                 <TextView
                     android:id="@+id/txtNavApps"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="3dp"
-                    android:letterSpacing="0.08"
-                    android:text="Apps"
-                    android:textColor="@color/nova_text_dim"
-                    android:textSize="8sp" />
+                    style="@style/Lumora.NavLabel"
+                    android:text="@string/nav_apps" />
             </LinearLayout>
 
             <LinearLayout
                 android:id="@+id/navMovies"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_marginStart="8dp"
-                android:layout_marginTop="5dp"
-                android:layout_marginEnd="8dp"
-                android:layout_marginBottom="5dp"
-                android:layout_weight="1"
-                android:background="@drawable/bg_nav_item"
-                android:clickable="true"
-                android:focusable="true"
-                android:gravity="center"
-                android:orientation="vertical">
+                style="@style/Lumora.NavItem">
 
                 <ImageView
                     android:id="@+id/imgNavMovies"
-                    android:layout_width="18dp"
-                    android:layout_height="18dp"
+                    style="@style/Lumora.NavIcon"
                     android:contentDescription="@null"
                     android:src="@drawable/ic_nav_movies" />
 
                 <TextView
                     android:id="@+id/txtNavMovies"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="3dp"
-                    android:letterSpacing="0.08"
-                    android:text="Cinema"
-                    android:textColor="@color/nova_text_dim"
-                    android:textSize="8sp" />
+                    style="@style/Lumora.NavLabel"
+                    android:text="@string/nav_streaming" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/navQuick"
+                style="@style/Lumora.NavItem">
+
+                <ImageView
+                    android:id="@+id/imgNavQuick"
+                    style="@style/Lumora.NavIcon"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_nav_quick" />
+
+                <TextView
+                    android:id="@+id/txtNavQuick"
+                    style="@style/Lumora.NavLabel"
+                    android:text="@string/nav_quick" />
             </LinearLayout>
 
             <LinearLayout
                 android:id="@+id/navSettings"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_marginStart="8dp"
-                android:layout_marginTop="5dp"
-                android:layout_marginEnd="8dp"
-                android:layout_marginBottom="5dp"
-                android:layout_weight="1"
-                android:background="@drawable/bg_nav_item"
-                android:clickable="true"
-                android:focusable="true"
-                android:gravity="center"
-                android:orientation="vertical">
+                style="@style/Lumora.NavItem">
 
                 <ImageView
                     android:id="@+id/imgNavSettings"
-                    android:layout_width="18dp"
-                    android:layout_height="18dp"
+                    style="@style/Lumora.NavIcon"
                     android:contentDescription="@null"
                     android:src="@drawable/ic_settings" />
 
                 <TextView
                     android:id="@+id/txtNavSettings"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="3dp"
-                    android:letterSpacing="0.08"
-                    android:text="Settings"
-                    android:textColor="@color/nova_text_dim"
-                    android:textSize="8sp" />
+                    style="@style/Lumora.NavLabel"
+                    android:text="@string/nav_settings" />
             </LinearLayout>
-
         </LinearLayout>
     </LinearLayout>
-
 </androidx.constraintlayout.widget.ConstraintLayout>
