@@ -13,9 +13,6 @@ import android.os.Looper;
 import android.util.DisplayMetrics;
 import android.widget.ImageView;
 
-import androidx.lifecycle.Lifecycle;
-import androidx.lifecycle.LifecycleOwner;
-
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -32,21 +29,18 @@ import java.util.concurrent.Executors;
 
 /** Rotates generated offline scenes and optional 1280 x 720 online stills. */
 public class WallpaperManager {
-    private static final int MAX_WIDTH = 1280;
-    private static final int MAX_HEIGHT = 720;
+    private static final int MAX_WIDTH = 1280, MAX_HEIGHT = 720;
     private static final List<String> ONLINE_URLS = Arrays.asList(
             "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=1280&h=720&fit=crop&q=80",
             "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1280&h=720&fit=crop&q=80",
             "https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?w=1280&h=720&fit=crop&q=80",
             "https://images.unsplash.com/photo-1550684848-fac1c5b4e853?w=1280&h=720&fit=crop&q=80",
             "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=1280&h=720&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1280&h=720&fit=crop&q=80"
-    );
+            "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1280&h=720&fit=crop&q=80");
     private static final int[][] SCENES = {
             {0xFF050810, 0xFF12233D, 0xFF00E5FF}, {0xFF0A0306, 0xFF3A0A16, 0xFFFF1E46},
             {0xFF03090A, 0xFF0E2C24, 0xFF00E676}, {0xFF08040E, 0xFF241340, 0xFFB388FF},
-            {0xFF0C0603, 0xFF3A1D08, 0xFFFF8A3D}, {0xFF06070B, 0xFF1A1F2E, 0xFFF8FAFC}
-    };
+            {0xFF0C0603, 0xFF3A1D08, 0xFFFF8A3D}, {0xFF06070B, 0xFF1A1F2E, 0xFFF8FAFC}};
 
     private final Context context;
     private final PreferenceManager preferences;
@@ -72,11 +66,6 @@ public class WallpaperManager {
         this.preferences = preferences;
         this.back = back;
         this.front = front;
-        if (context instanceof LifecycleOwner) {
-            ((LifecycleOwner) context).getLifecycle().addObserver((source, event) -> {
-                if (event == Lifecycle.Event.ON_DESTROY) shutdown();
-            });
-        }
         applyLocalScene();
     }
 
@@ -110,7 +99,8 @@ public class WallpaperManager {
         int request = generation;
         executor.execute(() -> {
             Bitmap bitmap = renderScene(colors);
-            if (bitmap != null) main.post(() -> {
+            if (bitmap == null) return;
+            main.post(() -> {
                 if (!destroyed && (request == generation || generation == 0)) crossfadeTo(bitmap);
                 else if (!bitmap.isRecycled()) bitmap.recycle();
             });
@@ -176,7 +166,6 @@ public class WallpaperManager {
         finally { if (connection != null) connection.disconnect(); }
     }
 
-    /** Unsplash already returns the requested target dimensions; decode at full response size. */
     private Bitmap decode(byte[] data) {
         try {
             BitmapFactory.Options options = new BitmapFactory.Options();
