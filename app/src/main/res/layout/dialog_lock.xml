@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="380dp"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_glass_panel"
+    android:gravity="center_horizontal"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <ImageView
+        android:id="@+id/lockIcon"
+        android:layout_width="52dp"
+        android:layout_height="52dp"
+        android:background="@drawable/bg_icon_circle"
+        android:contentDescription="@null"
+        android:padding="14dp"
+        android:src="@drawable/ic_act_lock" />
+
+    <TextView
+        android:id="@+id/lockTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:textColor="@color/nova_text"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/lockSubtitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:gravity="center"
+        android:textColor="@color/nova_text_dim"
+        android:textSize="10sp" />
+
+    <TextView
+        android:id="@+id/lockDots"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:letterSpacing="0.2"
+        android:textSize="24sp" />
+
+    <TextView
+        android:id="@+id/lockError"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:textColor="@color/state_error"
+        android:textSize="10sp"
+        android:visibility="gone" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:gravity="center"
+        android:text="@string/lock_hint"
+        android:textColor="@color/nova_text_muted"
+        android:textSize="9sp" />
+</LinearLayout>
