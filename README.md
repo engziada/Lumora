@@ -134,5 +134,6 @@ Machine-specific paths are deliberately not committed, so CI and other machines 
 
 ## License
 
-MIT — see [LICENSE](LICENSE). The bundled Poppins fonts are licensed separately under the SIL
-Open Font License 1.1 ([FONT-LICENSE-OFL.txt](FONT-LICENSE-OFL.txt)).
+MIT — see [LICENSE](LICENSE). Bundled fonts, AndroidX and the Gradle wrapper keep their own
+licenses; see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md). The Poppins fonts are under the
+SIL Open Font License 1.1 ([FONT-LICENSE-OFL.txt](FONT-LICENSE-OFL.txt)).

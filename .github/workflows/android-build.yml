@@ -37,8 +37,15 @@ jobs:
 
       - name: Ensure Android SDK platform 34
         run: |
-          yes | sdkmanager --licenses > /dev/null 2>&1 || true
-          sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools" > /dev/null
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ -d "$ANDROID_HOME/platforms/android-34" ]; then
+            echo "Android SDK 34 already installed on the runner"
+          elif [ -x "$SDKMANAGER" ]; then
+            yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
+            "$SDKMANAGER" "platforms;android-34" "build-tools;34.0.0" "platform-tools" > /dev/null
+          else
+            echo "sdkmanager not found; relying on the runner image" >&2
+          fi
 
       - name: Assemble debug
         run: ./gradlew assembleDebug --no-daemon --stacktrace

@@ -19,14 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----
-
-Third-party assets
-
-Poppins (app/src/main/res/font/) is licensed under the SIL Open Font License
-1.1; the full text is in FONT-LICENSE-OFL.txt. It is not covered by the MIT
-license above.
-
-AndroidX, Material Components and the Gradle wrapper are covered by their own
-licenses (Apache License 2.0), see their respective distributions.
