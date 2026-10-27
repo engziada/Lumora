@@ -98,7 +98,7 @@ public class CategoryRowAdapter extends RecyclerView.Adapter<CategoryRowAdapter.
         CategoryViewHolder(View view) {
             super(view); title = view.findViewById(R.id.txtCategoryTitle); count = view.findViewById(R.id.txtItemCount); apps = view.findViewById(R.id.recyclerApps);
             layoutManager = new LinearLayoutManager(view.getContext(), LinearLayoutManager.HORIZONTAL, false);
-            apps.setLayoutManager(layoutManager); apps.setHasFixedSize(true); apps.setClipChildren(false); apps.setClipToPadding(false);
+            apps.setLayoutManager(layoutManager); apps.setClipChildren(false); apps.setClipToPadding(false);
         }
     }
 }
