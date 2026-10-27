@@ -13,21 +13,14 @@ import android.os.Looper;
 import android.util.DisplayMetrics;
 import android.widget.ImageView;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/** Rotates generated offline scenes and optional 1280 x 720 online stills. */
+/** Rotates warm offline scenes and optional 1280 x 720 online stills. */
 public class WallpaperManager {
     private static final int MAX_WIDTH = 1280, MAX_HEIGHT = 720;
     private static final List<String> ONLINE_URLS = Arrays.asList(
@@ -37,10 +30,15 @@ public class WallpaperManager {
             "https://images.unsplash.com/photo-1550684848-fac1c5b4e853?w=1280&h=720&fit=crop&q=80",
             "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=1280&h=720&fit=crop&q=80",
             "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1280&h=720&fit=crop&q=80");
+
+    /** Base, mid and glow colour of each offline scene, from the Lumora palette. */
     private static final int[][] SCENES = {
-            {0xFF050810, 0xFF12233D, 0xFF00E5FF}, {0xFF0A0306, 0xFF3A0A16, 0xFFFF1E46},
-            {0xFF03090A, 0xFF0E2C24, 0xFF00E676}, {0xFF08040E, 0xFF241340, 0xFFB388FF},
-            {0xFF0C0603, 0xFF3A1D08, 0xFFFF8A3D}, {0xFF06070B, 0xFF1A1F2E, 0xFFF8FAFC}};
+            {0xFF140A06, 0xFF3A2216, 0xFFE3A15A},
+            {0xFF0E0806, 0xFF2A1A12, 0xFFF2D3A0},
+            {0xFF160904, 0xFF4A2410, 0xFFD07A45},
+            {0xFF120808, 0xFF3A1E1C, 0xFFD98A7E},
+            {0xFF0C0806, 0xFF26201A, 0xFFC9B39C},
+            {0xFF100A08, 0xFF33200F, 0xFFEDB06A}};
 
     private final Context context;
     private final PreferenceManager preferences;
@@ -54,7 +52,8 @@ public class WallpaperManager {
     private Bitmap shown, pending;
 
     private final Runnable tick = new Runnable() {
-        @Override public void run() {
+        @Override
+        public void run() {
             next();
             int seconds = preferences.getWallpaperIntervalSeconds();
             if (rotating && seconds > 0) main.postDelayed(this, seconds * 1000L);
@@ -72,10 +71,14 @@ public class WallpaperManager {
     public void start() {
         if (rotating || destroyed) return;
         rotating = true;
-        if (preferences.getWallpaperIntervalSeconds() > 0) main.post(tick); else next();
+        if (preferences.getWallpaperIntervalSeconds() > 0) main.post(tick);
+        else next();
     }
 
-    public void stop() { rotating = false; main.removeCallbacks(tick); }
+    public void stop() {
+        rotating = false;
+        main.removeCallbacks(tick);
+    }
 
     public void shutdown() {
         if (destroyed) return;
@@ -90,7 +93,8 @@ public class WallpaperManager {
     public void next() {
         if (destroyed) return;
         int request = ++generation;
-        if (preferences.isOnlineWallpapers()) loadOnlineWallpaper(request); else applyLocalScene();
+        if (preferences.isOnlineWallpapers()) loadOnlineWallpaper(request);
+        else applyLocalScene();
     }
 
     private void applyLocalScene() {
@@ -118,98 +122,62 @@ public class WallpaperManager {
             Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
             paint.setShader(new LinearGradient(0, 0, width, height, colors[0], colors[1], Shader.TileMode.CLAMP));
             canvas.drawRect(0, 0, width, height, paint);
-            paint.setShader(new RadialGradient(width * .74f, height * .22f, Math.max(width, height) * .72f,
-                    new int[]{withAlpha(colors[2], 92), withAlpha(colors[2], 0)}, new float[]{0f, 1f}, Shader.TileMode.CLAMP));
+            // Horizon glow, lower right, like light behind the dunes of the logo.
+            paint.setShader(new RadialGradient(width * .70f, height * .78f, Math.max(width, height) * .70f,
+                    new int[]{withAlpha(colors[2], 96), withAlpha(colors[2], 0)}, new float[]{0f, 1f},
+                    Shader.TileMode.CLAMP));
             canvas.drawRect(0, 0, width, height, paint);
-            paint.setShader(new LinearGradient(0, 0, 0, height, new int[]{0xB3000000, 0, 0, 0xA6000000},
-                    new float[]{0f, .22f, .62f, 1f}, Shader.TileMode.CLAMP));
+            // Soft moon glow, upper left.
+            paint.setShader(new RadialGradient(width * .18f, height * .16f, Math.max(width, height) * .40f,
+                    new int[]{withAlpha(colors[2], 40), withAlpha(colors[2], 0)}, new float[]{0f, 1f},
+                    Shader.TileMode.CLAMP));
+            canvas.drawRect(0, 0, width, height, paint);
+            paint.setShader(new LinearGradient(0, 0, 0, height,
+                    new int[]{0xB3140A06, 0x00140A06, 0x00140A06, 0xA6140A06}, new float[]{0f, .22f, .62f, 1f},
+                    Shader.TileMode.CLAMP));
             canvas.drawRect(0, 0, width, height, paint);
             return bitmap;
-        } catch (OutOfMemoryError error) { return null; }
+        } catch (OutOfMemoryError error) {
+            return null;
+        }
     }
 
-    private static int withAlpha(int color, int alpha) { return (color & 0x00FFFFFF) | ((alpha & 0xFF) << 24); }
+    private static int withAlpha(int color, int alpha) {
+        return (color & 0x00FFFFFF) | ((alpha & 0xFF) << 24);
+    }
 
     private void loadOnlineWallpaper(int request) {
         String url = ONLINE_URLS.get(urlIndex++ % ONLINE_URLS.size());
         executor.execute(() -> {
-            Bitmap bitmap = decodeCached(url);
-            if (bitmap == null) {
-                byte[] data = download(url);
-                if (data != null) {
-                    bitmap = decode(data);
-                    if (bitmap != null) writeCache(url, data);
-                }
+            File file = new File(new File(context.getCacheDir(), "wallpapers"), Http.sha1(url) + ".jpg");
+            byte[] data = file.exists() && file.length() > 0 ? Http.readFile(file) : null;
+            if (data == null) {
+                data = Http.get(url, 4000, 8000);
+                if (data != null) Http.writeFile(file, data);
             }
-            Bitmap result = bitmap;
+            Bitmap bitmap = data == null ? null : decode(data);
             main.post(() -> {
                 if (destroyed || request != generation) {
-                    if (result != null && !result.isRecycled()) result.recycle();
-                } else if (result != null) crossfadeTo(result);
-                else applyLocalScene();
+                    if (bitmap != null && !bitmap.isRecycled()) bitmap.recycle();
+                } else if (bitmap != null) {
+                    crossfadeTo(bitmap);
+                } else {
+                    applyLocalScene();
+                }
             });
         });
     }
 
-    private byte[] download(String url) {
-        HttpURLConnection connection = null;
-        try {
-            connection = (HttpURLConnection) new URL(url).openConnection();
-            connection.setConnectTimeout(4000); connection.setReadTimeout(6000); connection.setInstanceFollowRedirects(true); connection.connect();
-            if (connection.getResponseCode() != HttpURLConnection.HTTP_OK) return null;
-            try (InputStream in = connection.getInputStream(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-                byte[] buffer = new byte[16384]; int read;
-                while ((read = in.read(buffer)) != -1) out.write(buffer, 0, read);
-                return out.toByteArray();
-            }
-        } catch (Exception exception) { return null; }
-        finally { if (connection != null) connection.disconnect(); }
-    }
-
-    private Bitmap decode(byte[] data) {
+    /** Unsplash already returns the requested 1280 x 720 crop; decode at full response size. */
+    private static Bitmap decode(byte[] data) {
         try {
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inSampleSize = 1;
             options.inPreferredConfig = Bitmap.Config.ARGB_8888;
             return BitmapFactory.decodeByteArray(data, 0, data.length, options);
-        } catch (OutOfMemoryError | Exception exception) { return null; }
-    }
-
-    private File cacheFile(String url) {
-        File directory = new File(context.getCacheDir(), "wallpapers");
-        if (!directory.exists() && !directory.mkdirs()) return null;
-        return new File(directory, cacheKey(url) + ".jpg");
-    }
-
-    private String cacheKey(String url) {
-        try {
-            byte[] digest = MessageDigest.getInstance("SHA-256").digest(url.getBytes(StandardCharsets.UTF_8));
-            StringBuilder value = new StringBuilder();
-            for (byte item : digest) value.append(String.format("%02x", item));
-            return value.toString();
-        } catch (Exception exception) { return Integer.toHexString(url.hashCode()); }
-    }
-
-    private Bitmap decodeCached(String url) {
-        File file = cacheFile(url);
-        if (file == null || !file.exists() || file.length() == 0) return null;
-        byte[] data = readFile(file);
-        return data == null ? null : decode(data);
-    }
-
-    private void writeCache(String url, byte[] data) {
-        File file = cacheFile(url);
-        if (file == null) return;
-        try (FileOutputStream out = new FileOutputStream(file)) { out.write(data); }
-        catch (Exception ignored) { }
-    }
-
-    private byte[] readFile(File file) {
-        try (InputStream in = new java.io.FileInputStream(file); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            byte[] buffer = new byte[16384]; int read;
-            while ((read = in.read(buffer)) != -1) out.write(buffer, 0, read);
-            return out.toByteArray();
-        } catch (Exception exception) { return null; }
+        } catch (OutOfMemoryError | Exception exception) {
+            return null;
+        }
     }
 
     private void crossfadeTo(Bitmap bitmap) {
@@ -217,18 +185,25 @@ public class WallpaperManager {
         if (pending != null && pending != bitmap) retired.add(pending);
         pending = bitmap;
         long token = ++fadeToken;
-        front.setImageBitmap(bitmap); front.setAlpha(0f);
+        front.setImageBitmap(bitmap);
+        front.setAlpha(0f);
         front.animate().alpha(1f).setDuration(700).withEndAction(() -> {
             if (token != fadeToken || destroyed) return;
-            back.setImageBitmap(bitmap); front.setImageDrawable(null); front.setAlpha(0f);
+            back.setImageBitmap(bitmap);
+            front.setImageDrawable(null);
+            front.setAlpha(0f);
             if (shown != null && shown != bitmap) retired.add(shown);
-            shown = bitmap; pending = null; recycleRetired();
+            shown = bitmap;
+            pending = null;
+            recycleRetired();
         }).start();
     }
 
+    /** Bitmap pixels live in native memory; recycle every bitmap that leaves the screen. */
     private void recycleRetired() {
-        for (Bitmap bitmap : retired)
+        for (Bitmap bitmap : retired) {
             if (bitmap != null && bitmap != shown && bitmap != pending && !bitmap.isRecycled()) bitmap.recycle();
+        }
         retired.clear();
     }
 }
