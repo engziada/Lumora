@@ -1,5 +1,9 @@
 # Z TV Launcher — v4.0.0 (NOVA-style redesign)
 
+![Android CI](https://github.com/engziada/Lumora/actions/workflows/android-build.yml/badge.svg)
+![License: MIT](https://img.shields.io/badge/license-MIT-8B7CFF)
+![Platform](https://img.shields.io/badge/platform-Android%20TV%20%2F%20Fire%20OS-00A8E1)
+
 A lightweight, ad-free launcher for the Fire TV Stick 4K / 4K Max. Java only, no analytics SDK,
 no web views. This release replaces the old visual system with the NOVA-style design:
 greeting hero, featured tiles, plated icons, bottom navigation and a two-pane settings screen.
@@ -112,3 +116,23 @@ app/src/main/java/com/firestick/aura/launcher/
 ## Changelog
 
 See [CHANGELOG.md](CHANGELOG.md).
+## Continuous integration
+
+`.github/workflows/android-build.yml` builds the debug APK on every push to `main` and on pull
+requests, then uploads it as the `ztv-launcher-debug` artifact (30 days) with its SHA-256 in the
+job summary. The job runs on Ubuntu with JDK 21 and needs no signing secrets, because it is a
+debug build.
+
+Locally, `gradlew.bat` uses whichever JDK `JAVA_HOME` points at. If that is JDK 25, pin JDK 21 in
+your user-level Gradle config — `%USERPROFILE%\.gradle\gradle.properties`:
+
+```properties
+org.gradle.java.home=C:/Program Files/Eclipse Adoptium/jdk-21.0.12.101-hotspot
+```
+
+Machine-specific paths are deliberately not committed, so CI and other machines are unaffected.
+
+## License
+
+MIT — see [LICENSE](LICENSE). The bundled Poppins fonts are licensed separately under the SIL
+Open Font License 1.1 ([FONT-LICENSE-OFL.txt](FONT-LICENSE-OFL.txt)).
