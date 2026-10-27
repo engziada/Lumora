@@ -1,9 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="108dp"
-    android:layout_height="112dp"
-    android:layout_marginStart="6dp"
-    android:layout_marginEnd="6dp"
+    android:layout_width="match_parent"
+    android:layout_height="118dp"
     android:layout_marginTop="2dp"
     android:layout_marginBottom="2dp"
     android:background="@android:color/transparent"
@@ -17,21 +15,22 @@
 
     <FrameLayout
         android:id="@+id/iconContainer"
-        android:layout_width="70dp"
-        android:layout_height="70dp"
+        android:layout_width="78dp"
+        android:layout_height="78dp"
         android:clipChildren="false"
         android:clipToPadding="false">
 
         <View
             android:id="@+id/plateView"
-            android:layout_width="70dp"
-            android:layout_height="70dp"
+            android:layout_width="72dp"
+            android:layout_height="72dp"
+            android:layout_gravity="center"
             android:background="@drawable/bg_icon_plate" />
 
         <ImageView
             android:id="@+id/imgAppIcon"
-            android:layout_width="42dp"
-            android:layout_height="42dp"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
             android:layout_gravity="center"
             android:contentDescription="@null"
             android:scaleType="fitCenter" />
@@ -49,26 +48,45 @@
             android:layout_width="13dp"
             android:layout_height="13dp"
             android:layout_gravity="top|end"
-            android:layout_marginTop="2dp"
-            android:layout_marginEnd="2dp"
+            android:layout_marginTop="6dp"
+            android:layout_marginEnd="6dp"
             android:contentDescription="@null"
             android:src="@drawable/ic_star"
             android:visibility="gone" />
 
+        <ImageView
+            android:id="@+id/badgeLock"
+            android:layout_width="13dp"
+            android:layout_height="13dp"
+            android:layout_gravity="top|start"
+            android:layout_marginStart="6dp"
+            android:layout_marginTop="6dp"
+            android:contentDescription="@string/cd_locked"
+            android:src="@drawable/ic_act_lock"
+            android:visibility="gone" />
+
+        <ImageView
+            android:id="@+id/badgeMove"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_gravity="bottom|end"
+            android:background="@drawable/bg_glass_pill"
+            android:contentDescription="@string/cd_moving"
+            android:padding="4dp"
+            android:src="@drawable/ic_act_move"
+            android:visibility="gone" />
     </FrameLayout>
 
     <TextView
         android:id="@+id/txtAppLabel"
-        android:layout_width="match_parent"
+        android:layout_width="112dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="5dp"
+        android:layout_marginTop="6dp"
         android:ellipsize="marquee"
         android:fadingEdge="horizontal"
         android:gravity="center"
         android:marqueeRepeatLimit="marquee_forever"
         android:maxLines="1"
-        android:paddingStart="2dp"
-        android:paddingEnd="2dp"
         android:shadowColor="#CC000000"
         android:shadowDy="2"
         android:shadowRadius="5"

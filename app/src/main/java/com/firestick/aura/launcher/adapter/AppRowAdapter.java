@@ -21,55 +21,72 @@ import com.firestick.aura.launcher.model.AppModel;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
+/** App tiles for the Home strip (wide cards) and the Apps/Streaming grids (square tiles). */
 public class AppRowAdapter extends RecyclerView.Adapter<AppRowAdapter.AppViewHolder> {
+    public static final int STYLE_TILE = 0;
+    public static final int STYLE_WIDE = 1;
+
     public interface OnAppActionListener {
         void onAppClick(AppModel app);
 
         void onAppLongClick(AppModel app, String rowId);
     }
 
-    interface OnAppFocusedListener {
-        void onAppFocused(String rowId, String packageName);
+    public interface OnAppFocusedListener {
+        void onAppFocused(String rowId, AppModel app);
     }
 
     private static final class Entry {
         final AppModel app;
-        final boolean favorite;
-        final boolean hdIcons;
+        final boolean favorite, locked, moving, hdIcons;
         final int accent;
 
-        Entry(AppModel app, boolean hdIcons, int accent) {
+        Entry(AppModel app, boolean locked, boolean moving, boolean hdIcons, int accent) {
             this.app = app;
             this.favorite = app.isFavorite();
+            this.locked = locked;
+            this.moving = moving;
             this.hdIcons = hdIcons;
             this.accent = accent;
         }
     }
 
     private final List<Entry> entries = new ArrayList<>();
+    private final List<AppModel> lastApps = new ArrayList<>();
     private final OnAppActionListener listener;
     private final OnAppFocusedListener focusListener;
     private final PreferenceManager preferences;
     private final String rowId;
+    private final int style;
     private RecyclerView recyclerView;
     private String focusedPackage;
+    private String movingPackage;
 
-    public AppRowAdapter(PreferenceManager preferences, OnAppActionListener listener,
-                         String rowId, OnAppFocusedListener focusListener) {
+    public AppRowAdapter(PreferenceManager preferences, OnAppActionListener listener, String rowId, int style,
+                         OnAppFocusedListener focusListener) {
         this.preferences = preferences;
         this.listener = listener;
         this.rowId = rowId;
+        this.style = style;
         this.focusListener = focusListener;
         setHasStableIds(true);
     }
 
     public void setApps(List<AppModel> apps) {
+        List<AppModel> source = apps == null ? new ArrayList<>() : new ArrayList<>(apps);
+        lastApps.clear();
+        lastApps.addAll(source);
         List<Entry> next = new ArrayList<>();
         boolean hd = preferences.isHdIconsEnabled();
-        int fallback = recyclerView == null ? 0 : ContextCompat.getColor(recyclerView.getContext(), R.color.nova_accent);
+        int fallback = recyclerView == null ? 0xFFE3A15A : ContextCompat.getColor(recyclerView.getContext(), R.color.nova_accent);
         int accent = preferences.getAccentColor(fallback);
-        if (apps != null) for (AppModel app : apps) next.add(new Entry(app, hd, accent));
+        Set<String> locked = preferences.getLockedApps();
+        for (AppModel app : source) {
+            String pkg = app.getPackageName();
+            next.add(new Entry(app, locked.contains(pkg), pkg.equals(movingPackage), hd, accent));
+        }
 
         List<Entry> previous = new ArrayList<>(entries);
         DiffUtil.DiffResult result = DiffUtil.calculateDiff(new DiffUtil.Callback() {
@@ -91,7 +108,8 @@ public class AppRowAdapter extends RecyclerView.Adapter<AppRowAdapter.AppViewHol
             @Override
             public boolean areContentsTheSame(int oldPos, int newPos) {
                 Entry old = previous.get(oldPos), fresh = next.get(newPos);
-                return old.favorite == fresh.favorite && old.hdIcons == fresh.hdIcons && old.accent == fresh.accent
+                return old.favorite == fresh.favorite && old.locked == fresh.locked && old.moving == fresh.moving
+                        && old.hdIcons == fresh.hdIcons && old.accent == fresh.accent
                         && old.app.getLabel().equals(fresh.app.getLabel());
             }
         });
@@ -101,11 +119,14 @@ public class AppRowAdapter extends RecyclerView.Adapter<AppRowAdapter.AppViewHol
         restoreFocus();
     }
 
-    void clearFocusedApp() {
-        focusedPackage = null;
+    /** Marks one app as being moved (arrow badge, ring stays on). {@code null} ends move mode. */
+    public void setMovingPackage(String packageName) {
+        movingPackage = packageName;
+        if (packageName != null) focusedPackage = packageName;
+        setApps(new ArrayList<>(lastApps));
     }
 
-    /** After a refresh, D-pad focus returns to the app that had it, not to the first tile. */
+    /** After a refresh or a move, D-pad focus returns to the app that had it. */
     private void restoreFocus() {
         if (recyclerView == null || focusedPackage == null) return;
         int position = -1;
@@ -149,7 +170,8 @@ public class AppRowAdapter extends RecyclerView.Adapter<AppRowAdapter.AppViewHol
     @NonNull
     @Override
     public AppViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        return new AppViewHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.item_app_card, parent, false));
+        int layout = style == STYLE_WIDE ? R.layout.item_featured_card : R.layout.item_app_card;
+        return new AppViewHolder(LayoutInflater.from(parent.getContext()).inflate(layout, parent, false));
     }
 
     @Override
@@ -163,30 +185,37 @@ public class AppRowAdapter extends RecyclerView.Adapter<AppRowAdapter.AppViewHol
     }
 
     final class AppViewHolder extends RecyclerView.ViewHolder {
-        private final View iconContainer, plateView, focusRingView;
-        private final ImageView icon, favoriteBadge;
+        private final View iconContainer, focusRingView;
+        private final ImageView icon, favoriteBadge, lockBadge, moveBadge;
         private final TextView label;
         private final int labelFocused, labelIdle;
+        private boolean moving;
 
         AppViewHolder(View view) {
             super(view);
             iconContainer = view.findViewById(R.id.iconContainer);
-            plateView = view.findViewById(R.id.plateView);
             focusRingView = view.findViewById(R.id.focusRingView);
             icon = view.findViewById(R.id.imgAppIcon);
             favoriteBadge = view.findViewById(R.id.badgeFavorite);
+            lockBadge = view.findViewById(R.id.badgeLock);
+            moveBadge = view.findViewById(R.id.badgeMove);
             label = view.findViewById(R.id.txtAppLabel);
             labelFocused = ContextCompat.getColor(view.getContext(), R.color.nova_text);
-            labelIdle = ContextCompat.getColor(view.getContext(), R.color.nova_text_dim);
+            labelIdle = ContextCompat.getColor(view.getContext(), style == STYLE_WIDE ? R.color.nova_text : R.color.nova_text_dim);
         }
 
         void bind(Entry entry) {
             AppModel app = entry.app;
             String pkg = app.getPackageName();
+            moving = entry.moving;
             icon.setTag(pkg);
             icon.setImageDrawable(app.getIcon());
             label.setText(app.getLabel());
-            favoriteBadge.setVisibility(entry.favorite ? View.VISIBLE : View.GONE);
+            favoriteBadge.setVisibility(style == STYLE_TILE && entry.favorite ? View.VISIBLE : View.GONE);
+            lockBadge.setVisibility(entry.locked ? View.VISIBLE : View.GONE);
+            lockBadge.setImageTintList(ColorStateList.valueOf(entry.accent));
+            moveBadge.setVisibility(entry.moving ? View.VISIBLE : View.GONE);
+            moveBadge.setImageTintList(ColorStateList.valueOf(entry.accent));
             focusRingView.setBackgroundTintList(ColorStateList.valueOf(entry.accent));
             if (entry.hdIcons) {
                 IconService.get(itemView.getContext()).load(pkg, app.getLabel(), bitmap -> {
@@ -197,7 +226,7 @@ public class AppRowAdapter extends RecyclerView.Adapter<AppRowAdapter.AppViewHol
                 applyFocus(focused);
                 if (focused) {
                     focusedPackage = pkg;
-                    if (focusListener != null) focusListener.onAppFocused(rowId, pkg);
+                    if (focusListener != null) focusListener.onAppFocused(rowId, app);
                     SoundManager.playFocus(v, preferences);
                 }
             });
@@ -221,12 +250,12 @@ public class AppRowAdapter extends RecyclerView.Adapter<AppRowAdapter.AppViewHol
         }
 
         private void applyFocus(boolean focused) {
-            float scale = focused ? 1.07f : 1f;
-            iconContainer.animate().scaleX(scale).scaleY(scale).translationZ(focused ? 12f : 0f).setDuration(140).start();
-            plateView.animate().alpha(focused ? 1f : .92f).setDuration(140).start();
-            focusRingView.setVisibility(focused ? View.VISIBLE : View.INVISIBLE);
+            boolean lifted = focused || moving;
+            float scale = lifted ? (style == STYLE_WIDE ? 1.06f : 1.08f) : 1f;
+            iconContainer.animate().scaleX(scale).scaleY(scale).translationZ(lifted ? 12f : 0f).setDuration(140).start();
+            focusRingView.setVisibility(lifted ? View.VISIBLE : View.INVISIBLE);
             label.setSelected(focused);
-            label.setTextColor(focused ? labelFocused : labelIdle);
+            label.setTextColor(lifted ? labelFocused : labelIdle);
         }
     }
 }
