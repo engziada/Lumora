@@ -4,4 +4,9 @@
     <issue id="MissingSuperCall">
         <ignore path="app/src/main/java/com/firestick/aura/launcher/MainActivity.java" />
     </issue>
+    <!-- These two TV screens pass the documented NORMAL (0) / BOLD (1) style values. -->
+    <issue id="WrongConstant">
+        <ignore path="app/src/main/java/com/firestick/aura/launcher/MainActivity.java" />
+        <ignore path="app/src/main/java/com/firestick/aura/launcher/SettingsActivity.java" />
+    </issue>
 </lint>
