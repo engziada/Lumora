@@ -9,4 +9,8 @@
         <ignore path="app/src/main/java/com/firestick/aura/launcher/MainActivity.java" />
         <ignore path="app/src/main/java/com/firestick/aura/launcher/SettingsActivity.java" />
     </issue>
+    <!-- A launcher must enumerate installed launchable apps; narrow package queries cannot express that catalogue. -->
+    <issue id="QueryAllPackagesPermission">
+        <ignore path="app/src/main/AndroidManifest.xml" />
+    </issue>
 </lint>
