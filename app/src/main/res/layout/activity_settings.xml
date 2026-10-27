@@ -1,344 +1,186 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/nova_bg"
-    android:orientation="vertical"
-    android:paddingStart="36dp"
-    android:paddingTop="22dp"
-    android:paddingEnd="36dp"
-    android:paddingBottom="22dp">
+    android:background="@color/nova_bg">
 
-    <!-- Header -->
-    <LinearLayout
+    <ImageView
+        android:id="@+id/imgSettingsBack"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
+        android:layout_height="match_parent"
+        android:contentDescription="@null"
+        android:scaleType="centerCrop" />
 
-        <ImageView
-            android:layout_width="30dp"
-            android:layout_height="30dp"
-            android:contentDescription="@string/cd_logo"
-            android:src="@drawable/ic_lumora_mark" />
+    <ImageView
+        android:id="@+id/imgSettingsFront"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:contentDescription="@null"
+        android:scaleType="centerCrop" />
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="10dp"
-            android:text="@string/settings_title"
-            android:textColor="@color/nova_text"
-            android:textSize="20sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/txtStats"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="20dp"
-            android:layout_marginEnd="16dp"
-            android:layout_weight="1"
-            android:gravity="end"
-            android:singleLine="true"
-            android:textColor="@color/nova_text_muted"
-            android:textSize="9sp" />
-
-        <Button
-            android:id="@+id/btnDone"
-            style="@style/Lumora.Option"
-            android:layout_width="wrap_content"
-            android:text="@string/settings_back"
-            android:textColor="@color/nova_accent" />
-    </LinearLayout>
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/glass_shade" />
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_marginTop="16dp"
-        android:layout_weight="1"
-        android:orientation="horizontal">
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:paddingStart="36dp"
+        android:paddingTop="22dp"
+        android:paddingEnd="36dp"
+        android:paddingBottom="22dp">
 
-        <!-- Section rail -->
         <LinearLayout
-            android:layout_width="210dp"
-            android:layout_height="match_parent"
-            android:background="@drawable/bg_panel"
-            android:orientation="vertical"
-            android:padding="14dp">
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
-            <TextView
-                style="@style/Lumora.Eyebrow"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
-                android:layout_marginBottom="6dp"
-                android:text="@string/settings_sections" />
-
-            <TextView
-                android:id="@+id/secAppearance"
-                style="@style/Lumora.SectionRow"
-                android:text="@string/sec_appearance" />
-
-            <TextView
-                android:id="@+id/secWallpaper"
-                style="@style/Lumora.SectionRow"
-                android:text="@string/sec_wallpaper" />
-
-            <TextView
-                android:id="@+id/secAudio"
-                style="@style/Lumora.SectionRow"
-                android:text="@string/sec_audio" />
-
-            <TextView
-                android:id="@+id/secShows"
-                style="@style/Lumora.SectionRow"
-                android:text="@string/sec_shows" />
-
-            <TextView
-                android:id="@+id/secAdb"
-                style="@style/Lumora.SectionRow"
-                android:text="@string/sec_adb" />
-
-            <TextView
-                android:id="@+id/secSystem"
-                style="@style/Lumora.SectionRow"
-                android:text="@string/sec_system" />
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1" />
-
-            <TextView
-                android:id="@+id/txtVersion"
-                style="@style/Lumora.Eyebrow"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
-                android:textAllCaps="false" />
-        </LinearLayout>
-
-        <!-- Panels -->
-        <FrameLayout
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_marginStart="18dp"
-            android:layout_weight="1"
-            android:background="@drawable/bg_panel"
-            android:padding="22dp">
+            <ImageView
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:contentDescription="@string/cd_logo"
+                android:src="@drawable/ic_lumora_mark" />
 
             <LinearLayout
-                android:id="@+id/panelAppearance"
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
                 android:orientation="vertical">
 
                 <TextView
-                    style="@style/Lumora.PanelEyebrow"
-                    android:layout_marginTop="0dp"
-                    android:text="@string/accent_label" />
-
-                <LinearLayout
-                    android:layout_width="match_parent"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:orientation="horizontal">
-
-                    <Button
-                        android:id="@+id/btnAccentAmber"
-                        style="@style/Lumora.Option"
-                        android:layout_width="0dp"
-                        android:layout_marginEnd="6dp"
-                        android:layout_weight="1"
-                        android:text="@string/accent_amber"
-                        android:textColor="@color/accent_amber" />
-
-                    <Button
-                        android:id="@+id/btnAccentCopper"
-                        style="@style/Lumora.Option"
-                        android:layout_width="0dp"
-                        android:layout_marginEnd="6dp"
-                        android:layout_weight="1"
-                        android:text="@string/accent_copper"
-                        android:textColor="@color/accent_copper" />
-
-                    <Button
-                        android:id="@+id/btnAccentRose"
-                        style="@style/Lumora.Option"
-                        android:layout_width="0dp"
-                        android:layout_marginEnd="6dp"
-                        android:layout_weight="1"
-                        android:text="@string/accent_rose"
-                        android:textColor="@color/accent_rose" />
-
-                    <Button
-                        android:id="@+id/btnAccentMoon"
-                        style="@style/Lumora.Option"
-                        android:layout_width="0dp"
-                        android:layout_weight="1"
-                        android:text="@string/accent_moonlight"
-                        android:textColor="@color/accent_moonlight" />
-                </LinearLayout>
+                    android:text="@string/settings_title"
+                    android:textColor="@color/nova_text"
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
 
                 <TextView
-                    android:id="@+id/txtThemeHint"
-                    style="@style/Lumora.Hint" />
-
-                <TextView
-                    style="@style/Lumora.PanelEyebrow"
-                    android:text="@string/icon_style_label" />
-
-                <Button
-                    android:id="@+id/btnIconStyle"
-                    style="@style/Lumora.Option"
-                    android:layout_width="match_parent"
-                    android:layout_marginTop="8dp" />
-
-                <TextView
-                    style="@style/Lumora.Hint"
-                    android:text="@string/icon_style_hint" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/panelWallpaper"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:visibility="gone">
-
-                <TextView
-                    style="@style/Lumora.PanelEyebrow"
-                    android:layout_marginTop="0dp"
-                    android:text="@string/wallpaper_interval_label" />
-
-                <LinearLayout
-                    android:layout_width="match_parent"
+                    android:id="@+id/txtStats"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:orientation="horizontal">
-
-                    <Button
-                        android:id="@+id/btnWall30s"
-                        style="@style/Lumora.Option"
-                        android:layout_width="0dp"
-                        android:layout_marginEnd="6dp"
-                        android:layout_weight="1"
-                        android:text="@string/wall_30s" />
-
-                    <Button
-                        android:id="@+id/btnWall1m"
-                        style="@style/Lumora.Option"
-                        android:layout_width="0dp"
-                        android:layout_marginEnd="6dp"
-                        android:layout_weight="1"
-                        android:text="@string/wall_1m" />
-
-                    <Button
-                        android:id="@+id/btnWall5m"
-                        style="@style/Lumora.Option"
-                        android:layout_width="0dp"
-                        android:layout_marginEnd="6dp"
-                        android:layout_weight="1"
-                        android:text="@string/wall_5m" />
-
-                    <Button
-                        android:id="@+id/btnWallOff"
-                        style="@style/Lumora.Option"
-                        android:layout_width="0dp"
-                        android:layout_weight="1"
-                        android:text="@string/wall_off" />
-                </LinearLayout>
-
-                <TextView
-                    style="@style/Lumora.PanelEyebrow"
-                    android:text="@string/wallpaper_source_label" />
-
-                <Button
-                    android:id="@+id/btnWallpaperSource"
-                    style="@style/Lumora.Option"
-                    android:layout_width="match_parent"
-                    android:layout_marginTop="8dp" />
-
-                <TextView
-                    style="@style/Lumora.Hint"
-                    android:text="@string/wallpaper_hint" />
+                    android:singleLine="true"
+                    android:textColor="@color/nova_text_muted"
+                    android:textSize="9sp" />
             </LinearLayout>
 
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <Button
+                android:id="@+id/btnDone"
+                style="@style/Lumora.Option"
+                android:layout_width="wrap_content"
+                android:drawablePadding="8dp"
+                android:text="@string/settings_back"
+                android:textColor="@color/nova_accent"
+                app:drawableStartCompat="@drawable/ic_nav_home"
+                app:drawableTint="@color/nova_accent" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="16dp"
+            android:layout_weight="1"
+            android:orientation="horizontal">
+
+            <!-- Section rail -->
             <LinearLayout
-                android:id="@+id/panelAudio"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:visibility="gone">
-
-                <TextView
-                    style="@style/Lumora.PanelEyebrow"
-                    android:layout_marginTop="0dp"
-                    android:text="@string/sound_label" />
-
-                <Button
-                    android:id="@+id/btnToggleSound"
-                    style="@style/Lumora.Option"
-                    android:layout_width="match_parent"
-                    android:layout_marginTop="8dp" />
-
-                <TextView
-                    style="@style/Lumora.Hint"
-                    android:text="@string/sound_hint" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/panelShows"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:visibility="gone">
-
-                <TextView
-                    style="@style/Lumora.PanelEyebrow"
-                    android:layout_marginTop="0dp"
-                    android:text="@string/shows_label" />
-
-                <Button
-                    android:id="@+id/btnShowsToggle"
-                    style="@style/Lumora.Option"
-                    android:layout_width="match_parent"
-                    android:layout_marginTop="8dp" />
-
-                <Button
-                    android:id="@+id/btnShowsCountry"
-                    style="@style/Lumora.Option"
-                    android:layout_width="match_parent"
-                    android:layout_marginTop="8dp" />
-
-                <TextView
-                    style="@style/Lumora.Hint"
-                    android:text="@string/shows_hint" />
-            </LinearLayout>
-
-            <ScrollView
-                android:id="@+id/scrollAdb"
-                android:layout_width="match_parent"
+                android:layout_width="220dp"
                 android:layout_height="match_parent"
-                android:background="@drawable/bg_option_selector"
-                android:focusable="true"
-                android:padding="14dp"
-                android:visibility="gone">
+                android:background="@drawable/bg_panel"
+                android:orientation="vertical"
+                android:padding="12dp">
 
-                <LinearLayout
-                    android:id="@+id/adbCommands"
+                <TextView
+                    android:id="@+id/secAppearance"
+                    style="@style/Lumora.SectionRow"
+                    android:text="@string/sec_appearance"
+                    app:drawableStartCompat="@drawable/ic_palette"
+                    app:drawableTint="@color/nova_accent" />
+
+                <TextView
+                    android:id="@+id/secWallpaper"
+                    style="@style/Lumora.SectionRow"
+                    android:text="@string/sec_wallpaper"
+                    app:drawableStartCompat="@drawable/ic_sec_wallpaper"
+                    app:drawableTint="@color/nova_accent" />
+
+                <TextView
+                    android:id="@+id/secAudio"
+                    style="@style/Lumora.SectionRow"
+                    android:text="@string/sec_audio"
+                    app:drawableStartCompat="@drawable/ic_sec_audio"
+                    app:drawableTint="@color/nova_accent" />
+
+                <TextView
+                    android:id="@+id/secShows"
+                    style="@style/Lumora.SectionRow"
+                    android:text="@string/sec_shows"
+                    app:drawableStartCompat="@drawable/ic_nav_shows"
+                    app:drawableTint="@color/nova_accent" />
+
+                <TextView
+                    android:id="@+id/secLock"
+                    style="@style/Lumora.SectionRow"
+                    android:text="@string/sec_lock"
+                    app:drawableStartCompat="@drawable/ic_act_lock"
+                    app:drawableTint="@color/nova_accent" />
+
+                <TextView
+                    android:id="@+id/secSystem"
+                    style="@style/Lumora.SectionRow"
+                    android:text="@string/sec_system"
+                    app:drawableStartCompat="@drawable/ic_sec_system"
+                    app:drawableTint="@color/nova_accent" />
+
+                <TextView
+                    android:id="@+id/secAdb"
+                    style="@style/Lumora.SectionRow"
+                    android:text="@string/sec_adb"
+                    app:drawableStartCompat="@drawable/ic_sec_adb"
+                    app:drawableTint="@color/nova_accent" />
+
+                <TextView
+                    android:id="@+id/secAbout"
+                    style="@style/Lumora.SectionRow"
+                    android:text="@string/sec_about"
+                    app:drawableStartCompat="@drawable/ic_act_info"
+                    app:drawableTint="@color/nova_accent" />
+
+                <View
                     android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1" />
+
+                <TextView
+                    android:id="@+id/txtVersion"
+                    style="@style/Lumora.Eyebrow"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical" />
-            </ScrollView>
+                    android:layout_marginStart="8dp"
+                    android:textAllCaps="false" />
+            </LinearLayout>
 
-            <ScrollView
-                android:id="@+id/panelSystem"
-                android:layout_width="match_parent"
+            <!-- Panels -->
+            <FrameLayout
+                android:layout_width="0dp"
                 android:layout_height="match_parent"
-                android:visibility="gone">
+                android:layout_marginStart="16dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_panel"
+                android:padding="22dp">
 
+                <!-- Appearance -->
                 <LinearLayout
+                    android:id="@+id/panelAppearance"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical">
@@ -346,7 +188,7 @@
                     <TextView
                         style="@style/Lumora.PanelEyebrow"
                         android:layout_marginTop="0dp"
-                        android:text="@string/settings_visibility" />
+                        android:text="@string/theme_label" />
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -355,70 +197,439 @@
                         android:orientation="horizontal">
 
                         <Button
-                            android:id="@+id/btnManageHidden"
+                            android:id="@+id/btnThemeAmber"
                             style="@style/Lumora.Option"
                             android:layout_width="0dp"
                             android:layout_marginEnd="6dp"
                             android:layout_weight="1"
-                            android:text="@string/manage_hidden" />
+                            android:text="@string/accent_amber" />
 
                         <Button
-                            android:id="@+id/btnResetHidden"
-                            style="@style/Lumora.Option"
-                            android:layout_width="0dp"
-                            android:layout_weight="1"
-                            android:text="@string/unhide_all" />
-                    </LinearLayout>
-
-                    <TextView
-                        style="@style/Lumora.PanelEyebrow"
-                        android:text="@string/settings_system" />
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:orientation="horizontal">
-
-                        <Button
-                            android:id="@+id/btnSetHome"
+                            android:id="@+id/btnThemeCopper"
                             style="@style/Lumora.Option"
                             android:layout_width="0dp"
                             android:layout_marginEnd="6dp"
                             android:layout_weight="1"
-                            android:text="@string/set_home" />
+                            android:text="@string/accent_copper" />
 
                         <Button
-                            android:id="@+id/btnOpenDeviceSettings"
+                            android:id="@+id/btnThemeRose"
+                            style="@style/Lumora.Option"
+                            android:layout_width="0dp"
+                            android:layout_marginEnd="6dp"
+                            android:layout_weight="1"
+                            android:text="@string/accent_rose" />
+
+                        <Button
+                            android:id="@+id/btnThemeMoon"
                             style="@style/Lumora.Option"
                             android:layout_width="0dp"
                             android:layout_weight="1"
-                            android:text="@string/device_settings" />
+                            android:text="@string/accent_moonlight" />
                     </LinearLayout>
 
                     <TextView
+                        android:id="@+id/txtThemeHint"
+                        style="@style/Lumora.Hint" />
+
+                    <TextView
                         style="@style/Lumora.PanelEyebrow"
-                        android:text="@string/settings_quick" />
+                        android:text="@string/icon_style_label" />
 
                     <Button
-                        android:id="@+id/btnQuickPermission"
+                        android:id="@+id/btnIconStyle"
                         style="@style/Lumora.Option"
                         android:layout_width="match_parent"
                         android:layout_marginTop="8dp" />
 
                     <TextView
                         style="@style/Lumora.Hint"
-                        android:text="@string/quick_permission_hint_settings" />
+                        android:text="@string/icon_style_hint" />
+                </LinearLayout>
+
+                <!-- Wallpaper -->
+                <LinearLayout
+                    android:id="@+id/panelWallpaper"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
 
                     <TextView
                         style="@style/Lumora.PanelEyebrow"
-                        android:text="@string/settings_about" />
+                        android:layout_marginTop="0dp"
+                        android:text="@string/wallpaper_source_label" />
+
+                    <Button
+                        android:id="@+id/btnWallpaperSource"
+                        style="@style/Lumora.Option"
+                        android:layout_width="match_parent"
+                        android:layout_marginTop="8dp" />
+
+                    <Button
+                        android:id="@+id/btnWallCategories"
+                        style="@style/Lumora.Option"
+                        android:layout_width="match_parent"
+                        android:layout_marginTop="8dp"
+                        android:singleLine="true" />
 
                     <TextView
                         style="@style/Lumora.Hint"
-                        android:text="@string/credits" />
+                        android:text="@string/wallpaper_hint" />
+
+                    <TextView
+                        style="@style/Lumora.PanelEyebrow"
+                        android:text="@string/wallpaper_interval_label" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:orientation="horizontal">
+
+                        <Button
+                            android:id="@+id/btnWall30s"
+                            style="@style/Lumora.Option"
+                            android:layout_width="0dp"
+                            android:layout_marginEnd="6dp"
+                            android:layout_weight="1"
+                            android:text="@string/wall_30s" />
+
+                        <Button
+                            android:id="@+id/btnWall1m"
+                            style="@style/Lumora.Option"
+                            android:layout_width="0dp"
+                            android:layout_marginEnd="6dp"
+                            android:layout_weight="1"
+                            android:text="@string/wall_1m" />
+
+                        <Button
+                            android:id="@+id/btnWall5m"
+                            style="@style/Lumora.Option"
+                            android:layout_width="0dp"
+                            android:layout_marginEnd="6dp"
+                            android:layout_weight="1"
+                            android:text="@string/wall_5m" />
+
+                        <Button
+                            android:id="@+id/btnWallOff"
+                            style="@style/Lumora.Option"
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:text="@string/wall_off" />
+                    </LinearLayout>
                 </LinearLayout>
-            </ScrollView>
-        </FrameLayout>
+
+                <!-- Audio -->
+                <LinearLayout
+                    android:id="@+id/panelAudio"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <TextView
+                        style="@style/Lumora.PanelEyebrow"
+                        android:layout_marginTop="0dp"
+                        android:text="@string/sound_label" />
+
+                    <Button
+                        android:id="@+id/btnToggleSound"
+                        style="@style/Lumora.Option"
+                        android:layout_width="match_parent"
+                        android:layout_marginTop="8dp" />
+
+                    <TextView
+                        style="@style/Lumora.Hint"
+                        android:text="@string/sound_hint" />
+                </LinearLayout>
+
+                <!-- TV listings -->
+                <LinearLayout
+                    android:id="@+id/panelShows"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <TextView
+                        style="@style/Lumora.PanelEyebrow"
+                        android:layout_marginTop="0dp"
+                        android:text="@string/shows_label" />
+
+                    <Button
+                        android:id="@+id/btnShowsToggle"
+                        style="@style/Lumora.Option"
+                        android:layout_width="match_parent"
+                        android:layout_marginTop="8dp" />
+
+                    <Button
+                        android:id="@+id/btnShowsCountry"
+                        style="@style/Lumora.Option"
+                        android:layout_width="match_parent"
+                        android:layout_marginTop="8dp" />
+
+                    <TextView
+                        style="@style/Lumora.Hint"
+                        android:text="@string/shows_hint" />
+                </LinearLayout>
+
+                <!-- App lock -->
+                <LinearLayout
+                    android:id="@+id/panelLock"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <TextView
+                        style="@style/Lumora.PanelEyebrow"
+                        android:layout_marginTop="0dp"
+                        android:text="@string/lock_label" />
+
+                    <Button
+                        android:id="@+id/btnLockCode"
+                        style="@style/Lumora.Option"
+                        android:layout_width="match_parent"
+                        android:layout_marginTop="8dp" />
+
+                    <Button
+                        android:id="@+id/btnLockedApps"
+                        style="@style/Lumora.Option"
+                        android:layout_width="match_parent"
+                        android:layout_marginTop="8dp" />
+
+                    <Button
+                        android:id="@+id/btnLockSettings"
+                        style="@style/Lumora.Option"
+                        android:layout_width="match_parent"
+                        android:layout_marginTop="8dp" />
+
+                    <TextView
+                        style="@style/Lumora.Hint"
+                        android:text="@string/lock_hint_settings" />
+                </LinearLayout>
+
+                <!-- Home & system -->
+                <ScrollView
+                    android:id="@+id/panelSystem"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scrollbars="none"
+                    android:visibility="gone">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/Lumora.PanelEyebrow"
+                            android:layout_marginTop="0dp"
+                            android:text="@string/settings_quick" />
+
+                        <Button
+                            android:id="@+id/btnQuickPermission"
+                            style="@style/Lumora.Option"
+                            android:layout_width="match_parent"
+                            android:layout_marginTop="8dp" />
+
+                        <TextView
+                            style="@style/Lumora.Hint"
+                            android:text="@string/quick_permission_hint_settings" />
+
+                        <TextView
+                            style="@style/Lumora.PanelEyebrow"
+                            android:text="@string/home_button_label" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:orientation="horizontal">
+
+                            <Button
+                                android:id="@+id/btnHomeRedirect"
+                                style="@style/Lumora.Option"
+                                android:layout_width="0dp"
+                                android:layout_marginEnd="6dp"
+                                android:layout_weight="1" />
+
+                            <Button
+                                android:id="@+id/btnSetHome"
+                                style="@style/Lumora.Option"
+                                android:layout_width="0dp"
+                                android:layout_weight="1"
+                                android:text="@string/set_home" />
+                        </LinearLayout>
+
+                        <TextView
+                            style="@style/Lumora.Hint"
+                            android:text="@string/home_redirect_hint" />
+
+                        <TextView
+                            style="@style/Lumora.PanelEyebrow"
+                            android:text="@string/settings_visibility" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:orientation="horizontal">
+
+                            <Button
+                                android:id="@+id/btnManageHidden"
+                                style="@style/Lumora.Option"
+                                android:layout_width="0dp"
+                                android:layout_marginEnd="6dp"
+                                android:layout_weight="1"
+                                android:text="@string/manage_hidden" />
+
+                            <Button
+                                android:id="@+id/btnResetHidden"
+                                style="@style/Lumora.Option"
+                                android:layout_width="0dp"
+                                android:layout_weight="1"
+                                android:text="@string/unhide_all" />
+                        </LinearLayout>
+
+                        <TextView
+                            style="@style/Lumora.PanelEyebrow"
+                            android:text="@string/settings_system" />
+
+                        <Button
+                            android:id="@+id/btnOpenDeviceSettings"
+                            style="@style/Lumora.Option"
+                            android:layout_width="match_parent"
+                            android:layout_marginTop="8dp"
+                            android:text="@string/device_settings" />
+                    </LinearLayout>
+                </ScrollView>
+
+                <!-- ADB tools (read-only) -->
+                <ScrollView
+                    android:id="@+id/scrollAdb"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_code_block"
+                    android:focusable="true"
+                    android:padding="14dp"
+                    android:visibility="gone">
+
+                    <LinearLayout
+                        android:id="@+id/adbCommands"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical" />
+                </ScrollView>
+
+                <!-- About -->
+                <ScrollView
+                    android:id="@+id/panelAbout"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scrollbars="none"
+                    android:visibility="gone">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <ImageView
+                                android:layout_width="104dp"
+                                android:layout_height="104dp"
+                                android:contentDescription="@string/about_zakaa"
+                                android:scaleType="fitCenter"
+                                android:src="@drawable/zakaa_logo" />
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="22dp"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <ImageView
+                                    android:layout_width="112dp"
+                                    android:layout_height="20dp"
+                                    android:contentDescription="@string/app_name"
+                                    android:scaleType="fitStart"
+                                    android:src="@drawable/ic_lumora_wordmark" />
+
+                                <TextView
+                                    android:id="@+id/txtAboutVersion"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="8dp"
+                                    android:textColor="@color/nova_text"
+                                    android:textSize="12sp" />
+
+                                <TextView
+                                    android:id="@+id/txtAboutBuild"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:textColor="@color/nova_text_dim"
+                                    android:textSize="10sp" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="6dp"
+                                    android:text="@string/about_made_by"
+                                    android:textColor="@color/nova_accent"
+                                    android:textSize="10sp" />
+                            </LinearLayout>
+                        </LinearLayout>
+
+                        <TextView
+                            style="@style/Lumora.PanelEyebrow"
+                            android:text="@string/about_support" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:orientation="horizontal">
+
+                            <Button
+                                android:id="@+id/btnAboutEmail"
+                                style="@style/Lumora.Option"
+                                android:layout_width="0dp"
+                                android:layout_marginEnd="6dp"
+                                android:layout_weight="1"
+                                android:drawablePadding="8dp"
+                                android:text="@string/about_email"
+                                app:drawableStartCompat="@drawable/ic_mail"
+                                app:drawableTint="@color/nova_accent" />
+
+                            <Button
+                                android:id="@+id/btnAboutWeb"
+                                style="@style/Lumora.Option"
+                                android:layout_width="0dp"
+                                android:layout_weight="1"
+                                android:drawablePadding="8dp"
+                                android:text="@string/about_website"
+                                app:drawableStartCompat="@drawable/ic_web"
+                                app:drawableTint="@color/nova_accent" />
+                        </LinearLayout>
+
+                        <TextView
+                            style="@style/Lumora.PanelEyebrow"
+                            android:text="@string/settings_about" />
+
+                        <TextView
+                            style="@style/Lumora.Hint"
+                            android:text="@string/credits" />
+                    </LinearLayout>
+                </ScrollView>
+            </FrameLayout>
+        </LinearLayout>
     </LinearLayout>
-</LinearLayout>
+</FrameLayout>
