@@ -19,214 +19,124 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-/**
- * Loads the installed application catalogue.
- *
- * <p>v3 keeps two caches so that returning to the home screen is effectively free:
- * <ul>
- *   <li>{@code appCache} keeps every resolved {@link AppModel} (label + drawable) for the
- *       lifetime of the process, so icons are decoded once instead of on every resume;</li>
- *   <li>{@code categoriesCache} keeps the assembled rows until something actually changes
- *       (favourite, hidden app, package install/removal, accent colour, custom order).</li>
- * </ul>
- */
 public class AppRepository {
     private final Context context;
     private final PackageManager pm;
-    private final PreferenceManager preferenceManager;
-
+    private final PreferenceManager preferences;
     private final Map<String, AppModel> appCache = new HashMap<>();
     private List<AppCategory> categoriesCache;
 
     public AppRepository(Context context) {
         this.context = context.getApplicationContext();
-        this.pm = context.getPackageManager();
-        this.preferenceManager = new PreferenceManager(context);
+        pm = context.getPackageManager();
+        preferences = new PreferenceManager(context);
     }
 
-    /** Returns the cached rows when they are still valid, otherwise rebuilds them. */
     public List<AppCategory> loadCategories() {
-        if (categoriesCache != null) {
-            return categoriesCache;
-        }
-        categoriesCache = buildCategories();
+        if (categoriesCache == null) categoriesCache = buildCategories();
         return categoriesCache;
     }
 
-    /** Drops the assembled rows but keeps decoded labels/icons. */
-    public void invalidate() {
-        categoriesCache = null;
-    }
-
-    /** Drops everything, including decoded icons (used after uninstall/install events). */
-    public void invalidateAll() {
-        categoriesCache = null;
-        appCache.clear();
-    }
+    public void invalidate() { categoriesCache = null; }
+    public void invalidateAll() { categoriesCache = null; appCache.clear(); }
 
     private List<AppCategory> buildCategories() {
         Map<String, AppModel> appMap = new HashMap<>();
-
-        // 1. Query Leanback Launcher apps (native TV entry points win over mobile ones)
-        Intent leanbackIntent = new Intent(Intent.ACTION_MAIN, null);
-        leanbackIntent.addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER);
-        for (ResolveInfo info : pm.queryIntentActivities(leanbackIntent, 0)) {
-            addResolveInfoToMap(info, appMap);
-        }
-
-        // 2. Query standard Launcher apps (sideloaded mobile apps, downloader tools, etc.)
-        Intent normalIntent = new Intent(Intent.ACTION_MAIN, null);
-        normalIntent.addCategory(Intent.CATEGORY_LAUNCHER);
-        for (ResolveInfo info : pm.queryIntentActivities(normalIntent, 0)) {
-            addResolveInfoToMap(info, appMap);
-        }
-
-        // Exclude Aura launcher itself
+        query(Intent.CATEGORY_LEANBACK_LAUNCHER, appMap);
+        query(Intent.CATEGORY_LAUNCHER, appMap);
         appMap.remove(context.getPackageName());
-
-        // Forget cached models for apps that are no longer installed.
         appCache.keySet().retainAll(appMap.keySet());
 
-        List<AppModel> allApps = new ArrayList<>(appMap.values());
-        sortApps(allApps);
+        List<AppModel> all = new ArrayList<>(appMap.values());
+        Collections.sort(all, (a, b) -> a.getLabel().compareToIgnoreCase(b.getLabel()));
+        List<AppModel> favorites = new ArrayList<>();
+        List<AppModel> streaming = new ArrayList<>();
+        List<AppModel> tools = new ArrayList<>();
+        List<AppModel> visible = new ArrayList<>();
 
-        List<AppModel> favoritesList = new ArrayList<>();
-        List<AppModel> streamingList = new ArrayList<>();
-        List<AppModel> toolsList = new ArrayList<>();
-        List<AppModel> visibleAppsList = new ArrayList<>();
-
-        for (AppModel app : allApps) {
-            boolean isHidden = preferenceManager.isHidden(app.getPackageName());
-            app.setHidden(isHidden);
-            if (isHidden) {
-                continue; // Skip hidden apps from main rows
-            }
-
-            boolean isFav = preferenceManager.isFavorite(app.getPackageName());
-            app.setFavorite(isFav);
-
-            if (isFav) {
-                favoritesList.add(app);
-            }
-
-            visibleAppsList.add(app);
-
+        for (AppModel app : all) {
+            app.setHidden(preferences.isHidden(app.getPackageName()));
+            if (app.isHidden()) continue;
+            app.setFavorite(preferences.isFavorite(app.getPackageName()));
+            if (app.isFavorite()) favorites.add(app);
+            visible.add(app);
             String pkg = app.getPackageName().toLowerCase(Locale.ROOT);
             String name = app.getLabel().toLowerCase(Locale.ROOT);
-
-            if (isStreamingApp(pkg, name)) {
-                streamingList.add(app);
-            } else if (isToolApp(pkg, name)) {
-                toolsList.add(app);
-            }
+            if (isStreamingApp(pkg, name)) streaming.add(app);
+            else if (isToolApp(pkg, name)) tools.add(app);
         }
 
-        int accent = preferenceManager.getAccentColor(
-                ContextCompat.getColor(context, R.color.nova_accent));
-        int fire = ContextCompat.getColor(context, R.color.accent_fire);
-        int emerald = ContextCompat.getColor(context, R.color.accent_emerald);
-        int silver = ContextCompat.getColor(context, R.color.accent_silver);
+        sortApps("favorites", favorites);
+        sortApps("streaming", streaming);
+        sortApps("all", visible);
+        sortApps("tools", tools);
 
+        int accent = preferences.getAccentColor(ContextCompat.getColor(context, R.color.nova_accent));
         List<AppCategory> categories = new ArrayList<>();
-
-        // Category 1: Pinned Favorites (always on top, tinted with the active theme)
-        if (!favoritesList.isEmpty()) {
-            AppCategory favCat = new AppCategory("favorites", context.getString(R.string.category_favorites), accent);
-            favCat.setApps(favoritesList);
-            categories.add(favCat);
-        }
-
-        // Category 2: Media & Streaming
-        if (!streamingList.isEmpty()) {
-            AppCategory streamCat = new AppCategory("streaming", context.getString(R.string.category_streaming), fire);
-            streamCat.setApps(streamingList);
-            categories.add(streamCat);
-        }
-
-        // Category 3: All Apps (Full Library)
-        if (!visibleAppsList.isEmpty()) {
-            AppCategory allCat = new AppCategory("all", context.getString(R.string.category_all_apps), emerald);
-            allCat.setApps(visibleAppsList);
-            categories.add(allCat);
-        }
-
-        // Category 4: Tools & System
-        if (!toolsList.isEmpty()) {
-            AppCategory toolsCat = new AppCategory("tools", context.getString(R.string.category_tools), silver);
-            toolsCat.setApps(toolsList);
-            categories.add(toolsCat);
-        }
-
+        addCategory(categories, "favorites", R.string.category_favorites, accent, favorites);
+        addCategory(categories, "streaming", R.string.category_streaming,
+                ContextCompat.getColor(context, R.color.accent_fire), streaming);
+        addCategory(categories, "all", R.string.category_all_apps,
+                ContextCompat.getColor(context, R.color.accent_emerald), visible);
+        addCategory(categories, "tools", R.string.category_tools,
+                ContextCompat.getColor(context, R.color.accent_silver), tools);
         return categories;
     }
 
-    /**
-     * Apps explicitly moved by the user keep their relative position; everything else
-     * falls back to alphabetical order. This is what makes Move Left/Right stick
-     * between launches.
-     */
-    private void sortApps(List<AppModel> apps) {
-        final List<String> order = preferenceManager.getCustomOrder();
-        final Map<String, Integer> rank = new HashMap<>();
-        for (int i = 0; i < order.size(); i++) {
-            rank.put(order.get(i), i);
-        }
+    private void query(String category, Map<String, AppModel> apps) {
+        Intent intent = new Intent(Intent.ACTION_MAIN).addCategory(category);
+        for (ResolveInfo info : pm.queryIntentActivities(intent, 0)) addResolveInfo(info, apps);
+    }
 
+    private void addCategory(List<AppCategory> output, String id, int title, int color, List<AppModel> apps) {
+        if (apps.isEmpty()) return;
+        AppCategory category = new AppCategory(id, context.getString(title), color);
+        category.setApps(apps);
+        output.add(category);
+    }
+
+    private void sortApps(String rowId, List<AppModel> apps) {
+        List<String> order = preferences.getCustomOrder(rowId);
+        Map<String, Integer> ranks = new HashMap<>();
+        for (int i = 0; i < order.size(); i++) ranks.put(order.get(i), i);
         Collections.sort(apps, (a, b) -> {
-            Integer rankA = rank.get(a.getPackageName());
-            Integer rankB = rank.get(b.getPackageName());
-            if (rankA != null && rankB != null) {
-                return Integer.compare(rankA, rankB);
-            }
-            if (rankA != null) return -1;
-            if (rankB != null) return 1;
+            Integer aRank = ranks.get(a.getPackageName());
+            Integer bRank = ranks.get(b.getPackageName());
+            if (aRank != null && bRank != null) return Integer.compare(aRank, bRank);
+            if (aRank != null) return -1;
+            if (bRank != null) return 1;
             return a.getLabel().compareToIgnoreCase(b.getLabel());
         });
     }
 
-    private void addResolveInfoToMap(ResolveInfo info, Map<String, AppModel> appMap) {
-        if (info.activityInfo == null) return;
+    private void addResolveInfo(ResolveInfo info, Map<String, AppModel> apps) {
+        if (info.activityInfo == null || info.activityInfo.packageName == null) return;
         String pkg = info.activityInfo.packageName;
-        if (pkg == null || appMap.containsKey(pkg)) return;
-
+        if (apps.containsKey(pkg)) return;
         AppModel cached = appCache.get(pkg);
-        if (cached != null) {
-            appMap.put(pkg, cached);
-            return;
-        }
-
+        if (cached != null) { apps.put(pkg, cached); return; }
         String label;
         Drawable icon;
-        try {
-            label = info.loadLabel(pm).toString();
-        } catch (Exception e) {
-            label = pkg;
-        }
-        try {
-            icon = info.loadIcon(pm);
-        } catch (Exception | OutOfMemoryError e) {
-            icon = pm.getDefaultActivityIcon();
-        }
-
+        try { label = info.loadLabel(pm).toString(); } catch (Exception e) { label = pkg; }
+        try { icon = info.loadIcon(pm); } catch (Exception | OutOfMemoryError e) { icon = pm.getDefaultActivityIcon(); }
         AppModel model = new AppModel(pkg, info.activityInfo.name, label, icon);
         appCache.put(pkg, model);
-        appMap.put(pkg, model);
+        apps.put(pkg, model);
     }
 
     private boolean isStreamingApp(String pkg, String name) {
-        return pkg.contains("stremio") || pkg.contains("netflix") || pkg.contains("primevideo") ||
-               pkg.contains("youtube") || pkg.contains("smarttube") || pkg.contains("disney") ||
-               pkg.contains("hbo") || pkg.contains("max") || pkg.contains("kodi") ||
-               pkg.contains("plex") || pkg.contains("hulu") || pkg.contains("twitch") ||
-               pkg.contains("crunchyroll") || pkg.contains("vlc") || pkg.contains("mxtech") ||
-               name.contains("tv") || name.contains("movie") || name.contains("stream");
+        return pkg.contains("stremio") || pkg.contains("netflix") || pkg.contains("primevideo")
+                || pkg.contains("youtube") || pkg.contains("smarttube") || pkg.contains("disney")
+                || pkg.contains("hbo") || pkg.contains("max") || pkg.contains("kodi")
+                || pkg.contains("plex") || pkg.contains("hulu") || pkg.contains("twitch")
+                || pkg.contains("crunchyroll") || pkg.contains("vlc") || pkg.contains("mxtech")
+                || name.contains("tv") || name.contains("movie") || name.contains("stream");
     }
 
     private boolean isToolApp(String pkg, String name) {
-        return pkg.contains("downloader") || pkg.contains("settings") || pkg.contains("explorer") ||
-               pkg.contains("browser") || pkg.contains("cleanup") || pkg.contains("speedtest") ||
-               pkg.contains("file") || pkg.contains("tool") || name.contains("tool") ||
-               name.contains("clean") || name.contains("setting");
+        return pkg.contains("downloader") || pkg.contains("settings") || pkg.contains("explorer")
+                || pkg.contains("browser") || pkg.contains("cleanup") || pkg.contains("speedtest")
+                || pkg.contains("file") || pkg.contains("tool") || name.contains("tool")
+                || name.contains("clean") || name.contains("setting");
     }
 }
-

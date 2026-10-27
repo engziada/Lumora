@@ -1,6 +1,5 @@
 package com.firestick.aura.launcher.adapter;
 
-import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -18,77 +17,54 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class CategoryRowAdapter extends RecyclerView.Adapter<CategoryRowAdapter.CategoryViewHolder> {
-
     private final List<AppCategory> categories = new ArrayList<>();
     private final AppRowAdapter.OnAppActionListener listener;
-    private final PreferenceManager preferenceManager;
+    private final PreferenceManager preferences;
 
-    public CategoryRowAdapter(PreferenceManager preferenceManager, AppRowAdapter.OnAppActionListener listener) {
-        this.preferenceManager = preferenceManager;
+    public CategoryRowAdapter(PreferenceManager preferences, AppRowAdapter.OnAppActionListener listener) {
+        this.preferences = preferences;
         this.listener = listener;
     }
 
-    public void setCategories(List<AppCategory> newCategories) {
+    public void setCategories(List<AppCategory> values) {
         categories.clear();
-        if (newCategories != null) {
-            categories.addAll(newCategories);
-        }
+        if (values != null) categories.addAll(values);
         notifyDataSetChanged();
     }
 
-    public List<AppCategory> getCategories() {
-        return categories;
+    public List<AppCategory> getCategories() { return categories; }
+
+    @NonNull @Override public CategoryViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        return new CategoryViewHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.item_category_row, parent, false));
     }
 
-    @NonNull
-    @Override
-    public CategoryViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_category_row, parent, false);
-        return new CategoryViewHolder(view, preferenceManager);
+    @Override public void onBindViewHolder(@NonNull CategoryViewHolder holder, int position) {
+        holder.bind(categories.get(position), preferences, listener);
     }
 
-    @Override
-    public void onBindViewHolder(@NonNull CategoryViewHolder holder, int position) {
-        AppCategory category = categories.get(position);
-        holder.bind(category, listener);
-    }
-
-    @Override
-    public int getItemCount() {
-        return categories.size();
-    }
+    @Override public int getItemCount() { return categories.size(); }
 
     static class CategoryViewHolder extends RecyclerView.ViewHolder {
-        private final TextView txtTitle;
-        private final TextView txtCount;
-        private final View indicatorAccent;
-        private final RecyclerView recyclerApps;
-        private final PreferenceManager preferenceManager;
-        private final Context context;
+        private final TextView title, count;
+        private final RecyclerView apps;
 
-        public CategoryViewHolder(@NonNull View itemView, PreferenceManager preferenceManager) {
-            super(itemView);
-            this.preferenceManager = preferenceManager;
-            this.context = itemView.getContext();
-            this.txtTitle = itemView.findViewById(R.id.txtCategoryTitle);
-            this.txtCount = itemView.findViewById(R.id.txtItemCount);
-            this.indicatorAccent = itemView.findViewById(R.id.indicatorAccent);
-            this.recyclerApps = itemView.findViewById(R.id.recyclerApps);
-
-            LinearLayoutManager layoutManager = new LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false);
-            recyclerApps.setLayoutManager(layoutManager);
-            recyclerApps.setHasFixedSize(true);
-            recyclerApps.setClipChildren(false);
-            recyclerApps.setClipToPadding(false);
+        CategoryViewHolder(View view) {
+            super(view);
+            title = view.findViewById(R.id.txtCategoryTitle);
+            count = view.findViewById(R.id.txtItemCount);
+            apps = view.findViewById(R.id.recyclerApps);
+            apps.setLayoutManager(new LinearLayoutManager(view.getContext(), LinearLayoutManager.HORIZONTAL, false));
+            apps.setHasFixedSize(true);
+            apps.setClipChildren(false);
+            apps.setClipToPadding(false);
         }
 
-        public void bind(AppCategory category, AppRowAdapter.OnAppActionListener listener) {
-            txtTitle.setText(category.getTitle());
-            txtCount.setText(String.valueOf(category.getApps().size()));
-
-            AppRowAdapter rowAdapter = new AppRowAdapter(preferenceManager, listener);
-            recyclerApps.setAdapter(rowAdapter);
-            rowAdapter.setApps(category.getApps());
+        void bind(AppCategory category, PreferenceManager preferences, AppRowAdapter.OnAppActionListener listener) {
+            title.setText(category.getTitle());
+            count.setText(String.valueOf(category.getApps().size()));
+            AppRowAdapter adapter = new AppRowAdapter(preferences, listener, category.getId());
+            apps.setAdapter(adapter);
+            adapter.setApps(category.getApps());
         }
     }
 }

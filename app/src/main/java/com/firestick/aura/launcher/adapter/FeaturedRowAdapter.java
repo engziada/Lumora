@@ -18,98 +18,49 @@ import com.firestick.aura.launcher.model.AppModel;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Large "featured" tiles shown under the greeting, mirroring the hero strip of the design:
- * a wide rounded card with the icon, the app name and a small meta line.
- */
-public class FeaturedRowAdapter extends RecyclerView.Adapter<FeaturedRowAdapter.FeaturedViewHolder> {
-
+public class FeaturedRowAdapter extends RecyclerView.Adapter<FeaturedRowAdapter.Holder> {
     private final List<AppModel> apps = new ArrayList<>();
     private final List<String> metas = new ArrayList<>();
     private final AppRowAdapter.OnAppActionListener listener;
-    private final PreferenceManager preferenceManager;
+    private final PreferenceManager preferences;
 
-    public FeaturedRowAdapter(PreferenceManager preferenceManager, AppRowAdapter.OnAppActionListener listener) {
-        this.preferenceManager = preferenceManager;
+    public FeaturedRowAdapter(PreferenceManager preferences, AppRowAdapter.OnAppActionListener listener) {
+        this.preferences = preferences;
         this.listener = listener;
     }
 
     public void setItems(List<AppModel> items, List<String> itemMetas) {
-        apps.clear();
-        metas.clear();
-        if (items != null) {
-            apps.addAll(items);
-        }
-        if (itemMetas != null) {
-            metas.addAll(itemMetas);
-        }
+        apps.clear(); metas.clear();
+        if (items != null) apps.addAll(items);
+        if (itemMetas != null) metas.addAll(itemMetas);
         notifyDataSetChanged();
     }
 
-    @NonNull
-    @Override
-    public FeaturedViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_featured_card, parent, false);
-        return new FeaturedViewHolder(view, preferenceManager);
+    @NonNull @Override public Holder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        return new Holder(LayoutInflater.from(parent.getContext()).inflate(R.layout.item_featured_card, parent, false), preferences);
     }
+    @Override public void onBindViewHolder(@NonNull Holder holder, int position) { holder.bind(apps.get(position), position < metas.size() ? metas.get(position) : "", listener); }
+    @Override public int getItemCount() { return apps.size(); }
 
-    @Override
-    public void onBindViewHolder(@NonNull FeaturedViewHolder holder, int position) {
-        holder.bind(apps.get(position), position < metas.size() ? metas.get(position) : "", listener);
-    }
-
-    @Override
-    public int getItemCount() {
-        return apps.size();
-    }
-
-    static class FeaturedViewHolder extends RecyclerView.ViewHolder {
-        private final ImageView imgIcon;
-        private final TextView txtLabel;
-        private final TextView txtMeta;
-        private final PreferenceManager preferenceManager;
-
-        FeaturedViewHolder(@NonNull View itemView, PreferenceManager preferenceManager) {
-            super(itemView);
-            this.preferenceManager = preferenceManager;
-            this.imgIcon = itemView.findViewById(R.id.imgFeaturedIcon);
-            this.txtLabel = itemView.findViewById(R.id.txtFeaturedLabel);
-            this.txtMeta = itemView.findViewById(R.id.txtFeaturedMeta);
+    static class Holder extends RecyclerView.ViewHolder {
+        private final ImageView icon;
+        private final TextView label, meta;
+        private final PreferenceManager preferences;
+        Holder(View view, PreferenceManager preferences) {
+            super(view); this.preferences = preferences;
+            icon = view.findViewById(R.id.imgFeaturedIcon); label = view.findViewById(R.id.txtFeaturedLabel); meta = view.findViewById(R.id.txtFeaturedMeta);
         }
-
-        void bind(AppModel app, String meta, AppRowAdapter.OnAppActionListener listener) {
-            final String pkg = app.getPackageName();
-            final ImageView iconView = imgIcon;
-            iconView.setTag(pkg);
-            iconView.setImageDrawable(app.getIcon());
-            txtLabel.setText(app.getLabel());
-            txtMeta.setText(meta);
-            if (preferenceManager != null && preferenceManager.isHdIconsEnabled()) {
-                IconService.get(itemView.getContext()).load(pkg, bitmap -> {
-                    if (bitmap != null && !bitmap.isRecycled() && pkg.equals(iconView.getTag())) {
-                        iconView.setImageBitmap(bitmap);
-                    }
-                });
-            }
-
-            itemView.setOnClickListener(v -> {
-                SoundManager.playClick(v, preferenceManager);
-                if (listener != null) listener.onAppClick(app);
+        void bind(AppModel app, String metadata, AppRowAdapter.OnAppActionListener listener) {
+            String pkg = app.getPackageName();
+            icon.setTag(pkg); icon.setImageDrawable(app.getIcon()); label.setText(app.getLabel()); meta.setText(metadata);
+            if (preferences.isHdIconsEnabled()) IconService.get(itemView.getContext()).load(pkg, bitmap -> {
+                if (bitmap != null && !bitmap.isRecycled() && pkg.equals(icon.getTag())) icon.setImageBitmap(bitmap);
             });
-
-            itemView.setOnLongClickListener(v -> {
-                if (listener != null) {
-                    listener.onAppLongClick(app);
-                    return true;
-                }
-                return false;
-            });
-
-            itemView.setOnFocusChangeListener((v, hasFocus) -> {
-                v.animate().scaleX(hasFocus ? 1.04f : 1f).scaleY(hasFocus ? 1.04f : 1f)
-                        .setDuration(140).start();
-                txtLabel.setTextColor(hasFocus ? 0xFFFFFFFF : 0xFFF3F7FF);
-                if (hasFocus) SoundManager.playFocus(v, preferenceManager);
+            itemView.setOnClickListener(v -> { SoundManager.playClick(v, preferences); if (listener != null) listener.onAppClick(app); });
+            itemView.setOnLongClickListener(v -> { if (listener == null) return false; listener.onAppLongClick(app, null); return true; });
+            itemView.setOnFocusChangeListener((v, focused) -> {
+                v.animate().scaleX(focused ? 1.04f : 1f).scaleY(focused ? 1.04f : 1f).setDuration(140).start();
+                if (focused) SoundManager.playFocus(v, preferences);
             });
         }
     }
