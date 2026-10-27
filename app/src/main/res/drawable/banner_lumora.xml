@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android TV / Fire TV banner, 320 x 180 dp: mark on the left, LUMORA wordmark on the right. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:width="320dp" android:height="180dp">
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="270"
+                android:endColor="#FF120905"
+                android:startColor="#FF2A170E" />
+        </shape>
+    </item>
+    <item android:width="320dp" android:height="180dp">
+        <shape android:shape="rectangle">
+            <gradient
+                android:centerX="0.24"
+                android:centerY="0.5"
+                android:endColor="#00E3A15A"
+                android:gradientRadius="110dp"
+                android:startColor="#4DE3A15A"
+                android:type="radial" />
+        </shape>
+    </item>
+    <item
+        android:width="147dp"
+        android:height="147dp"
+        android:drawable="@drawable/ic_lumora_mark"
+        android:gravity="start|center_vertical"
+        android:left="4dp" />
+    <item
+        android:width="150dp"
+        android:height="27dp"
+        android:drawable="@drawable/ic_lumora_wordmark"
+        android:gravity="start|center_vertical"
+        android:left="146dp" />
+</layer-list>

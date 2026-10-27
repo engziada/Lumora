@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Warm readability scrim over the wallpaper: darker at the header and the navigation. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Readability scrim: heavy at the top for the header/greeting, lighter mid, heavy at the bottom bar -->
     <item>
         <shape android:shape="rectangle">
             <gradient
                 android:angle="270"
-                android:centerColor="#33050A16"
-                android:endColor="#F205070E"
-                android:startColor="#E605070E"
+                android:centerColor="#33140A06"
+                android:endColor="#F0140A06"
+                android:startColor="#B8140A06"
                 android:type="linear" />
         </shape>
     </item>
@@ -15,8 +15,9 @@
         <shape android:shape="rectangle">
             <gradient
                 android:angle="0"
-                android:endColor="#00000000"
-                android:startColor="#B3050A16"
+                android:centerColor="#00140A06"
+                android:endColor="#00140A06"
+                android:startColor="#99140A06"
                 android:type="linear" />
         </shape>
     </item>

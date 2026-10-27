@@ -2,17 +2,21 @@
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:state_focused="true">
         <shape android:shape="rectangle">
+            <solid android:color="@color/nova_card_hi" />
+            <stroke android:width="1.5dp" android:color="@color/nova_accent" />
             <corners android:radius="14dp" />
-            <solid android:color="#1E2942" />
-            <stroke
-                android:width="1.5dp"
-                android:color="#8B7CFF" />
+        </shape>
+    </item>
+    <item android:state_selected="true">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/nova_accent_soft" />
+            <corners android:radius="14dp" />
         </shape>
     </item>
     <item>
         <shape android:shape="rectangle">
+            <solid android:color="@android:color/transparent" />
             <corners android:radius="14dp" />
-            <solid android:color="#00000000" />
         </shape>
     </item>
 </selector>
