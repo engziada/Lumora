@@ -2,6 +2,10 @@ plugins {
     id 'com.android.application'
 }
 
+// CI (main branch) provides the release keystore and the run number; local builds get neither.
+def ciRunNumber = System.getenv('GITHUB_RUN_NUMBER')
+def releaseKeystore = System.getenv('LUMORA_KEYSTORE_FILE')
+
 android {
     namespace 'com.firestick.aura.launcher'
     compileSdk 34
@@ -10,10 +14,22 @@ android {
         applicationId 'com.firestick.aura.launcher'
         minSdk 26
         targetSdk 34
-        versionCode 8
-        versionName '5.3.0'
+        // Every CI build is newer than the last, which the in-app updater relies on.
+        versionCode ciRunNumber ? 1000 + ciRunNumber.toInteger() : 9
+        versionName '5.4.0'
         // Shown in Settings > About.
         resValue 'string', 'build_date', new java.text.SimpleDateFormat('yyyy-MM-dd').format(new Date())
+    }
+
+    if (releaseKeystore) {
+        signingConfigs {
+            release {
+                storeFile file(releaseKeystore)
+                storePassword System.getenv('LUMORA_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('LUMORA_KEY_ALIAS')
+                keyPassword System.getenv('LUMORA_KEY_PASSWORD')
+            }
+        }
     }
 
     buildTypes {
@@ -21,6 +37,7 @@ android {
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (releaseKeystore) signingConfig signingConfigs.release
         }
         debug {
             minifyEnabled false

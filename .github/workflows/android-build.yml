@@ -2,7 +2,7 @@ name: Android CI
 
 on:
   push:
-    branches: [ main, ai-assistant ]
+    branches: [ main ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
@@ -12,25 +12,18 @@ permissions:
 
 concurrency:
   group: android-ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
-  alexa-skill:
-    name: Alexa skill tests
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Unit tests
-        run: python3 -m unittest discover -s alexa-skill/tests -v
-
   build:
     name: Validate and build
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 30
+    permissions:
+      # Publishing the release on pushes to main.
+      contents: write
+    env:
+      PUBLISH: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
 
     steps:
       - name: Checkout
@@ -90,7 +83,30 @@ jobs:
             exit 1
           fi
 
+      - name: Prepare release signing key
+        if: env.PUBLISH == 'true'
+        shell: bash
+        env:
+          KEYSTORE_B64: ${{ secrets.LUMORA_KEYSTORE_B64 }}
+          STORE_PASSWORD: ${{ secrets.LUMORA_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.LUMORA_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.LUMORA_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for name in KEYSTORE_B64 STORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Release signing secret for $name is missing (LUMORA_KEYSTORE_B64, LUMORA_KEYSTORE_PASSWORD, LUMORA_KEY_ALIAS, LUMORA_KEY_PASSWORD)"
+              exit 1
+            fi
+          done
+          printf '%s' "$KEYSTORE_B64" | tr -d '\r\n ' | base64 -d > "$RUNNER_TEMP/lumora-release.jks"
+          echo "LUMORA_KEYSTORE_FILE=$RUNNER_TEMP/lumora-release.jks" >> "$GITHUB_ENV"
+
       - name: Assemble release
+        env:
+          LUMORA_KEYSTORE_PASSWORD: ${{ secrets.LUMORA_KEYSTORE_PASSWORD }}
+          LUMORA_KEY_ALIAS: ${{ secrets.LUMORA_KEY_ALIAS }}
+          LUMORA_KEY_PASSWORD: ${{ secrets.LUMORA_KEY_PASSWORD }}
         run: ./gradlew assembleRelease --no-daemon --stacktrace
 
       - name: Assemble debug
@@ -98,18 +114,61 @@ jobs:
 
       - name: Show APK
         run: |
-          ls -lh build-out/app/outputs/apk/debug/
+          ls -lh build-out/app/outputs/apk/debug/ build-out/app/outputs/apk/release/
           echo "APK_SHA256=$(sha256sum build-out/app/outputs/apk/debug/app-debug.apk | cut -d' ' -f1)" >> "$GITHUB_ENV"
 
-      - name: Upload APK
+      - name: Upload debug APK
         uses: actions/upload-artifact@v7
         with:
-          name: ztv-launcher-debug
+          name: lumora-debug
           path: build-out/app/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 30
 
+      - name: Publish release
+        if: env.PUBLISH == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          APK_IN=build-out/app/outputs/apk/release/app-release.apk
+          if [ ! -f "$APK_IN" ]; then echo "::error::Signed release APK not found"; exit 1; fi
+          APKSIGNER="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)/apksigner"
+          "$APKSIGNER" verify --print-certs "$APK_IN" | tee signer.txt
+          CERT=$(grep -m1 'certificate SHA-256 digest' signer.txt | awk '{print $NF}')
+          CODE=$((1000 + GITHUB_RUN_NUMBER))
+          NAME=$(sed -nE "s/^ *versionName '([^']+)'.*/\1/p" app/build.gradle | head -1)
+          TAG="build-$CODE"
+          APK="lumora-$NAME-$CODE.apk"
+          cp "$APK_IN" "$APK"
+          SHA=$(sha256sum "$APK" | cut -d' ' -f1)
+          SIZE=$(stat -c%s "$APK")
+          NOTES=$(git log -1 --pretty=%s)
+          URL="https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/$APK"
+          CODE="$CODE" NAME="$NAME" URL="$URL" SHA="$SHA" SIZE="$SIZE" NOTES="$NOTES" COMMIT="$GITHUB_SHA" python3 -c '
+          import json, os
+          print(json.dumps({"versionCode": int(os.environ["CODE"]), "versionName": os.environ["NAME"],
+                            "apk": os.environ["URL"], "sha256": os.environ["SHA"], "size": int(os.environ["SIZE"]),
+                            "commit": os.environ["COMMIT"][:7], "notes": os.environ["NOTES"]}, indent=2))
+          ' > update.json
+          cat update.json
+          printf '%s\n\nCommit: %s\nSigning certificate SHA-256: %s\n' "$NOTES" "$GITHUB_SHA" "$CERT" > notes.md
+          gh release create "$TAG" "$APK" update.json --title "Lumora $NAME (build $CODE)" \
+            --notes-file notes.md --target "$GITHUB_SHA" --latest
+          # Keep the five newest builds.
+          gh release list --limit 100 --json tagName,createdAt \
+            --jq 'sort_by(.createdAt) | reverse | .[5:] | .[].tagName' | while read -r old; do
+            gh release delete "$old" --yes --cleanup-tag
+          done
+          {
+            echo "### Lumora $NAME (build $CODE)"
+            echo "Release: https://github.com/$GITHUB_REPOSITORY/releases/tag/$TAG"
+            echo "APK SHA-256: $SHA"
+            echo "Signing certificate SHA-256: $CERT"
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Job summary
         run: |
-          echo "### Z TV Launcher" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Lumora CI" >> "$GITHUB_STEP_SUMMARY"
           echo "Debug APK SHA-256: $APK_SHA256" >> "$GITHUB_STEP_SUMMARY"
