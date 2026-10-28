@@ -8,6 +8,8 @@
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
 
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+    <!-- Self-update: hands the downloaded, verified APK to the system installer; the user confirms. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Settings › Device info: Wi-Fi signal and link speed. Normal permission; no SSID or location. -->
@@ -20,8 +22,8 @@
         android:name="android.permission.WRITE_SECURE_SETTINGS"
         tools:ignore="ProtectedPermissions" />
 
-    <!-- Launcher entry points, plus search activities and store links used by the Shows tab,
-         and a speech recognizer for the assistant's mic button when the device has one. -->
+    <!-- Launcher entry points, plus search activities and store links used by the Shows tab and the
+         assistant, and a speech recognizer for the assistant's mic button when the device has one. -->
     <queries>
         <intent>
             <action android:name="android.intent.action.MAIN" />
@@ -48,6 +50,7 @@
     </queries>
 
     <application
+        android:name=".LumoraApp"
         android:allowBackup="true"
         android:banner="@drawable/banner_lumora"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -98,8 +101,20 @@
             android:theme="@style/Theme.Lumora.Overlay"
             android:windowSoftInputMode="stateHidden|adjustResize" />
 
-        <!-- Screenshot, power dialog, the Home button redirect and the assistant button. Receives
-             window events from the stock Fire TV home only and requests no window content. -->
+        <!-- Shares downloaded update APKs (cache/updates/) with the system installer only. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.updates"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/update_paths" />
+        </provider>
+
+        <!-- Screenshot, power dialog, the Home button redirect, the assistant shortcut and the
+             assistant's back/home actions. Receives window events from the stock Fire TV home only
+             and requests no window content. -->
         <service
             android:name=".service.QuickActionService"
             android:exported="true"

@@ -16,6 +16,7 @@ public final class AssistantSettings {
     private static final String KEY_FLOATING = "floating_button";
     private static final String KEY_REMOTE = "remote_button";
     private static final String KEY_SHARE_APPS = "share_app_names";
+    private static final String KEY_CONTROL = "tv_control";
     /** Left over from v5.2.0's learn mode; removed on first use. */
     private static final String[] LEGACY_KEYS = {"remote_key_codes", "learn_until", "learned_code"};
 
@@ -79,6 +80,17 @@ public final class AssistantSettings {
 
     public void setRemoteButtonEnabled(boolean enabled) {
         prefs.edit().putBoolean(KEY_REMOTE, enabled).apply();
+    }
+
+    // -------------------------------------------------------------- control
+
+    /** Whether the assistant may run TV actions (media keys, volume, navigation, settings, search). */
+    public boolean isControlEnabled() {
+        return prefs.getBoolean(KEY_CONTROL, true);
+    }
+
+    public void setControlEnabled(boolean enabled) {
+        prefs.edit().putBoolean(KEY_CONTROL, enabled).apply();
     }
 
     // -------------------------------------------------------------- privacy

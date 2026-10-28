@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v5.4.0: assistant TV control and self-update. -->
+<resources>
+    <!-- Settings: TV control -->
+    <string name="ai_control_label">TV control</string>
+    <string name="ai_control_on">Let the assistant control the TV: On</string>
+    <string name="ai_control_off">Let the assistant control the TV: Off</string>
+    <string name="ai_control_hint">Say or type things like \"pause\", \"volume up 3\", \"mute\", \"next episode\", \"go home\", \"open YouTube\", \"search YouTube for lofi music\", \"Wi-Fi settings\", \"وقف\", \"علي الصوت\". Simple commands run at once without the model. Media keys go to the app that is playing; back, home, screenshot and the power menu need quick actions. Not possible for apps: power off, sleep, TV input, tapping inside other apps.</string>
+
+    <!-- Assistant: action results -->
+    <string name="ctl_play">Play</string>
+    <string name="ctl_pause">Pause</string>
+    <string name="ctl_play_pause">Play / pause</string>
+    <string name="ctl_next">Next</string>
+    <string name="ctl_previous">Previous</string>
+    <string name="ctl_stop">Stop</string>
+    <string name="ctl_forward">Fast-forward</string>
+    <string name="ctl_rewind">Rewind</string>
+    <string name="ctl_volume_up">Volume up (%1$d)</string>
+    <string name="ctl_volume_down">Volume down (%1$d)</string>
+    <string name="ctl_mute">Muted</string>
+    <string name="ctl_unmute">Sound on</string>
+    <string name="ctl_theme">Theme: %1$s</string>
+    <string name="ctl_needs_quick">That needs quick actions (one-time ADB setup in Settings › Home &amp; system).</string>
+    <string name="ctl_volume_fixed">The volume did not change: this TV or soundbar controls volume itself (HDMI-CEC or IR). Use the remote\'s volume buttons.</string>
+    <string name="ctl_not_installed">That app is not installed.</string>
+    <string name="ctl_unsupported">This Fire OS version does not support that action.</string>
+    <string name="ctl_failed">The system did not accept that action.</string>
+
+    <!-- Updates -->
+    <string name="update_label">Updates</string>
+    <string name="update_title">Lumora update</string>
+    <string name="update_check">Check for updates</string>
+    <string name="update_auto_off">Automatic check: Off</string>
+    <string name="update_auto_daily">Automatic check: Daily</string>
+    <string name="update_auto_3days">Automatic check: Every 3 days</string>
+    <string name="update_auto_weekly">Automatic check: Weekly</string>
+    <string name="update_status">Installed build %1$d · last checked %2$s. Updates come from the latest build of the main branch on GitHub; you confirm every install.</string>
+    <string name="update_never">never</string>
+    <string name="update_checking">Checking for updates…</string>
+    <string name="update_busy">An update check or download is already running.</string>
+    <string name="update_current">Lumora is up to date (build %1$d).</string>
+    <string name="update_available_title">Update available</string>
+    <string name="update_available_message">Lumora %1$s (build %2$d) is ready. Installed: build %3$d. Download: %4$.1f MB.</string>
+    <string name="update_install">Download and install</string>
+    <string name="update_downloading_title">Downloading update</string>
+    <string name="update_downloading">%1$d%%</string>
+    <string name="update_permission_title">Allow Lumora to install updates</string>
+    <string name="update_permission_message">Fire OS must allow Lumora to install apps. Turn on Lumora under Settings › My Fire TV › Developer options › Install unknown apps, or run this once from a computer:</string>
+    <string name="update_permission_open">Open the setting</string>
+    <string name="update_permission_missing_screen">This Fire OS version has no direct link. Use Settings › My Fire TV › Developer options › Install unknown apps.</string>
+    <string name="update_err_network">Could not reach GitHub. Check the network and try again.</string>
+    <string name="update_err_no_release">No published build was found yet.</string>
+    <string name="update_err_format">The update description was invalid, so nothing was downloaded.</string>
+    <string name="update_err_download">The download failed. Try again.</string>
+    <string name="update_err_hash">The download did not match its checksum and was deleted.</string>
+    <string name="update_err_package">The downloaded file is not a Lumora build and was deleted.</string>
+    <string name="update_err_not_newer">The downloaded build is not newer than the installed one.</string>
+    <string name="update_err_storage">Not enough storage for the download.</string>
+    <string name="update_err_installer">No installer is available on this device.</string>
+    <string name="update_err_signature">This build is signed with Lumora\'s release key, but the installed copy was signed with a different key, so Android refuses the update. Reinstall once from a computer (Lumora settings are reset); later updates then install from here:</string>
+    <string name="about_version_build">Version %1$s · build %2$d</string>
+    <string name="adb_install_title">Allow Lumora to install its updates (one time)</string>
+</resources>
