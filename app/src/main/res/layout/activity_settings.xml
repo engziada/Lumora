@@ -457,6 +457,16 @@
                             android:layout_width="match_parent"
                             android:layout_marginTop="8dp" />
 
+                        <Button
+                            android:id="@+id/btnAiKeyPhone"
+                            style="@style/Lumora.Option"
+                            android:layout_width="match_parent"
+                            android:layout_marginTop="8dp"
+                            android:drawablePadding="8dp"
+                            android:text="@string/ai_key_phone"
+                            app:drawableStartCompat="@drawable/ic_phone"
+                            app:drawableTint="@color/nova_accent" />
+
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
@@ -520,28 +530,6 @@
                                 style="@style/Lumora.Option"
                                 android:layout_width="0dp"
                                 android:layout_weight="1" />
-                        </LinearLayout>
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
-                            android:orientation="horizontal">
-
-                            <Button
-                                android:id="@+id/btnAiLearn"
-                                style="@style/Lumora.Option"
-                                android:layout_width="0dp"
-                                android:layout_marginEnd="6dp"
-                                android:layout_weight="2"
-                                android:singleLine="true" />
-
-                            <Button
-                                android:id="@+id/btnAiResetKeys"
-                                style="@style/Lumora.Option"
-                                android:layout_width="0dp"
-                                android:layout_weight="1"
-                                android:text="@string/ai_learn_reset" />
                         </LinearLayout>
 
                         <TextView
