@@ -29,6 +29,7 @@ import androidx.core.content.ContextCompat;
 import com.firestick.aura.launcher.assistant.AssistantSettings;
 import com.firestick.aura.launcher.assistant.AssistantText;
 import com.firestick.aura.launcher.assistant.OpenRouterClient;
+import com.firestick.aura.launcher.assistant.PhoneBridge;
 import com.firestick.aura.launcher.manager.AppLock;
 import com.firestick.aura.launcher.manager.DebloatManager;
 import com.firestick.aura.launcher.manager.DeviceMonitor;
@@ -42,6 +43,7 @@ import com.firestick.aura.launcher.service.QuickActionService;
 import com.firestick.aura.launcher.ui.Glass;
 import com.firestick.aura.launcher.ui.GlassMenu;
 import com.firestick.aura.launcher.ui.LockPad;
+import com.firestick.aura.launcher.ui.PhonePairDialog;
 import com.firestick.aura.launcher.ui.TextPrompt;
 
 import java.util.ArrayList;
@@ -81,7 +83,7 @@ public class SettingsActivity extends AppCompatActivity {
     private static final String[] COUNTRIES = {"US", "GB", "CA", "AU", "IE", "DE", "FR", "NL", "IN", "EG", "AE", "SA"};
     private static final String SUPPORT_EMAIL = "support@zakaa-ai.net";
     private static final String WEBSITE = "https://zakaa-ai.net";
-    private static final long DEVICE_REFRESH_MS = 1000L, LEARN_WINDOW_MS = 10_000L, LEARN_POLL_MS = 300L;
+    private static final long DEVICE_REFRESH_MS = 1000L;
 
     private PreferenceManager preferences;
     private AssistantSettings assistant;
@@ -89,7 +91,7 @@ public class SettingsActivity extends AppCompatActivity {
     private TextView stats, themeHint;
     private Button iconStyle, wallpaperSource, wallCategories, sound, showsToggle, showsCountry;
     private Button lockCode, lockedApps, lockSettings, quickPermission, homeRedirect;
-    private Button aiKey, aiTest, aiRemoveKey, aiModel, aiFloating, aiRemote, aiLearn, aiShareApps;
+    private Button aiKey, aiTest, aiRemoveKey, aiModel, aiFloating, aiRemote, aiShareApps;
     private int currentSection;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -99,7 +101,8 @@ public class SettingsActivity extends AppCompatActivity {
     private TextView devModel, devSystem, devCpu, devClock, devTemp, devRam, devStorage, devNetwork, devDisplay,
             devUptime, devLumora;
     private ProgressBar barCpu, barRam, barStorage;
-    private long learnStartedAt;
+    private PhoneBridge keyPhone;
+    private PhonePairDialog keyDialog;
 
     private final Runnable deviceTick = new Runnable() {
         @Override public void run() {
@@ -111,25 +114,6 @@ public class SettingsActivity extends AppCompatActivity {
                 });
             });
             handler.postDelayed(this, DEVICE_REFRESH_MS);
-        }
-    };
-
-    private final Runnable learnPoll = new Runnable() {
-        @Override public void run() {
-            int code = assistant.takeLearnedCode();
-            if (code != 0) {
-                toast(getString(R.string.ai_learn_saved, assistant.describeRemoteKeys()));
-                updateAssistantButtons();
-                return;
-            }
-            if (System.currentTimeMillis() - learnStartedAt > LEARN_WINDOW_MS) {
-                assistant.cancelLearning();
-                Glass.info(SettingsActivity.this, getString(R.string.ai_learn_title),
-                        getString(R.string.ai_learn_timeout), null, null, null);
-                updateAssistantButtons();
-                return;
-            }
-            handler.postDelayed(this, LEARN_POLL_MS);
         }
     };
 
@@ -179,14 +163,19 @@ public class SettingsActivity extends AppCompatActivity {
 
     @Override protected void onPause() {
         stopDeviceUpdates();
-        handler.removeCallbacks(learnPoll);
-        if (assistant.isLearning()) assistant.cancelLearning();
         wallpapers.stop();
         super.onPause();
     }
 
+    /** The phone link closes as soon as Settings is no longer on screen. */
+    @Override protected void onStop() {
+        stopKeyPhone();
+        super.onStop();
+    }
+
     @Override protected void onDestroy() {
         stopDeviceUpdates();
+        stopKeyPhone();
         worker.shutdownNow();
         wallpapers.shutdown();
         super.onDestroy();
@@ -468,16 +457,11 @@ public class SettingsActivity extends AppCompatActivity {
         aiModel = findViewById(R.id.btnAiModel);
         aiFloating = findViewById(R.id.btnAiFloating);
         aiRemote = findViewById(R.id.btnAiRemote);
-        aiLearn = findViewById(R.id.btnAiLearn);
         aiShareApps = findViewById(R.id.btnAiShareApps);
 
         aiKey.setOnClickListener(v -> TextPrompt.show(this, getString(R.string.ai_key_title),
-                getString(R.string.ai_key_message), null, true, value -> {
-                    assistant.setApiKey(value);
-                    updateAssistantButtons();
-                    if (!value.startsWith("sk-or-")) toast(getString(R.string.ai_key_format));
-                    testKey();
-                }));
+                getString(R.string.ai_key_message), null, true, this::saveKey));
+        findViewById(R.id.btnAiKeyPhone).setOnClickListener(v -> receiveKeyFromPhone());
         aiTest.setOnClickListener(v -> testKey());
         aiRemoveKey.setOnClickListener(v -> {
             assistant.clearApiKey();
@@ -492,21 +476,63 @@ public class SettingsActivity extends AppCompatActivity {
         });
         aiRemote.setOnClickListener(v -> {
             SoundManager.playClick(v, preferences);
-            assistant.setRemoteButtonEnabled(!assistant.isRemoteButtonEnabled());
+            boolean enable = !assistant.isRemoteButtonEnabled();
+            assistant.setRemoteButtonEnabled(enable);
             updateAssistantButtons();
+            if (enable && !QuickActionService.isRunning()) {
+                Glass.info(this, getString(R.string.ai_remote_title), getString(R.string.ai_remote_needs_quick), null,
+                        getString(R.string.home_default_setup), () -> QuickAccess.showSetup(this));
+            }
         });
-        aiLearn.setOnClickListener(v -> learnRemoteButton());
         aiShareApps.setOnClickListener(v -> {
             SoundManager.playClick(v, preferences);
             assistant.setShareAppsEnabled(!assistant.isShareAppsEnabled());
             updateAssistantButtons();
         });
-        findViewById(R.id.btnAiResetKeys).setOnClickListener(v -> {
-            assistant.resetRemoteKeyCodes();
-            updateAssistantButtons();
-            toast(getString(R.string.ai_learn_saved, assistant.describeRemoteKeys()));
-        });
         findViewById(R.id.btnAiOpen).setOnClickListener(v -> startActivity(new Intent(this, AssistantActivity.class)));
+    }
+
+    private void saveKey(String value) {
+        assistant.setApiKey(value);
+        updateAssistantButtons();
+        if (!value.startsWith("sk-or-")) toast(getString(R.string.ai_key_format));
+        testKey();
+    }
+
+    /** Opens the phone link in key mode; the first text received is saved as the key. */
+    private void receiveKeyFromPhone() {
+        stopKeyPhone();
+        PhoneBridge bridge = new PhoneBridge(PhoneBridge.MODE_KEY, new PhoneBridge.Listener() {
+            @Override public void onText(String text) {
+                stopKeyPhone();
+                toast(getString(R.string.phone_key_received));
+                saveKey(text);
+            }
+
+            @Override public void onCodeChanged(String code) {
+                if (keyDialog != null && keyDialog.isShowing()) keyDialog.refresh();
+            }
+
+            @Override public void onStopped(boolean idle) {
+                stopKeyPhone();
+            }
+        });
+        int result = bridge.start();
+        if (result != PhoneBridge.START_OK) {
+            Glass.info(this, getString(R.string.phone_title_key), getString(result == PhoneBridge.START_NO_NETWORK
+                    ? R.string.phone_no_network : R.string.phone_start_failed), null, null, null);
+            return;
+        }
+        keyPhone = bridge;
+        keyDialog = PhonePairDialog.show(this, bridge, getString(R.string.phone_title_key),
+                getString(R.string.phone_message_key), this::stopKeyPhone);
+    }
+
+    private void stopKeyPhone() {
+        if (keyDialog != null) keyDialog.dismiss();
+        keyDialog = null;
+        if (keyPhone != null) keyPhone.stop();
+        keyPhone = null;
     }
 
     private void pickModel() {
@@ -563,20 +589,6 @@ public class SettingsActivity extends AppCompatActivity {
         });
     }
 
-    private void learnRemoteButton() {
-        if (!QuickActionService.isRunning()) {
-            Glass.info(this, getString(R.string.ai_learn_title), getString(R.string.ai_learn_needs_quick), null,
-                    getString(R.string.home_default_setup), () -> QuickAccess.showSetup(this));
-            return;
-        }
-        assistant.startLearning(LEARN_WINDOW_MS);
-        learnStartedAt = System.currentTimeMillis();
-        toast(getString(R.string.ai_learn_press));
-        aiLearn.setText(R.string.ai_learn_waiting);
-        handler.removeCallbacks(learnPoll);
-        handler.postDelayed(learnPoll, LEARN_POLL_MS);
-    }
-
     private void updateAssistantButtons() {
         boolean hasKey = assistant.hasApiKey();
         aiKey.setText(hasKey ? getString(R.string.ai_key_set, AssistantText.mask(assistant.getApiKey()))
@@ -588,7 +600,6 @@ public class SettingsActivity extends AppCompatActivity {
         aiModel.setText(getString(R.string.ai_model_value, assistant.getModel()));
         aiFloating.setText(assistant.isFloatingButtonEnabled() ? R.string.ai_floating_on : R.string.ai_floating_off);
         aiRemote.setText(assistant.isRemoteButtonEnabled() ? R.string.ai_remote_on : R.string.ai_remote_off);
-        aiLearn.setText(getString(R.string.ai_learn_value, assistant.describeRemoteKeys()));
         aiShareApps.setText(assistant.isShareAppsEnabled() ? R.string.ai_share_on : R.string.ai_share_off);
     }
 
