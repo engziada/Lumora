@@ -5,10 +5,13 @@
     <uses-feature android:name="android.software.leanback" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
     <uses-feature android:name="android.hardware.banner" android:required="false" />
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
 
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Settings › Device info: Wi-Fi signal and link speed. Normal permission; no SSID or location. -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <!-- Quick menu, Clear memory: ActivityManager.killBackgroundProcesses. Normal permission. -->
     <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
     <!-- Never granted at install. The user grants it once over ADB so Lumora can enable its own
@@ -17,7 +20,8 @@
         android:name="android.permission.WRITE_SECURE_SETTINGS"
         tools:ignore="ProtectedPermissions" />
 
-    <!-- Launcher entry points, plus search activities and store links used by the Shows tab. -->
+    <!-- Launcher entry points, plus search activities and store links used by the Shows tab,
+         and a speech recognizer for the assistant's mic button when the device has one. -->
     <queries>
         <intent>
             <action android:name="android.intent.action.MAIN" />
@@ -38,15 +42,21 @@
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="https" />
         </intent>
+        <intent>
+            <action android:name="android.speech.action.RECOGNIZE_SPEECH" />
+        </intent>
     </queries>
 
     <application
         android:allowBackup="true"
-        android:icon="@drawable/ic_lumora_icon"
         android:banner="@drawable/banner_lumora"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@drawable/ic_lumora_icon"
         android:label="@string/app_name"
         android:supportsRtl="false"
-        android:theme="@style/Theme.AuraLauncher">
+        android:theme="@style/Theme.AuraLauncher"
+        tools:targetApi="31">
         <activity
             android:name=".MainActivity"
             android:banner="@drawable/banner_lumora"
@@ -77,9 +87,19 @@
             android:exported="false"
             android:screenOrientation="landscape"
             android:theme="@style/Theme.AuraLauncher" />
+        <!-- Assistant panel over the current app; own task so closing it returns to that app.
+             No fixed orientation: Android 8.0 rejects it on translucent activities. -->
+        <activity
+            android:name=".AssistantActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:taskAffinity="com.firestick.aura.launcher.assistant"
+            android:theme="@style/Theme.Lumora.Overlay"
+            android:windowSoftInputMode="stateHidden|adjustResize" />
 
-        <!-- Screenshot, power dialog and the Home button redirect. Receives window events from
-             the stock Fire TV home only and requests no window content. -->
+        <!-- Screenshot, power dialog, the Home button redirect and the assistant button. Receives
+             window events from the stock Fire TV home only and requests no window content. -->
         <service
             android:name=".service.QuickActionService"
             android:exported="true"

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="560dp"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_glass_panel"
+    android:orientation="vertical"
+    android:padding="22dp">
+
+    <TextView
+        android:id="@+id/promptTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="@color/nova_text"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/promptMessage"
+        style="@style/Lumora.Body"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:textSize="10sp" />
+
+    <EditText
+        android:id="@+id/promptField"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_marginTop="12dp"
+        android:background="@drawable/bg_option_selector"
+        android:fontFamily="monospace"
+        android:hint="@string/prompt_hint"
+        android:imeOptions="actionDone|flagNoExtractUi"
+        android:importantForAutofill="no"
+        android:inputType="text"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
+        android:singleLine="true"
+        android:textColor="@color/nova_text"
+        android:textColorHint="@color/nova_text_muted"
+        android:textSize="12sp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:gravity="end"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/btnPromptSave"
+            style="@style/Lumora.Option"
+            android:layout_width="wrap_content"
+            android:layout_marginEnd="8dp"
+            android:minWidth="120dp"
+            android:text="@string/prompt_save"
+            android:textColor="@color/nova_accent" />
+
+        <Button
+            android:id="@+id/btnPromptCancel"
+            style="@style/Lumora.Option"
+            android:layout_width="wrap_content"
+            android:minWidth="100dp"
+            android:text="@string/prompt_cancel" />
+    </LinearLayout>
+</LinearLayout>

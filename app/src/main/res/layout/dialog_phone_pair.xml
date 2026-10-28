@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="640dp"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_glass_panel"
+    android:baselineAligned="false"
+    android:orientation="horizontal"
+    android:padding="22dp">
+
+    <ImageView
+        android:id="@+id/phoneQr"
+        android:layout_width="210dp"
+        android:layout_height="210dp"
+        android:layout_gravity="center_vertical"
+        android:contentDescription="@string/phone_qr_description"
+        android:scaleType="fitCenter" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="22dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/phoneTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/nova_text"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/phoneMessage"
+            style="@style/Lumora.Body"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textSize="11sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/phone_address"
+            android:textAllCaps="true"
+            android:textColor="@color/nova_text_muted"
+            android:textSize="8sp" />
+
+        <TextView
+            android:id="@+id/phoneUrl"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:background="@drawable/bg_code_block"
+            android:fontFamily="monospace"
+            android:padding="10dp"
+            android:textColor="@color/nova_text"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/phoneCode"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:textColor="@color/nova_accent"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/btnPhoneClose"
+            style="@style/Lumora.Option"
+            android:layout_width="wrap_content"
+            android:layout_gravity="end"
+            android:layout_marginTop="16dp"
+            android:minWidth="120dp"
+            android:text="@string/close" />
+    </LinearLayout>
+</LinearLayout>

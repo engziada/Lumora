@@ -1,5 +1,62 @@
 # Changelog
 
+## 5.3.0 — Hold Menu, phone voice input, Alexa skill (branch `ai-assistant`)
+
+### Changed
+- **Remote shortcut is now “hold ☰ Menu”** (600 ms) in any app via the quick-actions service, or
+  inside Lumora when the service is off. A short press still works as Menu. The *Learn* button and
+  the SEARCH / VOICE_ASSIST / ASSIST key list are removed: Fire OS never delivers the Alexa, Home or
+  app-shortcut buttons to apps, so nothing could be learned. Old learn preferences are deleted on
+  first start.
+- App cards open their menu on Menu **release** (not press), so holding Menu does not also open it.
+- The accessibility key filter now looks only at the Menu key.
+- Version 5.3.0, version code 8.
+
+### Added
+- **Phone link**: the assistant's phone button shows a QR code; the phone page sends typed or
+  dictated text (phone keyboard microphone, English or Arabic) to the TV over the home network.
+  Settings › AI assistant › **Enter key from phone** uses the same link for the OpenRouter key.
+  Security: LAN address only, 6-digit pairing code in the URL fragment, rotation after 5 wrong
+  codes, Host check, size and rate limits, 10-minute idle stop, closes when the screen is left.
+- Built-in QR encoder (`assistant/QrCode`, byte mode, ECC M, versions 1–6); no new dependency.
+  `tools/qr-reference` holds the Python reference and OpenCV decode check behind the test fixtures.
+- **Alexa skill** (`alexa-skill/`): private, development-mode Alexa-hosted skill — “Alexa, ask
+  Lumora assistant …” — answered by OpenRouter, voice only. Key kept in the skill's private S3
+  bucket. 17 Python unit tests; CI job *Alexa skill tests*.
+- JUnit tests: `LongPressTest`, `QrCodeTest`, `PhoneProtocolTest`.
+
+## 5.2.0 — AI assistant, device info, card animation (branch `ai-assistant`)
+
+### Added
+- **Lumora Assistant** (`AssistantActivity`): a glass chat panel over any app, backed by OpenRouter
+  (`openrouter/free` by default, custom model id optional). English and Arabic. Replies can suggest
+  installed apps; *Open <app>* goes through Lumora so app locks and launch history apply.
+  Mic button when the device has a speech recognizer.
+- Two ways to open it: a floating button at the end of the bottom bar, and a remote button caught
+  by the quick-actions service in any app (defaults: SEARCH, VOICE_ASSIST, ASSIST; *Learn* records
+  the button the remote actually sends). Without quick actions the button works inside Lumora only.
+- Settings › AI assistant: API key (masked, *Test key* uses `GET /api/v1/key` and spends no chat
+  request), model, floating / remote toggles, learn / reset button, app-name sharing switch.
+- Settings › Device info: live readings every second — model, system, CPU load (or clock when
+  Fire OS hides `/proc/stat`), temperature, memory, storage, network (IP, Wi-Fi dBm and Mbps),
+  display, uptime, Lumora memory.
+- Home cards: focus animation on the card background — accent glow fades in and breathes, one
+  light sweep crosses the card.
+- Unit tests (JUnit 4) for reply parsing, key masking, request/response handling and device-stat
+  maths; CI runs `testDebugUnitTest` before lint. See `docs/ASSISTANT.md`.
+
+### Security and privacy
+- The OpenRouter key is stored in its own preferences file, excluded from backup and device
+  transfer (`backup_rules.xml`, `data_extraction_rules.xml`), shown masked, sent only to openrouter.ai.
+- Sent to OpenRouter: the question, the last 12 turns and, if enabled, installed app names.
+- The accessibility service now filters key events; it compares key codes against the assistant
+  button and stores nothing. Navigation, media, volume and power keys are never captured.
+
+### Changed
+- Settings rail scrolls (10 sections).
+- `ACCESS_WIFI_STATE` (normal permission) for Wi-Fi signal in Device info.
+- Version 5.2.0, version code 7.
+
 ## 5.1.0 — TV feedback round
 
 ### Added
