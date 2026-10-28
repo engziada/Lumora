@@ -5,23 +5,34 @@ import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.content.res.ColorStateList;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.Settings;
+import android.util.DisplayMetrics;
+import android.view.Display;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
+import com.firestick.aura.launcher.assistant.AssistantSettings;
+import com.firestick.aura.launcher.assistant.AssistantText;
+import com.firestick.aura.launcher.assistant.OpenRouterClient;
 import com.firestick.aura.launcher.manager.AppLock;
 import com.firestick.aura.launcher.manager.DebloatManager;
+import com.firestick.aura.launcher.manager.DeviceMonitor;
+import com.firestick.aura.launcher.manager.DeviceStats;
 import com.firestick.aura.launcher.manager.PreferenceManager;
 import com.firestick.aura.launcher.manager.QuickAccess;
 import com.firestick.aura.launcher.manager.SoundManager;
@@ -31,20 +42,29 @@ import com.firestick.aura.launcher.service.QuickActionService;
 import com.firestick.aura.launcher.ui.Glass;
 import com.firestick.aura.launcher.ui.GlassMenu;
 import com.firestick.aura.launcher.ui.LockPad;
+import com.firestick.aura.launcher.ui.TextPrompt;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class SettingsActivity extends AppCompatActivity {
+    /** Optional int extra: index of the section to open. */
+    public static final String EXTRA_SECTION = "com.firestick.aura.launcher.extra.SETTINGS_SECTION";
+    public static final int SECTION_ASSISTANT = 5;
+    private static final int SECTION_DEVICE = 7;
+
     private static final int[] SECTIONS = {R.id.secAppearance, R.id.secWallpaper, R.id.secAudio, R.id.secShows,
-            R.id.secLock, R.id.secSystem, R.id.secAdb, R.id.secAbout};
+            R.id.secLock, R.id.secAssistant, R.id.secSystem, R.id.secDevice, R.id.secAdb, R.id.secAbout};
     private static final int[] PANELS = {R.id.panelAppearance, R.id.panelWallpaper, R.id.panelAudio, R.id.panelShows,
-            R.id.panelLock, R.id.panelSystem, R.id.scrollAdb, R.id.panelAbout};
+            R.id.panelLock, R.id.panelAssistant, R.id.panelSystem, R.id.panelDevice, R.id.scrollAdb, R.id.panelAbout};
     private static final int[] FIRST_FOCUS = {R.id.btnThemeAmber, R.id.btnWallpaperSource, R.id.btnToggleSound,
-            R.id.btnShowsToggle, R.id.btnLockCode, R.id.btnQuickPermission, R.id.scrollAdb, R.id.btnAboutEmail};
+            R.id.btnShowsToggle, R.id.btnLockCode, R.id.btnAiKey, R.id.btnQuickPermission, R.id.panelDevice,
+            R.id.scrollAdb, R.id.btnAboutEmail};
 
     private static final int[] THEME_BUTTONS = {R.id.btnThemeAmber, R.id.btnThemeCopper, R.id.btnThemeRose, R.id.btnThemeMoon};
     private static final int[] THEME_COLORS = {R.color.accent_amber, R.color.accent_copper, R.color.accent_rose, R.color.accent_moonlight};
@@ -61,18 +81,64 @@ public class SettingsActivity extends AppCompatActivity {
     private static final String[] COUNTRIES = {"US", "GB", "CA", "AU", "IE", "DE", "FR", "NL", "IN", "EG", "AE", "SA"};
     private static final String SUPPORT_EMAIL = "support@zakaa-ai.net";
     private static final String WEBSITE = "https://zakaa-ai.net";
+    private static final long DEVICE_REFRESH_MS = 1000L, LEARN_WINDOW_MS = 10_000L, LEARN_POLL_MS = 300L;
 
     private PreferenceManager preferences;
+    private AssistantSettings assistant;
     private WallpaperManager wallpapers;
     private TextView stats, themeHint;
     private Button iconStyle, wallpaperSource, wallCategories, sound, showsToggle, showsCountry;
     private Button lockCode, lockedApps, lockSettings, quickPermission, homeRedirect;
+    private Button aiKey, aiTest, aiRemoveKey, aiModel, aiFloating, aiRemote, aiLearn, aiShareApps;
     private int currentSection;
+
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    private final ExecutorService worker = Executors.newSingleThreadExecutor();
+    private DeviceMonitor monitor;
+    private boolean deviceRunning;
+    private TextView devModel, devSystem, devCpu, devClock, devTemp, devRam, devStorage, devNetwork, devDisplay,
+            devUptime, devLumora;
+    private ProgressBar barCpu, barRam, barStorage;
+    private long learnStartedAt;
+
+    private final Runnable deviceTick = new Runnable() {
+        @Override public void run() {
+            if (!deviceRunning) return;
+            worker.execute(() -> {
+                DeviceMonitor.Snapshot snapshot = monitor.read();
+                handler.post(() -> {
+                    if (deviceRunning && !isFinishing() && !isDestroyed()) renderDevice(snapshot);
+                });
+            });
+            handler.postDelayed(this, DEVICE_REFRESH_MS);
+        }
+    };
+
+    private final Runnable learnPoll = new Runnable() {
+        @Override public void run() {
+            int code = assistant.takeLearnedCode();
+            if (code != 0) {
+                toast(getString(R.string.ai_learn_saved, assistant.describeRemoteKeys()));
+                updateAssistantButtons();
+                return;
+            }
+            if (System.currentTimeMillis() - learnStartedAt > LEARN_WINDOW_MS) {
+                assistant.cancelLearning();
+                Glass.info(SettingsActivity.this, getString(R.string.ai_learn_title),
+                        getString(R.string.ai_learn_timeout), null, null, null);
+                updateAssistantButtons();
+                return;
+            }
+            handler.postDelayed(this, LEARN_POLL_MS);
+        }
+    };
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
         setContentView(R.layout.activity_settings);
         preferences = new PreferenceManager(this);
+        assistant = new AssistantSettings(this);
+        monitor = new DeviceMonitor(this);
         wallpapers = new WallpaperManager(this, preferences, findViewById(R.id.imgSettingsBack), findViewById(R.id.imgSettingsFront));
         stats = findViewById(R.id.txtStats);
         themeHint = findViewById(R.id.txtThemeHint);
@@ -93,11 +159,14 @@ public class SettingsActivity extends AppCompatActivity {
         bindAudio();
         bindShows();
         bindLock();
+        bindAssistant();
         bindSystem();
+        buildDevicePanel();
         buildAdbGuidance();
         bindAbout();
         findViewById(R.id.btnDone).setOnClickListener(v -> finish());
-        showSection(0);
+        int requested = getIntent().getIntExtra(EXTRA_SECTION, 0);
+        showSection(requested >= 0 && requested < SECTIONS.length ? requested : 0);
     }
 
     @Override protected void onResume() {
@@ -105,14 +174,20 @@ public class SettingsActivity extends AppCompatActivity {
         refreshAll();
         for (int i = 0; i < SECTIONS.length; i++) findViewById(SECTIONS[i]).setSelected(i == currentSection);
         wallpapers.start();
+        if (currentSection == SECTION_DEVICE) startDeviceUpdates();
     }
 
     @Override protected void onPause() {
+        stopDeviceUpdates();
+        handler.removeCallbacks(learnPoll);
+        if (assistant.isLearning()) assistant.cancelLearning();
         wallpapers.stop();
         super.onPause();
     }
 
     @Override protected void onDestroy() {
+        stopDeviceUpdates();
+        worker.shutdownNow();
         wallpapers.shutdown();
         super.onDestroy();
     }
@@ -125,6 +200,7 @@ public class SettingsActivity extends AppCompatActivity {
         updateSoundButton();
         updateShowsButtons();
         updateLockButtons();
+        updateAssistantButtons();
         updateSystemButtons();
     }
 
@@ -145,12 +221,18 @@ public class SettingsActivity extends AppCompatActivity {
             findViewById(PANELS[i]).setVisibility(i == section ? View.VISIBLE : View.GONE);
             findViewById(SECTIONS[i]).setSelected(i == section);
         }
+        if (section == SECTION_DEVICE) startDeviceUpdates();
+        else stopDeviceUpdates();
         View focus = findViewById(FIRST_FOCUS[section]);
         if (focus != null) focus.requestFocus();
     }
 
     private int color(int res) {
         return ContextCompat.getColor(this, res);
+    }
+
+    private int accent() {
+        return preferences.getAccentColor(color(R.color.nova_accent));
     }
 
     private int dp(int value) {
@@ -377,6 +459,139 @@ public class SettingsActivity extends AppCompatActivity {
         lockSettings.setText(preferences.isSettingsLocked() ? R.string.lock_settings_on : R.string.lock_settings_off);
     }
 
+    // ----------------------------------------------------------- assistant
+
+    private void bindAssistant() {
+        aiKey = findViewById(R.id.btnAiKey);
+        aiTest = findViewById(R.id.btnAiTest);
+        aiRemoveKey = findViewById(R.id.btnAiRemoveKey);
+        aiModel = findViewById(R.id.btnAiModel);
+        aiFloating = findViewById(R.id.btnAiFloating);
+        aiRemote = findViewById(R.id.btnAiRemote);
+        aiLearn = findViewById(R.id.btnAiLearn);
+        aiShareApps = findViewById(R.id.btnAiShareApps);
+
+        aiKey.setOnClickListener(v -> TextPrompt.show(this, getString(R.string.ai_key_title),
+                getString(R.string.ai_key_message), null, true, value -> {
+                    assistant.setApiKey(value);
+                    updateAssistantButtons();
+                    if (!value.startsWith("sk-or-")) toast(getString(R.string.ai_key_format));
+                    testKey();
+                }));
+        aiTest.setOnClickListener(v -> testKey());
+        aiRemoveKey.setOnClickListener(v -> {
+            assistant.clearApiKey();
+            updateAssistantButtons();
+            toast(getString(R.string.ai_key_removed));
+        });
+        aiModel.setOnClickListener(v -> pickModel());
+        aiFloating.setOnClickListener(v -> {
+            SoundManager.playClick(v, preferences);
+            assistant.setFloatingButtonEnabled(!assistant.isFloatingButtonEnabled());
+            updateAssistantButtons();
+        });
+        aiRemote.setOnClickListener(v -> {
+            SoundManager.playClick(v, preferences);
+            assistant.setRemoteButtonEnabled(!assistant.isRemoteButtonEnabled());
+            updateAssistantButtons();
+        });
+        aiLearn.setOnClickListener(v -> learnRemoteButton());
+        aiShareApps.setOnClickListener(v -> {
+            SoundManager.playClick(v, preferences);
+            assistant.setShareAppsEnabled(!assistant.isShareAppsEnabled());
+            updateAssistantButtons();
+        });
+        findViewById(R.id.btnAiResetKeys).setOnClickListener(v -> {
+            assistant.resetRemoteKeyCodes();
+            updateAssistantButtons();
+            toast(getString(R.string.ai_learn_saved, assistant.describeRemoteKeys()));
+        });
+        findViewById(R.id.btnAiOpen).setOnClickListener(v -> startActivity(new Intent(this, AssistantActivity.class)));
+    }
+
+    private void pickModel() {
+        String current = assistant.getModel();
+        boolean isDefault = AssistantSettings.DEFAULT_MODEL.equals(current);
+        List<GlassMenu.Item> items = new ArrayList<>();
+        items.add(new GlassMenu.Item(R.drawable.ic_assistant, getString(R.string.ai_model_free)).checked(isDefault));
+        items.add(new GlassMenu.Item(R.drawable.ic_act_open, getString(R.string.ai_model_custom)).checked(!isDefault));
+        GlassMenu.show(this, getString(R.string.ai_model_label), null, null, items, false, (index, item) -> {
+            if (index == 0) {
+                assistant.setModel(AssistantSettings.DEFAULT_MODEL);
+                updateAssistantButtons();
+            } else {
+                TextPrompt.show(this, getString(R.string.ai_model_custom), getString(R.string.ai_model_custom_message),
+                        isDefault ? "" : current, false, value -> {
+                            assistant.setModel(value);
+                            updateAssistantButtons();
+                        });
+            }
+        });
+    }
+
+    private void testKey() {
+        if (!assistant.hasApiKey()) {
+            toast(getString(R.string.ai_key_none));
+            return;
+        }
+        String key = assistant.getApiKey();
+        aiTest.setEnabled(false);
+        aiTest.setText(R.string.ai_testing);
+        worker.execute(() -> {
+            OpenRouterClient.Result result = OpenRouterClient.checkKey(key);
+            handler.post(() -> {
+                if (isFinishing() || isDestroyed()) return;
+                aiTest.setEnabled(true);
+                aiTest.setText(R.string.ai_test);
+                int message;
+                switch (result.error) {
+                    case OpenRouterClient.OK:
+                        message = R.string.ai_test_ok;
+                        break;
+                    case OpenRouterClient.ERR_AUTH:
+                        message = R.string.assistant_err_auth;
+                        break;
+                    case OpenRouterClient.ERR_NETWORK:
+                        message = R.string.assistant_err_network;
+                        break;
+                    default:
+                        message = R.string.assistant_err_server;
+                        break;
+                }
+                toast(getString(message));
+            });
+        });
+    }
+
+    private void learnRemoteButton() {
+        if (!QuickActionService.isRunning()) {
+            Glass.info(this, getString(R.string.ai_learn_title), getString(R.string.ai_learn_needs_quick), null,
+                    getString(R.string.home_default_setup), () -> QuickAccess.showSetup(this));
+            return;
+        }
+        assistant.startLearning(LEARN_WINDOW_MS);
+        learnStartedAt = System.currentTimeMillis();
+        toast(getString(R.string.ai_learn_press));
+        aiLearn.setText(R.string.ai_learn_waiting);
+        handler.removeCallbacks(learnPoll);
+        handler.postDelayed(learnPoll, LEARN_POLL_MS);
+    }
+
+    private void updateAssistantButtons() {
+        boolean hasKey = assistant.hasApiKey();
+        aiKey.setText(hasKey ? getString(R.string.ai_key_set, AssistantText.mask(assistant.getApiKey()))
+                : getString(R.string.ai_key_unset));
+        aiTest.setEnabled(hasKey);
+        aiTest.setAlpha(hasKey ? 1f : .5f);
+        aiRemoveKey.setEnabled(hasKey);
+        aiRemoveKey.setAlpha(hasKey ? 1f : .5f);
+        aiModel.setText(getString(R.string.ai_model_value, assistant.getModel()));
+        aiFloating.setText(assistant.isFloatingButtonEnabled() ? R.string.ai_floating_on : R.string.ai_floating_off);
+        aiRemote.setText(assistant.isRemoteButtonEnabled() ? R.string.ai_remote_on : R.string.ai_remote_off);
+        aiLearn.setText(getString(R.string.ai_learn_value, assistant.describeRemoteKeys()));
+        aiShareApps.setText(assistant.isShareAppsEnabled() ? R.string.ai_share_on : R.string.ai_share_off);
+    }
+
     // -------------------------------------------------------------- system
 
     private void bindSystem() {
@@ -462,6 +677,121 @@ public class SettingsActivity extends AppCompatActivity {
                 preferences.getHiddenApps().size(), preferences.getLaunchCount()));
     }
 
+    // -------------------------------------------------------------- device
+
+    private void buildDevicePanel() {
+        LinearLayout list = findViewById(R.id.deviceRows);
+        list.removeAllViews();
+        devModel = addDeviceRow(list, R.string.dev_model);
+        devSystem = addDeviceRow(list, R.string.dev_system);
+        devCpu = addDeviceRow(list, R.string.dev_cpu);
+        barCpu = addBar(list);
+        devClock = addDeviceRow(list, R.string.dev_clock);
+        devTemp = addDeviceRow(list, R.string.dev_temperature);
+        devRam = addDeviceRow(list, R.string.dev_memory);
+        barRam = addBar(list);
+        devStorage = addDeviceRow(list, R.string.dev_storage);
+        barStorage = addBar(list);
+        devNetwork = addDeviceRow(list, R.string.dev_network);
+        devDisplay = addDeviceRow(list, R.string.dev_display);
+        devUptime = addDeviceRow(list, R.string.dev_uptime);
+        devLumora = addDeviceRow(list, R.string.dev_lumora);
+    }
+
+    private TextView addDeviceRow(LinearLayout list, int labelRes) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setPadding(0, dp(7), 0, dp(3));
+        TextView label = new TextView(this);
+        label.setText(labelRes);
+        label.setAllCaps(true);
+        label.setLetterSpacing(.14f);
+        label.setTextColor(color(R.color.nova_text_muted));
+        label.setTextSize(8);
+        row.addView(label, new LinearLayout.LayoutParams(dp(130), LinearLayout.LayoutParams.WRAP_CONTENT));
+        TextView value = new TextView(this);
+        value.setTextColor(color(R.color.nova_text));
+        value.setTextSize(11);
+        value.setText(R.string.dev_reading);
+        row.addView(value, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        list.addView(row);
+        return value;
+    }
+
+    private ProgressBar addBar(LinearLayout list) {
+        ProgressBar bar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+        bar.setMax(100);
+        bar.setProgressTintList(ColorStateList.valueOf(accent()));
+        bar.setProgressBackgroundTintList(ColorStateList.valueOf(color(R.color.glass_card_stroke)));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(4));
+        params.setMarginStart(dp(130));
+        params.bottomMargin = dp(4);
+        list.addView(bar, params);
+        return bar;
+    }
+
+    private void startDeviceUpdates() {
+        if (deviceRunning) return;
+        deviceRunning = true;
+        barCpu.setProgressTintList(ColorStateList.valueOf(accent()));
+        barRam.setProgressTintList(ColorStateList.valueOf(accent()));
+        barStorage.setProgressTintList(ColorStateList.valueOf(accent()));
+        devDisplay.setText(displaySummary());
+        handler.post(deviceTick);
+    }
+
+    private void stopDeviceUpdates() {
+        deviceRunning = false;
+        handler.removeCallbacks(deviceTick);
+    }
+
+    private String displaySummary() {
+        Display display = getWindowManager().getDefaultDisplay();
+        DisplayMetrics metrics = new DisplayMetrics();
+        display.getRealMetrics(metrics);
+        return String.format(Locale.US, "%d \u00D7 %d \u00B7 %.0f Hz \u00B7 %d dpi",
+                metrics.widthPixels, metrics.heightPixels, display.getRefreshRate(), metrics.densityDpi);
+    }
+
+    private void renderDevice(DeviceMonitor.Snapshot s) {
+        String unavailable = getString(R.string.dev_unavailable);
+        devModel.setText(s.model);
+        devSystem.setText(s.system);
+        if (s.cpuPercent >= 0) {
+            devCpu.setText(getString(R.string.dev_cpu_value, s.cpuPercent, s.cores, s.hardware));
+            barCpu.setProgress(s.cpuPercent);
+        } else {
+            devCpu.setText(getString(R.string.dev_cpu_cores, s.cores, s.hardware));
+            barCpu.setProgress(s.cpuCurMhz > 0 && s.cpuMaxMhz > 0 ? DeviceStats.percent(s.cpuCurMhz, s.cpuMaxMhz) : 0);
+        }
+        devClock.setText(s.cpuCurMhz > 0
+                ? getString(R.string.dev_clock_value, s.cpuCurMhz, s.cpuMaxMhz > 0 ? s.cpuMaxMhz : s.cpuCurMhz)
+                : unavailable);
+        devTemp.setText(Float.isNaN(s.temperature) ? unavailable
+                : String.format(Locale.US, "%.1f \u00B0C", s.temperature));
+        long ramUsed = s.ramTotal - s.ramAvailable;
+        devRam.setText(getString(s.lowMemory ? R.string.dev_memory_low : R.string.dev_memory_value,
+                DeviceStats.formatBytes(ramUsed), DeviceStats.formatBytes(s.ramTotal),
+                DeviceStats.formatBytes(s.ramAvailable)));
+        barRam.setProgress(DeviceStats.percent(ramUsed, s.ramTotal));
+        long storageUsed = s.storageTotal - s.storageFree;
+        devStorage.setText(getString(R.string.dev_storage_value, DeviceStats.formatBytes(storageUsed),
+                DeviceStats.formatBytes(s.storageTotal), DeviceStats.formatBytes(s.storageFree)));
+        barStorage.setProgress(DeviceStats.percent(storageUsed, s.storageTotal));
+        devNetwork.setText(networkSummary(s));
+        devUptime.setText(DeviceStats.formatUptime(s.uptimeMs));
+        devLumora.setText(DeviceStats.formatBytes(s.lumoraPssKb * 1024L));
+    }
+
+    private String networkSummary(DeviceMonitor.Snapshot s) {
+        if (s.network == null || s.network.isEmpty()) return getString(R.string.dev_offline);
+        StringBuilder text = new StringBuilder(s.network);
+        if (s.address != null) text.append(" \u00B7 ").append(s.address);
+        if (s.wifiRssi != Integer.MIN_VALUE && s.wifiRssi < 0) text.append(" \u00B7 ").append(s.wifiRssi).append(" dBm");
+        if (s.wifiMbps > 0) text.append(" \u00B7 ").append(s.wifiMbps).append(" Mbps");
+        return text.toString();
+    }
+
     // ----------------------------------------------------------------- adb
 
     /** Read-only command reference: these need ADB, the launcher cannot run them itself. */
@@ -475,6 +805,7 @@ public class SettingsActivity extends AppCompatActivity {
         warning.setLineSpacing(0f, 1.2f);
         list.addView(warning);
         addCommand(list, getString(R.string.adb_quick_title), QuickAccess.grantCommand(this));
+        addCommand(list, getString(R.string.adb_key_title), getString(R.string.adb_key_command));
         addCommand(list, getString(R.string.adb_disable_title), DebloatManager.disableStockLauncherCommands());
         addCommand(list, getString(R.string.adb_enable_title), DebloatManager.enableStockLauncherCommands());
         addCommand(list, getString(R.string.adb_telemetry_title), DebloatManager.telemetryCommands());
