@@ -36,6 +36,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.firestick.aura.launcher.adapter.AppRowAdapter;
 import com.firestick.aura.launcher.adapter.ShowsAdapter;
+import com.firestick.aura.launcher.assistant.AssistantSettings;
 import com.firestick.aura.launcher.manager.AppLock;
 import com.firestick.aura.launcher.manager.AppRepository;
 import com.firestick.aura.launcher.manager.DebloatManager;
@@ -60,6 +61,8 @@ import java.util.Map;
 
 public class MainActivity extends AppCompatActivity
         implements AppRowAdapter.OnAppActionListener, ShowsAdapter.OnShowClickListener, ShowDetails.Host {
+    /** Package to launch on arrival; sent by the assistant so locks and launch history apply. */
+    public static final String EXTRA_LAUNCH_PACKAGE = "com.firestick.aura.launcher.extra.LAUNCH_PACKAGE";
     private static final int TAB_HOME = 0, TAB_SHOWS = 1, TAB_APPS = 2, TAB_STREAMING = 3;
     private static final int GRID_COLUMNS = 7, SHOWS_COLUMNS = 7, MAX_CHANNEL_CHIPS = 8, HOME_FALLBACK = 8;
     private static final long SHOWS_MAX_AGE_MS = 60L * 60L * 1000L;
@@ -72,11 +75,13 @@ public class MainActivity extends AppCompatActivity
     private AppRepository repository;
     private ShowsRepository showsRepository;
     private PreferenceManager preferences;
+    private AssistantSettings assistant;
     private WallpaperManager wallpapers;
     private QuickMenu quickMenu;
     private ShowDetails showDetails;
     private TextView greeting, greetingSub, heroTitle, heroMeta, showsStatus, gridEmpty, moveHint;
-    private View homePanel, gridPanel, showsPanel, gear;
+    private View homePanel, gridPanel, showsPanel, gear, assistantButton;
+    private ImageView assistantIcon;
     private LinearLayout showsChips;
     private PopupWindow gearMenu;
     private final Map<String, List<AppModel>> rows = new HashMap<>();
@@ -109,6 +114,7 @@ public class MainActivity extends AppCompatActivity
         super.onCreate(state);
         setContentView(R.layout.activity_main);
         preferences = new PreferenceManager(this);
+        assistant = new AssistantSettings(this);
         int amber = ContextCompat.getColor(this, R.color.accent_amber);
         preferences.migrateAccent(new int[]{amber, ContextCompat.getColor(this, R.color.accent_copper),
                 ContextCompat.getColor(this, R.color.accent_rose), ContextCompat.getColor(this, R.color.accent_moonlight)}, amber);
@@ -129,6 +135,7 @@ public class MainActivity extends AppCompatActivity
                 else homeView.smoothScrollToPosition(0);
             }
         });
+        handleLaunchRequest(getIntent());
     }
 
     private void initViews() {
@@ -173,6 +180,17 @@ public class MainActivity extends AppCompatActivity
         });
         bindNavFocus(quick);
 
+        assistantButton = findViewById(R.id.btnAssistant);
+        assistantIcon = findViewById(R.id.imgAssistant);
+        assistantButton.setOnClickListener(view -> {
+            SoundManager.playClick(view, preferences);
+            openAssistant();
+        });
+        assistantButton.setOnFocusChangeListener((view, focused) -> {
+            view.animate().scaleX(focused ? 1.14f : 1f).scaleY(focused ? 1.14f : 1f).setDuration(140).start();
+            if (focused) SoundManager.playFocus(view, preferences);
+        });
+
         gear = findViewById(R.id.btnGear);
         gear.setOnClickListener(view -> showGearMenu());
         gear.setOnFocusChangeListener((view, focused) -> {
@@ -202,6 +220,27 @@ public class MainActivity extends AppCompatActivity
             source.animate().scaleX(focused ? 1.04f : 1f).scaleY(focused ? 1.04f : 1f).setDuration(120).start();
             if (focused) SoundManager.playFocus(source, preferences);
         });
+    }
+
+    // ------------------------------------------------------------ assistant
+
+    private void openAssistant() {
+        startActivity(new Intent(this, AssistantActivity.class));
+    }
+
+    private void updateAssistantButton() {
+        boolean visible = assistant.isFloatingButtonEnabled();
+        if (!visible && assistantButton.hasFocus()) findViewById(R.id.navQuick).requestFocus();
+        assistantButton.setVisibility(visible ? View.VISIBLE : View.GONE);
+        assistantIcon.setImageTintList(ColorStateList.valueOf(accent()));
+    }
+
+    private void handleLaunchRequest(Intent intent) {
+        if (intent == null) return;
+        String pkg = intent.getStringExtra(EXTRA_LAUNCH_PACKAGE);
+        if (pkg == null || pkg.isEmpty()) return;
+        intent.removeExtra(EXTRA_LAUNCH_PACKAGE);
+        homeView.post(() -> launchPackage(pkg));
     }
 
     // ------------------------------------------------------------ gear menu
@@ -291,6 +330,7 @@ public class MainActivity extends AppCompatActivity
         if (gearMenu != null) gearMenu.dismiss();
         if (currentTab != TAB_HOME) selectTab(TAB_HOME);
         homeView.scrollToPosition(0);
+        handleLaunchRequest(intent);
     }
 
     private void updateNavSelection() {
@@ -351,6 +391,7 @@ public class MainActivity extends AppCompatActivity
         refreshApps(true);
         updateGreeting();
         updateNavSelection();
+        updateAssistantButton();
         if (currentTab == TAB_SHOWS) {
             if (changed && allShows != null) {
                 buildChips();
@@ -368,8 +409,18 @@ public class MainActivity extends AppCompatActivity
         super.onPause();
     }
 
+    /** Fallback when the quick-actions service is off: the assistant key still works inside Lumora. */
+    private boolean isAssistantKey(KeyEvent event) {
+        return movingPackage == null && !QuickActionService.isRunning()
+                && assistant.isRemoteButtonEnabled() && assistant.isAssistantKey(event.getKeyCode());
+    }
+
     @Override public boolean dispatchKeyEvent(KeyEvent event) {
         if (event.getAction() == KeyEvent.ACTION_DOWN) lastKeyDownAt = SystemClock.uptimeMillis();
+        if (isAssistantKey(event)) {
+            if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) openAssistant();
+            return true;
+        }
         if (movingPackage == null) return super.dispatchKeyEvent(event);
         int code = event.getKeyCode();
         boolean moveKey = code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT
