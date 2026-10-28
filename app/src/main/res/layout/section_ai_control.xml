@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Inserted into Settings › AI assistant above "Open assistant" (SettingsActivity.bindAssistant). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <TextView
+        style="@style/Lumora.PanelEyebrow"
+        android:text="@string/ai_control_label" />
+
+    <Button
+        android:id="@+id/btnAiControl"
+        style="@style/Lumora.Option"
+        android:layout_width="match_parent"
+        android:layout_marginTop="8dp" />
+
+    <TextView
+        style="@style/Lumora.Hint"
+        android:text="@string/ai_control_hint" />
+</LinearLayout>
