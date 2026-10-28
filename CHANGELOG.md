@@ -1,5 +1,30 @@
 # Changelog
 
+## 5.3.0 — Hold Menu, phone voice input, Alexa skill (branch `ai-assistant`)
+
+### Changed
+- **Remote shortcut is now “hold ☰ Menu”** (600 ms) in any app via the quick-actions service, or
+  inside Lumora when the service is off. A short press still works as Menu. The *Learn* button and
+  the SEARCH / VOICE_ASSIST / ASSIST key list are removed: Fire OS never delivers the Alexa, Home or
+  app-shortcut buttons to apps, so nothing could be learned. Old learn preferences are deleted on
+  first start.
+- App cards open their menu on Menu **release** (not press), so holding Menu does not also open it.
+- The accessibility key filter now looks only at the Menu key.
+- Version 5.3.0, version code 8.
+
+### Added
+- **Phone link**: the assistant's phone button shows a QR code; the phone page sends typed or
+  dictated text (phone keyboard microphone, English or Arabic) to the TV over the home network.
+  Settings › AI assistant › **Enter key from phone** uses the same link for the OpenRouter key.
+  Security: LAN address only, 6-digit pairing code in the URL fragment, rotation after 5 wrong
+  codes, Host check, size and rate limits, 10-minute idle stop, closes when the screen is left.
+- Built-in QR encoder (`assistant/QrCode`, byte mode, ECC M, versions 1–6); no new dependency.
+  `tools/qr-reference` holds the Python reference and OpenCV decode check behind the test fixtures.
+- **Alexa skill** (`alexa-skill/`): private, development-mode Alexa-hosted skill — “Alexa, ask
+  Lumora assistant …” — answered by OpenRouter, voice only. Key kept in the skill's private S3
+  bucket. 17 Python unit tests; CI job *Alexa skill tests*.
+- JUnit tests: `LongPressTest`, `QrCodeTest`, `PhoneProtocolTest`.
+
 ## 5.2.0 — AI assistant, device info, card animation (branch `ai-assistant`)
 
 ### Added
