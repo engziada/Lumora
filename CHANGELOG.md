@@ -1,5 +1,42 @@
 # Changelog
 
+## 5.4.0 — TV control, self-update
+
+### Added
+- **TV control from the assistant** (Settings › AI assistant › TV control, default on):
+  - Plain commands in English and Arabic ("pause", "volume up", "علي الصوت", "الحلقة التالية") run
+    instantly on the TV, with no API key and no network (`LocalCommands`).
+  - The model can request whitelisted actions with `[[do:…]]` directives: media keys, volume and
+    mute, back/home/screenshot/power menu, settings pages, Lumora theme, search inside an installed
+    app (`TvAction`, `TvController`). At most 4 per reply. Locked apps still ask for the code.
+  - Volume reports "controlled by the TV" when HDMI-CEC/IR makes Android's volume fixed.
+- **Self-update from GitHub Releases** (Settings › About › Updates):
+  - *Check now*, plus an automatic check (Daily by default; Every 3 days, Weekly or Off).
+  - The automatic check runs when Lumora's Home is shown and is due; it never installs silently.
+  - Reads `releases/latest/download/update.json`; the APK must come from this repository's
+    releases, match the published SHA-256 and size, have the same package name, a higher version
+    code, and the same signing certificate as the installed app. Android's installer then asks
+    for confirmation.
+  - Needs "Install unknown apps" for Lumora once (dialog, or the ADB command in Settings › ADB tools).
+- CI on every push to `main` builds a release APK signed with the repository key and publishes it
+  as release `build-<versionCode>` with `update.json`; the 5 newest releases are kept.
+- JUnit tests: `TvActionTest`, `LocalCommandsTest`, `UpdateInfoTest`, `UpdateScheduleTest`.
+
+### Changed
+- Version 5.4.0. Version code is `1000 + CI run number` for CI builds (local builds: 9), so every
+  published build is newer than the last.
+- The debug APK artifact is now named `lumora-debug`.
+- CI runs for `main` only (branches were merged and deleted).
+
+### Removed
+- The Alexa skill (`alexa-skill/`) and its CI job: it could not control the TV and only duplicated
+  what Alexa answers directly.
+
+### Upgrade note
+- Release builds are signed with a new key. **One-time**: uninstall the debug-signed Lumora and
+  install the release APK; afterwards updates install in place. Settings and the OpenRouter key
+  must be set again, and the ADB grants re-run.
+
 ## 5.3.0 — Hold Menu, phone voice input, Alexa skill (branch `ai-assistant`)
 
 ### Changed
@@ -22,7 +59,7 @@
   `tools/qr-reference` holds the Python reference and OpenCV decode check behind the test fixtures.
 - **Alexa skill** (`alexa-skill/`): private, development-mode Alexa-hosted skill — “Alexa, ask
   Lumora assistant …” — answered by OpenRouter, voice only. Key kept in the skill's private S3
-  bucket. 17 Python unit tests; CI job *Alexa skill tests*.
+  bucket. 17 Python unit tests; CI job *Alexa skill tests*. (Removed in 5.4.0.)
 - JUnit tests: `LongPressTest`, `QrCodeTest`, `PhoneProtocolTest`.
 
 ## 5.2.0 — AI assistant, device info, card animation (branch `ai-assistant`)
