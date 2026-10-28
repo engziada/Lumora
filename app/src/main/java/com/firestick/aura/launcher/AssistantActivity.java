@@ -28,11 +28,14 @@ import androidx.core.content.ContextCompat;
 import com.firestick.aura.launcher.assistant.AssistantSettings;
 import com.firestick.aura.launcher.assistant.AssistantText;
 import com.firestick.aura.launcher.assistant.OpenRouterClient;
+import com.firestick.aura.launcher.assistant.PhoneBridge;
 import com.firestick.aura.launcher.manager.PreferenceManager;
 import com.firestick.aura.launcher.manager.SoundManager;
 import com.firestick.aura.launcher.ui.LockPad;
+import com.firestick.aura.launcher.ui.PhonePairDialog;
 
 import java.text.DateFormat;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -44,23 +47,28 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * Chat panel over whatever is on screen. Opened from the floating button on Home or from the
- * remote's assistant button (QuickActionService). Questions go to OpenRouter with the user's key.
+ * Chat panel over whatever is on screen. Opened from the floating button on Home or by holding the
+ * remote's Menu button (QuickActionService). Questions go to OpenRouter with the user's key; they can
+ * also come from a phone over the home network (PhoneBridge), so the phone keyboard's mic works.
  */
-public class AssistantActivity extends AppCompatActivity {
-    private static final int MAX_TURNS = 12, MAX_APPS = 80;
+public class AssistantActivity extends AppCompatActivity implements PhoneBridge.Listener {
+    private static final int MAX_TURNS = 12, MAX_APPS = 80, MAX_PENDING = 5;
     /** Kept for the life of the process so closing and reopening continues the conversation. */
     private static final List<OpenRouterClient.Message> HISTORY = new ArrayList<>();
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private final ArrayDeque<String> pending = new ArrayDeque<>();
     private AssistantSettings settings;
     private PreferenceManager preferences;
     private ScrollView scroll;
     private LinearLayout messages;
     private View setupPanel, inputRow, send, mic;
+    private ImageView phoneIcon;
     private EditText input;
     private TextView status;
     private ActivityResultLauncher<Intent> speech;
+    private PhoneBridge phone;
+    private PhonePairDialog pairDialog;
     private boolean busy;
     private int generation;
 
@@ -77,6 +85,7 @@ public class AssistantActivity extends AppCompatActivity {
         status = findViewById(R.id.txtAssistantStatus);
         send = findViewById(R.id.btnAssistantSend);
         mic = findViewById(R.id.btnAssistantMic);
+        phoneIcon = findViewById(R.id.imgAssistantPhone);
 
         int accent = accent();
         ((ImageView) findViewById(R.id.imgAssistantMark)).setImageTintList(ColorStateList.valueOf(accent));
@@ -90,10 +99,15 @@ public class AssistantActivity extends AppCompatActivity {
                 submit();
             }
         });
+        // Fire OS has no speech recognizer for apps; the button appears only on devices that have one.
         boolean canListen = !getPackageManager()
                 .queryIntentActivities(new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH), 0).isEmpty();
         mic.setVisibility(canListen ? View.VISIBLE : View.GONE);
         mic.setOnClickListener(v -> listen());
+        findViewById(R.id.btnAssistantPhone).setOnClickListener(v -> {
+            SoundManager.playClick(v, preferences);
+            openPhoneLink();
+        });
         send.setOnClickListener(v -> {
             SoundManager.playClick(v, preferences);
             submit();
@@ -111,6 +125,7 @@ public class AssistantActivity extends AppCompatActivity {
         findViewById(R.id.btnAssistantClear).setOnClickListener(v -> clearConversation());
         findViewById(R.id.btnAssistantSetup).setOnClickListener(v -> openAssistantSettings());
         renderHistory();
+        updatePhoneButton();
     }
 
     @Override protected void onResume() {
@@ -123,8 +138,15 @@ public class AssistantActivity extends AppCompatActivity {
         updateMode();
     }
 
+    /** The phone link must not stay open once the assistant is no longer on screen. */
+    @Override protected void onStop() {
+        stopPhoneLink();
+        super.onStop();
+    }
+
     @Override protected void onDestroy() {
         generation++;
+        stopPhoneLink();
         executor.shutdownNow();
         super.onDestroy();
     }
@@ -136,6 +158,63 @@ public class AssistantActivity extends AppCompatActivity {
         inputRow.setVisibility(ready ? View.VISIBLE : View.GONE);
         if (!busy) status.setText(getString(R.string.assistant_status_model, settings.getModel()));
         (ready ? input : findViewById(R.id.btnAssistantSetup)).requestFocus();
+    }
+
+    // ---------------------------------------------------------- phone link
+
+    private void openPhoneLink() {
+        if (phone == null || !phone.isRunning()) {
+            phone = new PhoneBridge(PhoneBridge.MODE_CHAT, this);
+            int result = phone.start();
+            if (result != PhoneBridge.START_OK) {
+                phone = null;
+                updatePhoneButton();
+                addBubble(getString(result == PhoneBridge.START_NO_NETWORK
+                        ? R.string.phone_no_network : R.string.phone_start_failed), false, true);
+                return;
+            }
+        }
+        updatePhoneButton();
+        pairDialog = PhonePairDialog.show(this, phone, getString(R.string.phone_title_chat),
+                getString(R.string.phone_message_chat), null);
+    }
+
+    private void stopPhoneLink() {
+        if (pairDialog != null) pairDialog.dismiss();
+        pairDialog = null;
+        if (phone != null) phone.stop();
+        phone = null;
+        pending.clear();
+        if (phoneIcon != null) updatePhoneButton();
+    }
+
+    private void updatePhoneButton() {
+        boolean linked = phone != null && phone.isRunning();
+        phoneIcon.setImageTintList(ColorStateList.valueOf(linked ? accent() : color(R.color.nova_text)));
+    }
+
+    @Override public void onText(String text) {
+        if (pairDialog != null) pairDialog.dismiss();
+        if (!settings.hasApiKey()) return;
+        if (busy) {
+            if (pending.size() < MAX_PENDING) pending.addLast(text);
+            return;
+        }
+        input.setText(text);
+        submit();
+    }
+
+    @Override public void onCodeChanged(String code) {
+        if (pairDialog != null && pairDialog.isShowing()) pairDialog.refresh();
+    }
+
+    @Override public void onStopped(boolean idle) {
+        if (pairDialog != null) pairDialog.dismiss();
+        pairDialog = null;
+        phone = null;
+        pending.clear();
+        updatePhoneButton();
+        addBubble(getString(idle ? R.string.phone_stopped_idle : R.string.phone_stopped_error), false, !idle);
     }
 
     // ------------------------------------------------------------ messages
@@ -161,6 +240,7 @@ public class AssistantActivity extends AppCompatActivity {
     private void clearConversation() {
         generation++;
         HISTORY.clear();
+        pending.clear();
         setBusy(false);
         renderHistory();
         input.requestFocus();
@@ -210,10 +290,16 @@ public class AssistantActivity extends AppCompatActivity {
             addBubble(reply.text, false, false);
             addOpenButtons(reply.packages);
             if (!result.model.isEmpty()) status.setText(getString(R.string.assistant_status_answered, result.model));
+            String next = pending.pollFirst();
+            if (next != null) {
+                input.setText(next);
+                submit();
+            }
             return;
         }
         // Drop the failed question so a retry does not send it twice; put it back in the field.
         if (!HISTORY.isEmpty()) HISTORY.remove(HISTORY.size() - 1);
+        pending.clear();
         input.setText(question);
         addBubble(errorText(result), false, true);
     }
