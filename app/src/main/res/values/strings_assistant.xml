@@ -17,7 +17,7 @@
     <string name="assistant_thinking">Thinking…</string>
     <string name="assistant_status_model">Model: %1$s</string>
     <string name="assistant_status_answered">Answered by %1$s</string>
-    <string name="assistant_welcome">Hi! Ask me anything — what to watch tonight, a quick fact, or \"open YouTube\". I answer in English or Arabic. To talk instead of typing, press the phone button and scan the code with your phone.</string>
+    <string name="assistant_welcome">Hi! Ask me anything, or tell me what to do: \"pause\", \"volume up\", \"next episode\", \"open YouTube\", \"search Netflix for Dark\". I understand English and Arabic. To talk instead of typing, press the phone button and scan the code with your phone.</string>
     <string name="assistant_open_app">Open %1$s</string>
     <string name="assistant_setup_title">Connect OpenRouter</string>
     <string name="assistant_setup_message">The assistant uses OpenRouter\'s free models. Create a free key at openrouter.ai/keys, then add it in Settings › AI assistant.</string>
@@ -73,7 +73,7 @@
     <string name="ai_remote_off">Hold ☰ Menu: Off</string>
     <string name="ai_remote_title">Hold ☰ Menu</string>
     <string name="ai_remote_needs_quick">Holding Menu opens the assistant in every app once quick actions are on (one-time ADB setup). Until then it works only while Lumora is open.</string>
-    <string name="ai_remote_hint">Hold the ☰ Menu button for about half a second to open the assistant; a short press still works as Menu. Works in every app with quick actions on, otherwise only inside Lumora. The Alexa button cannot be used: Fire OS sends it only to Alexa. For Alexa, see the Lumora Alexa skill guide.</string>
+    <string name="ai_remote_hint">Hold the ☰ Menu button for about half a second to open the assistant; a short press still works as Menu. Works in every app with quick actions on, otherwise only inside Lumora. The Alexa button cannot be used: Fire OS sends it only to Alexa.</string>
     <string name="ai_privacy_label">Privacy</string>
     <string name="ai_share_on">Share installed app names: On</string>
     <string name="ai_share_off">Share installed app names: Off</string>
