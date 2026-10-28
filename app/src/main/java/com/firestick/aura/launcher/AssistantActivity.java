@@ -27,8 +27,11 @@ import androidx.core.content.ContextCompat;
 
 import com.firestick.aura.launcher.assistant.AssistantSettings;
 import com.firestick.aura.launcher.assistant.AssistantText;
+import com.firestick.aura.launcher.assistant.LocalCommands;
 import com.firestick.aura.launcher.assistant.OpenRouterClient;
 import com.firestick.aura.launcher.assistant.PhoneBridge;
+import com.firestick.aura.launcher.assistant.TvAction;
+import com.firestick.aura.launcher.assistant.TvController;
 import com.firestick.aura.launcher.manager.PreferenceManager;
 import com.firestick.aura.launcher.manager.SoundManager;
 import com.firestick.aura.launcher.ui.LockPad;
@@ -50,6 +53,7 @@ import java.util.concurrent.Executors;
  * Chat panel over whatever is on screen. Opened from the floating button on Home or by holding the
  * remote's Menu button (QuickActionService). Questions go to OpenRouter with the user's key; they can
  * also come from a phone over the home network (PhoneBridge), so the phone keyboard's mic works.
+ * With TV control on, replies and plain commands run whitelisted TV actions (TvController).
  */
 public class AssistantActivity extends AppCompatActivity implements PhoneBridge.Listener {
     private static final int MAX_TURNS = 12, MAX_APPS = 80, MAX_PENDING = 5;
@@ -195,7 +199,7 @@ public class AssistantActivity extends AppCompatActivity implements PhoneBridge.
 
     @Override public void onText(String text) {
         if (pairDialog != null) pairDialog.dismiss();
-        if (!settings.hasApiKey()) return;
+        if (!settings.hasApiKey() && LocalCommands.match(text) == null) return;
         if (busy) {
             if (pending.size() < MAX_PENDING) pending.addLast(text);
             return;
@@ -249,6 +253,21 @@ public class AssistantActivity extends AppCompatActivity implements PhoneBridge.
     private void submit() {
         String text = input.getText().toString().trim();
         if (text.isEmpty() || busy) return;
+        TvAction local = settings.isControlEnabled() ? LocalCommands.match(text) : null;
+        if (local != null) {
+            // Plain commands run at once, without a model request; they are not added to the history.
+            input.setText("");
+            if (HISTORY.isEmpty()) messages.removeAllViews();
+            addBubble(text, true, false);
+            if (!perform(Collections.singletonList(local), Collections.emptyList())) {
+                String next = pending.pollFirst();
+                if (next != null) {
+                    input.setText(next);
+                    submit();
+                }
+            }
+            return;
+        }
         if (!settings.hasApiKey()) {
             updateMode();
             return;
@@ -262,12 +281,13 @@ public class AssistantActivity extends AppCompatActivity implements PhoneBridge.
         String key = settings.getApiKey();
         String model = settings.getModel();
         boolean shareApps = settings.isShareAppsEnabled();
+        boolean control = settings.isControlEnabled();
         List<OpenRouterClient.Message> turns = recentTurns();
         String now = DateFormat.getDateTimeInstance(DateFormat.FULL, DateFormat.SHORT, Locale.getDefault()).format(new Date());
         executor.execute(() -> {
             List<String> apps = shareApps ? installedApps() : Collections.emptyList();
             List<OpenRouterClient.Message> payload = new ArrayList<>();
-            payload.add(new OpenRouterClient.Message("system", AssistantText.systemPrompt(now, apps)));
+            payload.add(new OpenRouterClient.Message("system", AssistantText.systemPrompt(now, apps, control)));
             payload.addAll(turns);
             OpenRouterClient.Result result = OpenRouterClient.chat(key, model, payload);
             runOnUiThread(() -> {
@@ -290,6 +310,10 @@ public class AssistantActivity extends AppCompatActivity implements PhoneBridge.
             addBubble(reply.text, false, false);
             addOpenButtons(reply.packages);
             if (!result.model.isEmpty()) status.setText(getString(R.string.assistant_status_answered, result.model));
+            if (settings.isControlEnabled() && perform(reply.actions, reply.packages)) {
+                pending.clear();
+                return;
+            }
             String next = pending.pollFirst();
             if (next != null) {
                 input.setText(next);
@@ -397,6 +421,97 @@ public class AssistantActivity extends AppCompatActivity implements PhoneBridge.
 
     private void scrollToEnd() {
         scroll.post(() -> scroll.smoothScrollTo(0, messages.getBottom()));
+    }
+
+    // ------------------------------------------------------------- control
+
+    /**
+     * Runs TV actions. Actions that leave the panel open run now and get a status line; actions
+     * that start or reveal something else close the assistant first and run a moment later. With no
+     * closing action, the first app from {@code [[open:...]]} is opened.
+     *
+     * @return {@code true} when the assistant is closing
+     */
+    private boolean perform(List<TvAction> actions, List<String> packages) {
+        List<TvAction> afterClose = new ArrayList<>();
+        for (TvAction action : actions) {
+            int check = TvController.precheck(this, action);
+            if (check != TvController.OK) {
+                addBubble(controlError(check), false, true);
+                continue;
+            }
+            if (action.closesPanel()) {
+                afterClose.add(action);
+                continue;
+            }
+            int result = TvController.run(this, action);
+            if (result == TvController.OK) addBubble("\u2713 " + actionLabel(action), false, false);
+            else addBubble(controlError(result), false, true);
+        }
+        if (afterClose.isEmpty()) {
+            if (packages.isEmpty() || launchIntentFor(packages.get(0)) == null) return false;
+            openApp(packages.get(0));
+            return true;
+        }
+        String locked = null;
+        for (TvAction action : afterClose) {
+            if (TvAction.SEARCH.equals(action.name) && preferences.isLocked(action.arg)) locked = action.arg;
+        }
+        Runnable close = () -> {
+            for (TvAction action : afterClose) TvController.runLater(this, action);
+            finish();
+        };
+        if (locked != null) LockPad.verify(this, preferences, getString(R.string.lock_sub_app, labelFor(locked)), close::run);
+        else close.run();
+        return true;
+    }
+
+    private String actionLabel(TvAction action) {
+        switch (action.name) {
+            case TvAction.PLAY:
+                return getString(R.string.ctl_play);
+            case TvAction.PAUSE:
+                return getString(R.string.ctl_pause);
+            case TvAction.PLAY_PAUSE:
+                return getString(R.string.ctl_play_pause);
+            case TvAction.NEXT:
+                return getString(R.string.ctl_next);
+            case TvAction.PREVIOUS:
+                return getString(R.string.ctl_previous);
+            case TvAction.STOP:
+                return getString(R.string.ctl_stop);
+            case TvAction.FORWARD:
+                return getString(R.string.ctl_forward);
+            case TvAction.REWIND:
+                return getString(R.string.ctl_rewind);
+            case TvAction.VOLUME_UP:
+                return getString(R.string.ctl_volume_up, action.steps);
+            case TvAction.VOLUME_DOWN:
+                return getString(R.string.ctl_volume_down, action.steps);
+            case TvAction.MUTE:
+                return getString(R.string.ctl_mute);
+            case TvAction.UNMUTE:
+                return getString(R.string.ctl_unmute);
+            case TvAction.THEME:
+                return getString(R.string.ctl_theme, action.arg);
+            default:
+                return action.name;
+        }
+    }
+
+    private String controlError(int result) {
+        switch (result) {
+            case TvController.NEEDS_QUICK:
+                return getString(R.string.ctl_needs_quick);
+            case TvController.VOLUME_FIXED:
+                return getString(R.string.ctl_volume_fixed);
+            case TvController.NOT_INSTALLED:
+                return getString(R.string.ctl_not_installed);
+            case TvController.UNSUPPORTED:
+                return getString(R.string.ctl_unsupported);
+            default:
+                return getString(R.string.ctl_failed);
+        }
     }
 
     // ---------------------------------------------------------------- apps
