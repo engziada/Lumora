@@ -117,8 +117,8 @@ the TV's home-network address, port 8765–8775, for the paired phone only. It c
 screen is left or after 10 idle minutes.
 
 Downloads are cached on the device (icons indefinitely, schedules 3 hours, posters 14 days,
-wallpapers until the cache is cleared; update APKs are deleted after the next check). With every
-feature off, Lumora makes no network requests.
+wallpapers until the cache is cleared; only the last downloaded update APK is kept, replaced by
+the next update download). With every feature off, Lumora makes no network requests.
 
 **Movie posters:** TVmaze covers TV and streaming series only. Film posters would need TMDB, which
 requires a free account and API key; it is not integrated.
