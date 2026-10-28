@@ -155,6 +155,25 @@
                 android:textSize="12sp" />
 
             <FrameLayout
+                android:id="@+id/btnAssistantPhone"
+                android:layout_width="46dp"
+                android:layout_height="46dp"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_gear"
+                android:clickable="true"
+                android:contentDescription="@string/assistant_phone"
+                android:focusable="true">
+
+                <ImageView
+                    android:id="@+id/imgAssistantPhone"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_phone" />
+            </FrameLayout>
+
+            <FrameLayout
                 android:id="@+id/btnAssistantMic"
                 android:layout_width="46dp"
                 android:layout_height="46dp"
