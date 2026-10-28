@@ -37,6 +37,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.firestick.aura.launcher.adapter.AppRowAdapter;
 import com.firestick.aura.launcher.adapter.ShowsAdapter;
 import com.firestick.aura.launcher.assistant.AssistantSettings;
+import com.firestick.aura.launcher.assistant.LongPress;
 import com.firestick.aura.launcher.manager.AppLock;
 import com.firestick.aura.launcher.manager.AppRepository;
 import com.firestick.aura.launcher.manager.DebloatManager;
@@ -85,6 +86,7 @@ public class MainActivity extends AppCompatActivity
     private LinearLayout showsChips;
     private PopupWindow gearMenu;
     private final Map<String, List<AppModel>> rows = new HashMap<>();
+    private final LongPress menuPress = new LongPress();
     private List<AppModel> homeApps = new ArrayList<>();
     private List<ShowItem> allShows;
     private String showsCountry, showsFilter = FILTER_ALL;
@@ -406,21 +408,34 @@ public class MainActivity extends AppCompatActivity
         if (movingPackage != null) finishMove();
         if (gearMenu != null) gearMenu.dismiss();
         if (wallpapers != null) wallpapers.stop();
+        menuPress.up();
         super.onPause();
     }
 
-    /** Fallback when the quick-actions service is off: the assistant key still works inside Lumora. */
-    private boolean isAssistantKey(KeyEvent event) {
-        return movingPackage == null && !QuickActionService.isRunning()
-                && assistant.isRemoteButtonEnabled() && assistant.isAssistantKey(event.getKeyCode());
+    /**
+     * Fallback when the quick-actions service is off: holding Menu still opens the assistant inside
+     * Lumora, using the key repeats the activity receives. With the service on, it handles the hold.
+     */
+    private boolean handleMenuHold(KeyEvent event) {
+        if (event.getKeyCode() != KeyEvent.KEYCODE_MENU || movingPackage != null
+                || QuickActionService.isRunning() || !assistant.isRemoteButtonEnabled()) {
+            return false;
+        }
+        if (event.getAction() == KeyEvent.ACTION_DOWN) {
+            if (event.getRepeatCount() == 0) {
+                menuPress.down(event.getEventTime());
+                return false;
+            }
+            if (menuPress.check(event.getEventTime())) openAssistant();
+            return menuPress.hasFired();
+        }
+        if (event.getAction() == KeyEvent.ACTION_UP) return menuPress.up();
+        return false;
     }
 
     @Override public boolean dispatchKeyEvent(KeyEvent event) {
         if (event.getAction() == KeyEvent.ACTION_DOWN) lastKeyDownAt = SystemClock.uptimeMillis();
-        if (isAssistantKey(event)) {
-            if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) openAssistant();
-            return true;
-        }
+        if (handleMenuHold(event)) return true;
         if (movingPackage == null) return super.dispatchKeyEvent(event);
         int code = event.getKeyCode();
         boolean moveKey = code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT
