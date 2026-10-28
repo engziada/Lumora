@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v5.2.0: AI assistant, device info and the shared text prompt. -->
+<resources>
+    <!-- Text prompt -->
+    <string name="prompt_hint">Type here</string>
+    <string name="prompt_save">Save</string>
+    <string name="prompt_cancel">Cancel</string>
+
+    <!-- Assistant panel -->
+    <string name="assistant_title">Lumora Assistant</string>
+    <string name="assistant_open">Open assistant</string>
+    <string name="assistant_clear">Clear</string>
+    <string name="assistant_hint">Ask anything…</string>
+    <string name="assistant_mic">Speak</string>
+    <string name="assistant_send">Send</string>
+    <string name="assistant_thinking">Thinking…</string>
+    <string name="assistant_status_model">Model: %1$s</string>
+    <string name="assistant_status_answered">Answered by %1$s</string>
+    <string name="assistant_welcome">Hi! Ask me anything — what to watch tonight, a quick fact, or \"open YouTube\". I answer in English or Arabic.</string>
+    <string name="assistant_open_app">Open %1$s</string>
+    <string name="assistant_setup_title">Connect OpenRouter</string>
+    <string name="assistant_setup_message">The assistant uses OpenRouter\'s free models. Create a free key at openrouter.ai/keys, then add it in Settings › AI assistant.</string>
+    <string name="assistant_setup_button">Open assistant settings</string>
+    <string name="assistant_err_auth">OpenRouter rejected the API key. Check it in Settings › AI assistant.</string>
+    <string name="assistant_err_credits">OpenRouter reports a negative credit balance. Free models stop working until it is settled.</string>
+    <string name="assistant_err_rate">Free-model limit reached (requests per minute or per day). Try again later.</string>
+    <string name="assistant_err_flagged">The request was blocked by the model\'s moderation.</string>
+    <string name="assistant_err_network">No connection to OpenRouter. Check the network and try again.</string>
+    <string name="assistant_err_empty">The model sent an empty reply. Try again; the free router may pick another model.</string>
+    <string name="assistant_err_server">OpenRouter could not answer right now. Try again.</string>
+
+    <!-- Settings: AI assistant -->
+    <string name="sec_assistant">AI assistant</string>
+    <string name="ai_key_label">OpenRouter API key</string>
+    <string name="ai_key_unset">API key: not set</string>
+    <string name="ai_key_set">API key: %1$s</string>
+    <string name="ai_key_title">OpenRouter API key</string>
+    <string name="ai_key_message">Paste or type your key (starts with sk-or-). From a computer you can also focus this field and run: adb shell input text YOUR_KEY</string>
+    <string name="ai_key_format">Saved. OpenRouter keys normally start with sk-or-.</string>
+    <string name="ai_key_removed">API key removed from this TV.</string>
+    <string name="ai_key_none">Add an API key first.</string>
+    <string name="ai_key_remove">Remove key</string>
+    <string name="ai_key_hint">Free key at openrouter.ai/keys. The key is stored only on this TV, excluded from Android backups, and sent only to openrouter.ai.</string>
+    <string name="ai_test">Test key</string>
+    <string name="ai_testing">Testing…</string>
+    <string name="ai_test_ok">Key accepted by OpenRouter.</string>
+    <string name="ai_model_label">Model</string>
+    <string name="ai_model_value">Model: %1$s</string>
+    <string name="ai_model_free">Free models router (openrouter/free)</string>
+    <string name="ai_model_custom">Custom model id…</string>
+    <string name="ai_model_custom_message">An OpenRouter model id, for example google/gemma-4-31b-it:free. Paid models use your OpenRouter credits.</string>
+    <string name="ai_model_hint">openrouter/free picks a free model per request at no cost. Free models are rate limited by OpenRouter (per minute and per day).</string>
+    <string name="ai_open_label">Open the assistant</string>
+    <string name="ai_floating_on">Floating button: On</string>
+    <string name="ai_floating_off">Floating button: Off</string>
+    <string name="ai_remote_on">Remote button: On</string>
+    <string name="ai_remote_off">Remote button: Off</string>
+    <string name="ai_learn_value">Learn button (now: %1$s)</string>
+    <string name="ai_learn_reset">Reset</string>
+    <string name="ai_learn_title">Remote button</string>
+    <string name="ai_learn_press">Press the remote button to use now…</string>
+    <string name="ai_learn_waiting">Waiting for a button…</string>
+    <string name="ai_learn_saved">Assistant button: %1$s</string>
+    <string name="ai_learn_timeout">No button reached Lumora within 10 seconds. Fire OS keeps some buttons (often the Alexa button) for itself; in that case use the floating button or try another button.</string>
+    <string name="ai_learn_needs_quick">Catching a remote button in every app needs quick actions (one-time ADB setup). Without it the button works only while Lumora is open.</string>
+    <string name="ai_remote_hint">The floating button sits at the end of the bottom bar. The remote button works in any app once quick actions are on; it replaces that button\'s normal action. Use Learn to pick the button your remote actually sends.</string>
+    <string name="ai_privacy_label">Privacy</string>
+    <string name="ai_share_on">Share installed app names: On</string>
+    <string name="ai_share_off">Share installed app names: Off</string>
+    <string name="ai_privacy_hint">Your questions, the recent conversation and (if on) the names of installed apps are sent to OpenRouter and the model provider it selects. Nothing else leaves the TV. With sharing off the assistant cannot suggest apps to open.</string>
+
+    <!-- Settings: device info -->
+    <string name="sec_device">Device info</string>
+    <string name="dev_live_label">Live readings</string>
+    <string name="dev_reading">Reading…</string>
+    <string name="dev_unavailable">Not available on this device</string>
+    <string name="dev_model">Model</string>
+    <string name="dev_system">System</string>
+    <string name="dev_cpu">CPU</string>
+    <string name="dev_cpu_value">%1$d%% busy · %2$d cores · %3$s</string>
+    <string name="dev_cpu_cores">%1$d cores · %2$s</string>
+    <string name="dev_clock">CPU clock</string>
+    <string name="dev_clock_value">%1$d MHz of %2$d MHz</string>
+    <string name="dev_temperature">Temperature</string>
+    <string name="dev_memory">Memory</string>
+    <string name="dev_memory_value">%1$s of %2$s used · %3$s free</string>
+    <string name="dev_memory_low">%1$s of %2$s used · %3$s free · LOW</string>
+    <string name="dev_storage">Storage</string>
+    <string name="dev_storage_value">%1$s of %2$s used · %3$s free</string>
+    <string name="dev_network">Network</string>
+    <string name="dev_offline">Offline</string>
+    <string name="dev_display">Display</string>
+    <string name="dev_uptime">Uptime</string>
+    <string name="dev_lumora">Lumora memory</string>
+    <string name="dev_hint">Updated every second while this page is open. Fire OS hides some figures (for example overall CPU load) from apps; the bar then shows the current clock speed instead.</string>
+
+    <string name="a11y_service_description_keys">Lets Lumora take screenshots, open the power menu, return to Lumora when the Home button opens the stock Fire TV home, and open the Lumora assistant from a remote button. It checks key codes only for that button and does not read screen content.</string>
+
+    <!-- ADB tools -->
+    <string name="adb_key_title">Type the OpenRouter key from a computer</string>
+    <string name="adb_key_command">Open Settings › AI assistant › API key, focus the field, then run:\nadb shell input text sk-or-v1-…</string>
+</resources>
