@@ -15,6 +15,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  alexa-skill:
+    name: Alexa skill tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Unit tests
+        run: python3 -m unittest discover -s alexa-skill/tests -v
+
   build:
     name: Validate and build
     runs-on: ubuntu-24.04

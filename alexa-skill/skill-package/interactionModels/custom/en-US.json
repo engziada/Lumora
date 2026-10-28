@@ -1,0 +1,25 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "invocationName": "lumora assistant",
+      "intents": [
+        {"name": "WhatIntent", "slots": [{"name": "query", "type": "AMAZON.SearchQuery"}], "samples": ["what {query}", "what's {query}", "what are {query}"]},
+        {"name": "WhoIntent", "slots": [{"name": "query", "type": "AMAZON.SearchQuery"}], "samples": ["who {query}", "who's {query}"]},
+        {"name": "WhereIntent", "slots": [{"name": "query", "type": "AMAZON.SearchQuery"}], "samples": ["where {query}", "where's {query}"]},
+        {"name": "WhenIntent", "slots": [{"name": "query", "type": "AMAZON.SearchQuery"}], "samples": ["when {query}", "when's {query}"]},
+        {"name": "WhyIntent", "slots": [{"name": "query", "type": "AMAZON.SearchQuery"}], "samples": ["why {query}"]},
+        {"name": "HowIntent", "slots": [{"name": "query", "type": "AMAZON.SearchQuery"}], "samples": ["how {query}", "how's {query}"]},
+        {"name": "WhichIntent", "slots": [{"name": "query", "type": "AMAZON.SearchQuery"}], "samples": ["which {query}"]},
+        {"name": "CanIntent", "slots": [{"name": "query", "type": "AMAZON.SearchQuery"}], "samples": ["can {query}", "could {query}"]},
+        {"name": "IsIntent", "slots": [{"name": "query", "type": "AMAZON.SearchQuery"}], "samples": ["is {query}", "are {query}", "does {query}", "do {query}"]},
+        {"name": "AskIntent", "slots": [{"name": "query", "type": "AMAZON.SearchQuery"}], "samples": ["tell me {query}", "question {query}", "ask {query}", "explain {query}", "recommend {query}", "suggest {query}", "give me {query}", "i want to know {query}", "help me {query}", "translate {query}"]},
+        {"name": "AMAZON.CancelIntent", "samples": []},
+        {"name": "AMAZON.HelpIntent", "samples": []},
+        {"name": "AMAZON.StopIntent", "samples": []},
+        {"name": "AMAZON.NavigateHomeIntent", "samples": []},
+        {"name": "AMAZON.FallbackIntent", "samples": []}
+      ],
+      "types": []
+    }
+  }
+}

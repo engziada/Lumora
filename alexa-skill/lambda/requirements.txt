@@ -1,0 +1,1 @@
+# No third-party packages. boto3 is provided by the AWS Lambda Python runtime.
