@@ -10,8 +10,8 @@ android {
         applicationId 'com.firestick.aura.launcher'
         minSdk 26
         targetSdk 34
-        versionCode 6
-        versionName '5.1.0'
+        versionCode 7
+        versionName '5.2.0'
         // Shown in Settings > About.
         resValue 'string', 'build_date', new java.text.SimpleDateFormat('yyyy-MM-dd').format(new Date())
     }
@@ -40,4 +40,8 @@ dependencies {
     implementation 'androidx.cardview:cardview:1.0.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'androidx.leanback:leanback:1.0.0'
+
+    // Local JVM tests. org.json replaces the android.jar stubs so JSON parsing runs for real.
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.json:json:20240303'
 }
