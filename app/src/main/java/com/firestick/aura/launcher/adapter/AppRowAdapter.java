@@ -262,12 +262,13 @@ public class AppRowAdapter extends RecyclerView.Adapter<AppRowAdapter.AppViewHol
                 listener.onAppLongClick(app, rowId);
                 return true;
             });
+            // Menu acts on release: holding Menu opens the assistant, which consumes or cancels the release.
             itemView.setOnKeyListener((v, keyCode, event) -> {
-                if (listener != null && event.getAction() == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_MENU) {
+                if (listener == null || keyCode != KeyEvent.KEYCODE_MENU) return false;
+                if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled()) {
                     listener.onAppLongClick(app, rowId);
-                    return true;
                 }
-                return false;
+                return true;
             });
             applyFocus(itemView.isFocused());
         }
