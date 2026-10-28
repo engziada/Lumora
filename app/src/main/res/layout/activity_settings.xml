@@ -99,66 +99,88 @@
                 android:orientation="vertical"
                 android:padding="12dp">
 
-                <TextView
-                    android:id="@+id/secAppearance"
-                    style="@style/Lumora.SectionRow"
-                    android:text="@string/sec_appearance"
-                    app:drawableStartCompat="@drawable/ic_palette"
-                    app:drawableTint="@color/nova_accent" />
-
-                <TextView
-                    android:id="@+id/secWallpaper"
-                    style="@style/Lumora.SectionRow"
-                    android:text="@string/sec_wallpaper"
-                    app:drawableStartCompat="@drawable/ic_sec_wallpaper"
-                    app:drawableTint="@color/nova_accent" />
-
-                <TextView
-                    android:id="@+id/secAudio"
-                    style="@style/Lumora.SectionRow"
-                    android:text="@string/sec_audio"
-                    app:drawableStartCompat="@drawable/ic_sec_audio"
-                    app:drawableTint="@color/nova_accent" />
-
-                <TextView
-                    android:id="@+id/secShows"
-                    style="@style/Lumora.SectionRow"
-                    android:text="@string/sec_shows"
-                    app:drawableStartCompat="@drawable/ic_nav_shows"
-                    app:drawableTint="@color/nova_accent" />
-
-                <TextView
-                    android:id="@+id/secLock"
-                    style="@style/Lumora.SectionRow"
-                    android:text="@string/sec_lock"
-                    app:drawableStartCompat="@drawable/ic_act_lock"
-                    app:drawableTint="@color/nova_accent" />
-
-                <TextView
-                    android:id="@+id/secSystem"
-                    style="@style/Lumora.SectionRow"
-                    android:text="@string/sec_system"
-                    app:drawableStartCompat="@drawable/ic_sec_system"
-                    app:drawableTint="@color/nova_accent" />
-
-                <TextView
-                    android:id="@+id/secAdb"
-                    style="@style/Lumora.SectionRow"
-                    android:text="@string/sec_adb"
-                    app:drawableStartCompat="@drawable/ic_sec_adb"
-                    app:drawableTint="@color/nova_accent" />
-
-                <TextView
-                    android:id="@+id/secAbout"
-                    style="@style/Lumora.SectionRow"
-                    android:text="@string/sec_about"
-                    app:drawableStartCompat="@drawable/ic_act_info"
-                    app:drawableTint="@color/nova_accent" />
-
-                <View
+                <ScrollView
                     android:layout_width="match_parent"
                     android:layout_height="0dp"
-                    android:layout_weight="1" />
+                    android:layout_weight="1"
+                    android:scrollbars="none">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/secAppearance"
+                            style="@style/Lumora.SectionRow"
+                            android:text="@string/sec_appearance"
+                            app:drawableStartCompat="@drawable/ic_palette"
+                            app:drawableTint="@color/nova_accent" />
+
+                        <TextView
+                            android:id="@+id/secWallpaper"
+                            style="@style/Lumora.SectionRow"
+                            android:text="@string/sec_wallpaper"
+                            app:drawableStartCompat="@drawable/ic_sec_wallpaper"
+                            app:drawableTint="@color/nova_accent" />
+
+                        <TextView
+                            android:id="@+id/secAudio"
+                            style="@style/Lumora.SectionRow"
+                            android:text="@string/sec_audio"
+                            app:drawableStartCompat="@drawable/ic_sec_audio"
+                            app:drawableTint="@color/nova_accent" />
+
+                        <TextView
+                            android:id="@+id/secShows"
+                            style="@style/Lumora.SectionRow"
+                            android:text="@string/sec_shows"
+                            app:drawableStartCompat="@drawable/ic_nav_shows"
+                            app:drawableTint="@color/nova_accent" />
+
+                        <TextView
+                            android:id="@+id/secLock"
+                            style="@style/Lumora.SectionRow"
+                            android:text="@string/sec_lock"
+                            app:drawableStartCompat="@drawable/ic_act_lock"
+                            app:drawableTint="@color/nova_accent" />
+
+                        <TextView
+                            android:id="@+id/secAssistant"
+                            style="@style/Lumora.SectionRow"
+                            android:text="@string/sec_assistant"
+                            app:drawableStartCompat="@drawable/ic_assistant"
+                            app:drawableTint="@color/nova_accent" />
+
+                        <TextView
+                            android:id="@+id/secSystem"
+                            style="@style/Lumora.SectionRow"
+                            android:text="@string/sec_system"
+                            app:drawableStartCompat="@drawable/ic_sec_system"
+                            app:drawableTint="@color/nova_accent" />
+
+                        <TextView
+                            android:id="@+id/secDevice"
+                            style="@style/Lumora.SectionRow"
+                            android:text="@string/sec_device"
+                            app:drawableStartCompat="@drawable/ic_sec_device"
+                            app:drawableTint="@color/nova_accent" />
+
+                        <TextView
+                            android:id="@+id/secAdb"
+                            style="@style/Lumora.SectionRow"
+                            android:text="@string/sec_adb"
+                            app:drawableStartCompat="@drawable/ic_sec_adb"
+                            app:drawableTint="@color/nova_accent" />
+
+                        <TextView
+                            android:id="@+id/secAbout"
+                            style="@style/Lumora.SectionRow"
+                            android:text="@string/sec_about"
+                            app:drawableStartCompat="@drawable/ic_act_info"
+                            app:drawableTint="@color/nova_accent" />
+                    </LinearLayout>
+                </ScrollView>
 
                 <TextView
                     android:id="@+id/txtVersion"
@@ -166,6 +188,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"
+                    android:layout_marginTop="6dp"
                     android:textAllCaps="false" />
             </LinearLayout>
 
@@ -410,6 +433,148 @@
                         android:text="@string/lock_hint_settings" />
                 </LinearLayout>
 
+                <!-- AI assistant -->
+                <ScrollView
+                    android:id="@+id/panelAssistant"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scrollbars="none"
+                    android:visibility="gone">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/Lumora.PanelEyebrow"
+                            android:layout_marginTop="0dp"
+                            android:text="@string/ai_key_label" />
+
+                        <Button
+                            android:id="@+id/btnAiKey"
+                            style="@style/Lumora.Option"
+                            android:layout_width="match_parent"
+                            android:layout_marginTop="8dp" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:orientation="horizontal">
+
+                            <Button
+                                android:id="@+id/btnAiTest"
+                                style="@style/Lumora.Option"
+                                android:layout_width="0dp"
+                                android:layout_marginEnd="6dp"
+                                android:layout_weight="1"
+                                android:text="@string/ai_test" />
+
+                            <Button
+                                android:id="@+id/btnAiRemoveKey"
+                                style="@style/Lumora.Option"
+                                android:layout_width="0dp"
+                                android:layout_weight="1"
+                                android:text="@string/ai_key_remove" />
+                        </LinearLayout>
+
+                        <TextView
+                            style="@style/Lumora.Hint"
+                            android:text="@string/ai_key_hint" />
+
+                        <TextView
+                            style="@style/Lumora.PanelEyebrow"
+                            android:text="@string/ai_model_label" />
+
+                        <Button
+                            android:id="@+id/btnAiModel"
+                            style="@style/Lumora.Option"
+                            android:layout_width="match_parent"
+                            android:layout_marginTop="8dp"
+                            android:singleLine="true" />
+
+                        <TextView
+                            style="@style/Lumora.Hint"
+                            android:text="@string/ai_model_hint" />
+
+                        <TextView
+                            style="@style/Lumora.PanelEyebrow"
+                            android:text="@string/ai_open_label" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:orientation="horizontal">
+
+                            <Button
+                                android:id="@+id/btnAiFloating"
+                                style="@style/Lumora.Option"
+                                android:layout_width="0dp"
+                                android:layout_marginEnd="6dp"
+                                android:layout_weight="1" />
+
+                            <Button
+                                android:id="@+id/btnAiRemote"
+                                style="@style/Lumora.Option"
+                                android:layout_width="0dp"
+                                android:layout_weight="1" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:orientation="horizontal">
+
+                            <Button
+                                android:id="@+id/btnAiLearn"
+                                style="@style/Lumora.Option"
+                                android:layout_width="0dp"
+                                android:layout_marginEnd="6dp"
+                                android:layout_weight="2"
+                                android:singleLine="true" />
+
+                            <Button
+                                android:id="@+id/btnAiResetKeys"
+                                style="@style/Lumora.Option"
+                                android:layout_width="0dp"
+                                android:layout_weight="1"
+                                android:text="@string/ai_learn_reset" />
+                        </LinearLayout>
+
+                        <TextView
+                            style="@style/Lumora.Hint"
+                            android:text="@string/ai_remote_hint" />
+
+                        <TextView
+                            style="@style/Lumora.PanelEyebrow"
+                            android:text="@string/ai_privacy_label" />
+
+                        <Button
+                            android:id="@+id/btnAiShareApps"
+                            style="@style/Lumora.Option"
+                            android:layout_width="match_parent"
+                            android:layout_marginTop="8dp" />
+
+                        <TextView
+                            style="@style/Lumora.Hint"
+                            android:text="@string/ai_privacy_hint" />
+
+                        <Button
+                            android:id="@+id/btnAiOpen"
+                            style="@style/Lumora.Option"
+                            android:layout_width="match_parent"
+                            android:layout_marginTop="16dp"
+                            android:drawablePadding="8dp"
+                            android:text="@string/assistant_open"
+                            android:textColor="@color/nova_accent"
+                            app:drawableStartCompat="@drawable/ic_assistant"
+                            app:drawableTint="@color/nova_accent" />
+                    </LinearLayout>
+                </ScrollView>
+
                 <!-- Home & system -->
                 <ScrollView
                     android:id="@+id/panelSystem"
@@ -503,6 +668,38 @@
                             android:layout_width="match_parent"
                             android:layout_marginTop="8dp"
                             android:text="@string/device_settings" />
+                    </LinearLayout>
+                </ScrollView>
+
+                <!-- Device info: live readings, refreshed every second while visible -->
+                <ScrollView
+                    android:id="@+id/panelDevice"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:focusable="true"
+                    android:scrollbars="none"
+                    android:visibility="gone">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/Lumora.PanelEyebrow"
+                            android:layout_marginTop="0dp"
+                            android:text="@string/dev_live_label" />
+
+                        <LinearLayout
+                            android:id="@+id/deviceRows"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:orientation="vertical" />
+
+                        <TextView
+                            style="@style/Lumora.Hint"
+                            android:text="@string/dev_hint" />
                     </LinearLayout>
                 </ScrollView>
 
