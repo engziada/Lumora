@@ -3,9 +3,12 @@ package com.firestick.aura.launcher.service;
 import android.accessibilityservice.AccessibilityService;
 import android.content.Intent;
 import android.os.SystemClock;
+import android.view.KeyEvent;
 import android.view.accessibility.AccessibilityEvent;
 
+import com.firestick.aura.launcher.AssistantActivity;
 import com.firestick.aura.launcher.MainActivity;
+import com.firestick.aura.launcher.assistant.AssistantSettings;
 import com.firestick.aura.launcher.manager.PreferenceManager;
 
 import java.util.Arrays;
@@ -13,10 +16,11 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * Accessibility service for the quick menu (screenshot, power dialog) and for the Home button:
- * Fire OS ignores third-party HOME activities, so when the stock home window appears this service
- * brings Lumora to the front. It only receives window-state events from the stock home packages
- * (see res/xml/quick_action_service.xml) and never reads window content.
+ * Accessibility service for the quick menu (screenshot, power dialog), the Home button and the
+ * assistant button: Fire OS ignores third-party HOME activities, so when the stock home window
+ * appears this service brings Lumora to the front. It only receives window-state events from the
+ * stock home packages (see res/xml/quick_action_service.xml) and never reads window content.
+ * Key events are filtered only to match the assistant key code; they are not stored or logged.
  */
 public class QuickActionService extends AccessibilityService {
     private static final Set<String> STOCK_HOME = new HashSet<>(Arrays.asList(
@@ -47,6 +51,58 @@ public class QuickActionService extends AccessibilityService {
             startActivity(home);
         } catch (RuntimeException ignored) {
             // The system refused a background start; the stock home stays in front.
+        }
+    }
+
+    @Override
+    protected boolean onKeyEvent(KeyEvent event) {
+        int code = event.getKeyCode();
+        if (isReservedKey(code)) return false;
+        AssistantSettings settings = new AssistantSettings(this);
+        if (settings.isLearning()) {
+            // Swallow the key while learning so it does not also trigger Alexa or the focused app.
+            if (event.getAction() == KeyEvent.ACTION_UP) settings.finishLearning(code);
+            return true;
+        }
+        if (!settings.isRemoteButtonEnabled() || !settings.isAssistantKey(code)) return false;
+        if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) openAssistant();
+        return true;
+    }
+
+    /** Navigation, media and volume keys are never learned or captured. */
+    private static boolean isReservedKey(int code) {
+        switch (code) {
+            case KeyEvent.KEYCODE_DPAD_UP:
+            case KeyEvent.KEYCODE_DPAD_DOWN:
+            case KeyEvent.KEYCODE_DPAD_LEFT:
+            case KeyEvent.KEYCODE_DPAD_RIGHT:
+            case KeyEvent.KEYCODE_DPAD_CENTER:
+            case KeyEvent.KEYCODE_ENTER:
+            case KeyEvent.KEYCODE_BACK:
+            case KeyEvent.KEYCODE_HOME:
+            case KeyEvent.KEYCODE_MENU:
+            case KeyEvent.KEYCODE_VOLUME_UP:
+            case KeyEvent.KEYCODE_VOLUME_DOWN:
+            case KeyEvent.KEYCODE_VOLUME_MUTE:
+            case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
+            case KeyEvent.KEYCODE_MEDIA_PLAY:
+            case KeyEvent.KEYCODE_MEDIA_PAUSE:
+            case KeyEvent.KEYCODE_MEDIA_FAST_FORWARD:
+            case KeyEvent.KEYCODE_MEDIA_REWIND:
+            case KeyEvent.KEYCODE_POWER:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private void openAssistant() {
+        suppressRedirect(3_000L);
+        Intent intent = new Intent(this, AssistantActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        try {
+            startActivity(intent);
+        } catch (RuntimeException ignored) {
+            // Background start refused; nothing else to do from a key handler.
         }
     }
 
