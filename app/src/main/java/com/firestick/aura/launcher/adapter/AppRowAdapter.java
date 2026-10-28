@@ -1,10 +1,16 @@
 package com.firestick.aura.launcher.adapter;
 
+import android.animation.AnimatorSet;
+import android.animation.ObjectAnimator;
+import android.animation.ValueAnimator;
 import android.content.res.ColorStateList;
+import android.graphics.drawable.GradientDrawable;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.AccelerateDecelerateInterpolator;
+import android.view.animation.DecelerateInterpolator;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -27,6 +33,8 @@ import java.util.Set;
 public class AppRowAdapter extends RecyclerView.Adapter<AppRowAdapter.AppViewHolder> {
     public static final int STYLE_TILE = 0;
     public static final int STYLE_WIDE = 1;
+    private static final long HOVER_FADE_MS = 220L, HOVER_SWEEP_MS = 900L, HOVER_PULSE_MS = 1400L;
+    private static final float HOVER_PULSE_LOW = 0.55f;
 
     public interface OnAppActionListener {
         void onAppClick(AppModel app);
@@ -180,21 +188,31 @@ public class AppRowAdapter extends RecyclerView.Adapter<AppRowAdapter.AppViewHol
     }
 
     @Override
+    public void onViewRecycled(@NonNull AppViewHolder holder) {
+        holder.resetHover();
+        super.onViewRecycled(holder);
+    }
+
+    @Override
     public int getItemCount() {
         return entries.size();
     }
 
     final class AppViewHolder extends RecyclerView.ViewHolder {
-        private final View iconContainer, focusRingView;
+        private final View iconContainer, focusRingView, hoverLayer, hoverSheen;
         private final ImageView icon, favoriteBadge, lockBadge, moveBadge;
         private final TextView label;
         private final int labelFocused, labelIdle;
         private boolean moving;
+        private int hoverAccent;
+        private AnimatorSet hoverAnimator;
 
         AppViewHolder(View view) {
             super(view);
             iconContainer = view.findViewById(R.id.iconContainer);
             focusRingView = view.findViewById(R.id.focusRingView);
+            hoverLayer = view.findViewById(R.id.hoverLayer);
+            hoverSheen = view.findViewById(R.id.hoverSheen);
             icon = view.findViewById(R.id.imgAppIcon);
             favoriteBadge = view.findViewById(R.id.badgeFavorite);
             lockBadge = view.findViewById(R.id.badgeLock);
@@ -202,6 +220,7 @@ public class AppRowAdapter extends RecyclerView.Adapter<AppRowAdapter.AppViewHol
             label = view.findViewById(R.id.txtAppLabel);
             labelFocused = ContextCompat.getColor(view.getContext(), R.color.nova_text);
             labelIdle = ContextCompat.getColor(view.getContext(), style == STYLE_WIDE ? R.color.nova_text : R.color.nova_text_dim);
+            if (hoverLayer != null) hoverLayer.setClipToOutline(true);
         }
 
         void bind(Entry entry) {
@@ -217,6 +236,10 @@ public class AppRowAdapter extends RecyclerView.Adapter<AppRowAdapter.AppViewHol
             moveBadge.setVisibility(entry.moving ? View.VISIBLE : View.GONE);
             moveBadge.setImageTintList(ColorStateList.valueOf(entry.accent));
             focusRingView.setBackgroundTintList(ColorStateList.valueOf(entry.accent));
+            if (hoverLayer != null && hoverAccent != entry.accent) {
+                hoverAccent = entry.accent;
+                hoverLayer.setBackground(hoverGlow(entry.accent));
+            }
             if (entry.hdIcons) {
                 IconService.get(itemView.getContext()).load(pkg, app.getLabel(), bitmap -> {
                     if (bitmap != null && !bitmap.isRecycled() && pkg.equals(icon.getTag())) icon.setImageBitmap(bitmap);
@@ -256,6 +279,60 @@ public class AppRowAdapter extends RecyclerView.Adapter<AppRowAdapter.AppViewHol
             focusRingView.setVisibility(lifted ? View.VISIBLE : View.INVISIBLE);
             label.setSelected(focused);
             label.setTextColor(lifted ? labelFocused : labelIdle);
+            if (hoverLayer == null) return;
+            if (focused) startHover();
+            else stopHover();
+        }
+
+        /** Accent glow from the lower-left corner, rounded like the card plate. */
+        private GradientDrawable hoverGlow(int accent) {
+            int rgb = accent & 0x00FFFFFF;
+            GradientDrawable glow = new GradientDrawable(GradientDrawable.Orientation.BL_TR,
+                    new int[]{0x70000000 | rgb, 0x1F000000 | rgb, rgb});
+            glow.setCornerRadius(20f * itemView.getResources().getDisplayMetrics().density);
+            return glow;
+        }
+
+        private void startHover() {
+            if (hoverAnimator != null && hoverAnimator.isStarted()) return;
+            hoverLayer.animate().cancel();
+            float sheenWidth = hoverSheen.getLayoutParams().width;
+            float travel = iconContainer.getWidth() > 0 ? iconContainer.getWidth() : 200f * itemView.getResources().getDisplayMetrics().density;
+            ObjectAnimator fadeIn = ObjectAnimator.ofFloat(hoverLayer, View.ALPHA, hoverLayer.getAlpha(), 1f);
+            fadeIn.setDuration(HOVER_FADE_MS);
+            ObjectAnimator sweep = ObjectAnimator.ofFloat(hoverSheen, View.TRANSLATION_X, -sheenWidth, travel);
+            sweep.setDuration(HOVER_SWEEP_MS);
+            sweep.setInterpolator(new DecelerateInterpolator());
+            ObjectAnimator pulse = ObjectAnimator.ofFloat(hoverLayer, View.ALPHA, 1f, HOVER_PULSE_LOW);
+            pulse.setDuration(HOVER_PULSE_MS);
+            pulse.setRepeatCount(ValueAnimator.INFINITE);
+            pulse.setRepeatMode(ValueAnimator.REVERSE);
+            pulse.setInterpolator(new AccelerateDecelerateInterpolator());
+            AnimatorSet set = new AnimatorSet();
+            set.play(fadeIn).with(sweep);
+            set.play(pulse).after(fadeIn);
+            hoverAnimator = set;
+            set.start();
+        }
+
+        private void stopHover() {
+            if (hoverAnimator != null) {
+                hoverAnimator.cancel();
+                hoverAnimator = null;
+            }
+            hoverSheen.setTranslationX(-hoverSheen.getLayoutParams().width);
+            hoverLayer.animate().alpha(0f).setDuration(160).start();
+        }
+
+        void resetHover() {
+            if (hoverLayer == null) return;
+            if (hoverAnimator != null) {
+                hoverAnimator.cancel();
+                hoverAnimator = null;
+            }
+            hoverLayer.animate().cancel();
+            hoverLayer.setAlpha(0f);
+            hoverSheen.setTranslationX(-hoverSheen.getLayoutParams().width);
         }
     }
 }
