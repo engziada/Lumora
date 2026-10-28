@@ -14,9 +14,11 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
+import android.text.format.DateUtils;
 import android.util.DisplayMetrics;
 import android.view.Display;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -45,6 +47,9 @@ import com.firestick.aura.launcher.ui.GlassMenu;
 import com.firestick.aura.launcher.ui.LockPad;
 import com.firestick.aura.launcher.ui.PhonePairDialog;
 import com.firestick.aura.launcher.ui.TextPrompt;
+import com.firestick.aura.launcher.ui.UpdateFlow;
+import com.firestick.aura.launcher.update.UpdateManager;
+import com.firestick.aura.launcher.update.UpdateSchedule;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -91,7 +96,10 @@ public class SettingsActivity extends AppCompatActivity {
     private TextView stats, themeHint;
     private Button iconStyle, wallpaperSource, wallCategories, sound, showsToggle, showsCountry;
     private Button lockCode, lockedApps, lockSettings, quickPermission, homeRedirect;
-    private Button aiKey, aiTest, aiRemoveKey, aiModel, aiFloating, aiRemote, aiShareApps;
+    private Button aiKey, aiTest, aiRemoveKey, aiModel, aiFloating, aiRemote, aiShareApps, aiControl;
+    private Button updateCheck, updateAuto;
+    private TextView updateStatus;
+    private UpdateManager updates;
     private int currentSection;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -191,6 +199,7 @@ public class SettingsActivity extends AppCompatActivity {
         updateLockButtons();
         updateAssistantButtons();
         updateSystemButtons();
+        updateUpdateButtons();
     }
 
     private void bindSections() {
@@ -458,6 +467,15 @@ public class SettingsActivity extends AppCompatActivity {
         aiFloating = findViewById(R.id.btnAiFloating);
         aiRemote = findViewById(R.id.btnAiRemote);
         aiShareApps = findViewById(R.id.btnAiShareApps);
+        ViewGroup assistantList = (ViewGroup) ((ViewGroup) findViewById(R.id.panelAssistant)).getChildAt(0);
+        View controlSection = getLayoutInflater().inflate(R.layout.section_ai_control, assistantList, false);
+        assistantList.addView(controlSection, assistantList.indexOfChild(findViewById(R.id.btnAiOpen)));
+        aiControl = controlSection.findViewById(R.id.btnAiControl);
+        aiControl.setOnClickListener(v -> {
+            SoundManager.playClick(v, preferences);
+            assistant.setControlEnabled(!assistant.isControlEnabled());
+            updateAssistantButtons();
+        });
 
         aiKey.setOnClickListener(v -> TextPrompt.show(this, getString(R.string.ai_key_title),
                 getString(R.string.ai_key_message), null, true, this::saveKey));
@@ -601,6 +619,7 @@ public class SettingsActivity extends AppCompatActivity {
         aiFloating.setText(assistant.isFloatingButtonEnabled() ? R.string.ai_floating_on : R.string.ai_floating_off);
         aiRemote.setText(assistant.isRemoteButtonEnabled() ? R.string.ai_remote_on : R.string.ai_remote_off);
         aiShareApps.setText(assistant.isShareAppsEnabled() ? R.string.ai_share_on : R.string.ai_share_off);
+        aiControl.setText(assistant.isControlEnabled() ? R.string.ai_control_on : R.string.ai_control_off);
     }
 
     // -------------------------------------------------------------- system
@@ -817,6 +836,7 @@ public class SettingsActivity extends AppCompatActivity {
         list.addView(warning);
         addCommand(list, getString(R.string.adb_quick_title), QuickAccess.grantCommand(this));
         addCommand(list, getString(R.string.adb_key_title), getString(R.string.adb_key_command));
+        addCommand(list, getString(R.string.adb_install_title), new UpdateManager(this).grantInstallCommand());
         addCommand(list, getString(R.string.adb_disable_title), DebloatManager.disableStockLauncherCommands());
         addCommand(list, getString(R.string.adb_enable_title), DebloatManager.enableStockLauncherCommands());
         addCommand(list, getString(R.string.adb_telemetry_title), DebloatManager.telemetryCommands());
@@ -851,7 +871,10 @@ public class SettingsActivity extends AppCompatActivity {
             version = "?";
         }
         ((TextView) findViewById(R.id.txtVersion)).setText(getString(R.string.version_label, version));
-        ((TextView) findViewById(R.id.txtAboutVersion)).setText(getString(R.string.about_version, version));
+        updates = new UpdateManager(this);
+        ((TextView) findViewById(R.id.txtAboutVersion)).setText(
+                getString(R.string.about_version_build, version, updates.installedVersionCode()));
+        bindUpdates();
         ((TextView) findViewById(R.id.txtAboutBuild)).setText(getString(R.string.about_build, getString(R.string.build_date)));
         findViewById(R.id.btnAboutEmail).setOnClickListener(v -> {
             Intent mail = new Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:" + SUPPORT_EMAIL))
@@ -860,6 +883,40 @@ public class SettingsActivity extends AppCompatActivity {
         });
         findViewById(R.id.btnAboutWeb).setOnClickListener(v ->
                 openOrExplain(new Intent(Intent.ACTION_VIEW, Uri.parse(WEBSITE)), getString(R.string.about_web_title), WEBSITE));
+    }
+
+    // ------------------------------------------------------------- updates
+
+    /** Updates section, inserted in About above the credits. */
+    private void bindUpdates() {
+        ViewGroup about = (ViewGroup) ((ViewGroup) findViewById(R.id.panelAbout)).getChildAt(0);
+        View section = getLayoutInflater().inflate(R.layout.section_updates, about, false);
+        about.addView(section, Math.max(0, about.getChildCount() - 2));
+        updateCheck = section.findViewById(R.id.btnUpdateCheck);
+        updateAuto = section.findViewById(R.id.btnUpdateAuto);
+        updateStatus = section.findViewById(R.id.txtUpdateStatus);
+        updateCheck.setOnClickListener(v -> {
+            SoundManager.playClick(v, preferences);
+            UpdateFlow.checkNow(this, this::updateUpdateButtons);
+        });
+        updateAuto.setOnClickListener(v -> {
+            SoundManager.playClick(v, preferences);
+            updates.setIntervalHours(UpdateSchedule.next(updates.getIntervalHours()));
+            updateUpdateButtons();
+        });
+        updateUpdateButtons();
+    }
+
+    private void updateUpdateButtons() {
+        if (updateAuto == null) return;
+        long hours = updates.getIntervalHours();
+        int label = hours <= 0 ? R.string.update_auto_off : hours == 24 ? R.string.update_auto_daily
+                : hours == 72 ? R.string.update_auto_3days : R.string.update_auto_weekly;
+        updateAuto.setText(label);
+        long last = updates.getLastCheck();
+        CharSequence when = last <= 0 ? getString(R.string.update_never)
+                : DateUtils.getRelativeTimeSpanString(last, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS);
+        updateStatus.setText(getString(R.string.update_status, updates.installedVersionCode(), when));
     }
 
     /** TVs often have no mail app or browser; then show the address so it can be typed elsewhere. */
