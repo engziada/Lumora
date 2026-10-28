@@ -1,5 +1,37 @@
 # Changelog
 
+## 5.2.0 — AI assistant, device info, card animation (branch `ai-assistant`)
+
+### Added
+- **Lumora Assistant** (`AssistantActivity`): a glass chat panel over any app, backed by OpenRouter
+  (`openrouter/free` by default, custom model id optional). English and Arabic. Replies can suggest
+  installed apps; *Open <app>* goes through Lumora so app locks and launch history apply.
+  Mic button when the device has a speech recognizer.
+- Two ways to open it: a floating button at the end of the bottom bar, and a remote button caught
+  by the quick-actions service in any app (defaults: SEARCH, VOICE_ASSIST, ASSIST; *Learn* records
+  the button the remote actually sends). Without quick actions the button works inside Lumora only.
+- Settings › AI assistant: API key (masked, *Test key* uses `GET /api/v1/key` and spends no chat
+  request), model, floating / remote toggles, learn / reset button, app-name sharing switch.
+- Settings › Device info: live readings every second — model, system, CPU load (or clock when
+  Fire OS hides `/proc/stat`), temperature, memory, storage, network (IP, Wi-Fi dBm and Mbps),
+  display, uptime, Lumora memory.
+- Home cards: focus animation on the card background — accent glow fades in and breathes, one
+  light sweep crosses the card.
+- Unit tests (JUnit 4) for reply parsing, key masking, request/response handling and device-stat
+  maths; CI runs `testDebugUnitTest` before lint. See `docs/ASSISTANT.md`.
+
+### Security and privacy
+- The OpenRouter key is stored in its own preferences file, excluded from backup and device
+  transfer (`backup_rules.xml`, `data_extraction_rules.xml`), shown masked, sent only to openrouter.ai.
+- Sent to OpenRouter: the question, the last 12 turns and, if enabled, installed app names.
+- The accessibility service now filters key events; it compares key codes against the assistant
+  button and stores nothing. Navigation, media, volume and power keys are never captured.
+
+### Changed
+- Settings rail scrolls (10 sections).
+- `ACCESS_WIFI_STATE` (normal permission) for Wi-Fi signal in Device info.
+- Version 5.2.0, version code 7.
+
 ## 5.1.0 — TV feedback round
 
 ### Added
