@@ -43,6 +43,9 @@
     <string name="update_available_title">Update available</string>
     <string name="update_available_message">Lumora %1$s (build %2$d) is ready. Installed: build %3$d. Download: %4$.1f MB.</string>
     <string name="update_install">Download and install</string>
+    <string name="update_ready_title">Ready to install</string>
+    <string name="update_ready_message">The update is downloaded and verified. Select Install to open the system installer. If you close this screen, the verified download will be reused on your next attempt.</string>
+    <string name="update_install_ready">Install</string>
     <string name="update_downloading_title">Downloading update</string>
     <string name="update_downloading">%1$d%%</string>
     <string name="update_permission_title">Allow Lumora to install updates</string>

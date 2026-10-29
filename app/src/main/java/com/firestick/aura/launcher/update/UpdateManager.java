@@ -1,6 +1,7 @@
 package com.firestick.aura.launcher.update;
 
 import android.content.Context;
+import android.content.ClipData;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
@@ -16,6 +17,7 @@ import androidx.core.content.pm.PackageInfoCompat;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -136,6 +138,24 @@ public final class UpdateManager {
         File dir = new File(context.getCacheDir(), DIR);
         if (!dir.isDirectory() && !dir.mkdirs()) throw new UpdateException(ERR_STORAGE, "cache directory");
         File target = new File(dir, APK_NAME);
+        if (cancelled.get()) throw new UpdateException(ERR_CANCELLED, "cancelled");
+        if (target.isFile() && target.length() == info.size) {
+            MessageDigest cachedDigest = UpdateInfo.newDigest();
+            try (InputStream in = new FileInputStream(target)) {
+                byte[] buffer = new byte[32 * 1024];
+                int read;
+                while ((read = in.read(buffer)) != -1) {
+                    if (cancelled.get()) throw new UpdateException(ERR_CANCELLED, "cancelled");
+                    cachedDigest.update(buffer, 0, read);
+                }
+                if (UpdateInfo.hex(cachedDigest.digest()).equals(info.sha256) && verify(target) == VERIFIED) {
+                    if (progress != null) progress.onProgress(info.size, info.size);
+                    return target;
+                }
+            } catch (IOException ignored) {
+                // An unreadable or stale cache is replaced by a fresh verified download.
+            }
+        }
         if (target.exists() && !target.delete()) throw new UpdateException(ERR_STORAGE, "old download");
         MessageDigest digest = UpdateInfo.newDigest();
         HttpURLConnection connection = null;
@@ -227,9 +247,11 @@ public final class UpdateManager {
 
     public Intent installIntent(File apk) {
         Uri uri = FileProvider.getUriForFile(context, context.getPackageName() + ".updates", apk);
-        return new Intent(Intent.ACTION_VIEW)
+        Intent intent = new Intent(Intent.ACTION_VIEW)
                 .setDataAndType(uri, "application/vnd.android.package-archive")
-                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        intent.setClipData(ClipData.newRawUri("Lumora update", uri));
+        return intent;
     }
 
     public String grantInstallCommand() {

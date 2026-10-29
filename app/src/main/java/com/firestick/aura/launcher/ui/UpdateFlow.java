@@ -137,6 +137,9 @@ public final class UpdateFlow {
                     showFailure(activity, manager, failure);
                     return;
                 }
+                Glass.info(activity, activity.getString(R.string.update_ready_title),
+                        activity.getString(R.string.update_ready_message), null,
+                        activity.getString(R.string.update_install_ready), () -> {
                 QuickActionService.suppressRedirect(120_000L);
                 try {
                     activity.startActivity(manager.installIntent(result));
@@ -144,6 +147,7 @@ public final class UpdateFlow {
                     Glass.info(activity, activity.getString(R.string.update_title),
                             activity.getString(R.string.update_err_installer), null, null, null);
                 }
+                });
             });
         });
     }
