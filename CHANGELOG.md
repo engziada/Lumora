@@ -219,7 +219,7 @@
 - Hidden-apps manager: per-app restore list in Settings, with counts in the header.
 - `Set Z TV as Default Home` helper (`Settings.ACTION_HOME_SETTINGS`).
 - Live refresh on package install / removal / update via package broadcasts.
-- Disk cache for downloaded wallpapers; downloads are downsampled to ~1280×1280.
+- Disk cache for downloaded wallpapers; downloads are downsampled to ~1280×720.
 - Launch counter and hidden-app counter on the settings screen.
 - Empty-state handling: rows that would be empty are omitted.
 
