@@ -16,7 +16,7 @@ android {
         targetSdk 34
         // Every CI build is newer than the last, which the in-app updater relies on.
         versionCode ciRunNumber ? 1000 + ciRunNumber.toInteger() : 9
-        versionName '5.4.0'
+        versionName '5.4.1'
         // Shown in Settings > About.
         resValue 'string', 'build_date', new java.text.SimpleDateFormat('yyyy-MM-dd').format(new Date())
     }

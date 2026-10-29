@@ -1,5 +1,23 @@
 # Changelog
 
+## 5.4.1 — Focus effect, assistant user guide
+
+### Changed
+- Focus ring is thinner: a 1.5 dp line on the card edge with a soft glow inside and outside, and no
+  fill. The accent tint and the light sweep on the focused card are removed.
+
+### Added
+- **Focus effect** behind the focused app (Home cards and the Apps/Streaming tiles), in the theme
+  colour, chosen in Settings › Appearance › Focus effect:
+  - *Lightning* (default): random strikes with forks, quick flash and flicker, then fade.
+  - *Arabic ornaments*: Arabic letters, the words نور and ضياء, and eight-point stars appear at
+    random, drift and fade in and out continuously.
+  - *Off*.
+  Only the focused card animates (`ui/CardEffectView`, maths in `ui/CardEffects`).
+- **User guide** in Settings › AI assistant: opening the assistant, typing or speaking from the
+  phone, every instant command (English and Arabic), examples of free-form requests, limits, tips.
+- JUnit: `CardEffectsTest`.
+
 ## 5.4.0 — TV control, self-update
 
 ### Added
@@ -78,7 +96,7 @@
   Fire OS hides `/proc/stat`), temperature, memory, storage, network (IP, Wi-Fi dBm and Mbps),
   display, uptime, Lumora memory.
 - Home cards: focus animation on the card background — accent glow fades in and breathes, one
-  light sweep crosses the card.
+  light sweep crosses the card. (Replaced in 5.4.1.)
 - Unit tests (JUnit 4) for reply parsing, key masking, request/response handling and device-stat
   maths; CI runs `testDebugUnitTest` before lint. See `docs/ASSISTANT.md`.
 
@@ -201,7 +219,7 @@
 - Hidden-apps manager: per-app restore list in Settings, with counts in the header.
 - `Set Z TV as Default Home` helper (`Settings.ACTION_HOME_SETTINGS`).
 - Live refresh on package install / removal / update via package broadcasts.
-- Disk cache for downloaded wallpapers; downloads are downsampled to ~1280×720.
+- Disk cache for downloaded wallpapers; downloads are downsampled to ~1280×1280.
 - Launch counter and hidden-app counter on the settings screen.
 - Empty-state handling: rows that would be empty are omitted.
 
