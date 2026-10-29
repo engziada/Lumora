@@ -10,6 +10,7 @@
     android:clipToPadding="false"
     android:focusable="true"
     android:focusableInTouchMode="false"
+    android:defaultFocusHighlightEnabled="false"
     android:gravity="center_horizontal"
     android:orientation="vertical">
 

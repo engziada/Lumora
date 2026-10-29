@@ -9,7 +9,8 @@
     android:clipChildren="false"
     android:clipToPadding="false"
     android:focusable="true"
-    android:focusableInTouchMode="false">
+    android:focusableInTouchMode="false"
+    android:defaultFocusHighlightEnabled="false">
 
     <FrameLayout
         android:id="@+id/iconContainer"

@@ -7,6 +7,7 @@
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item>
         <shape android:shape="rectangle">
+            <solid android:color="@android:color/transparent" />
             <stroke android:width="2dp" android:color="#1FFFFFFF" />
             <corners android:radius="24dp" />
         </shape>
@@ -17,6 +18,7 @@
         android:right="1.5dp"
         android:top="1.5dp">
         <shape android:shape="rectangle">
+            <solid android:color="@android:color/transparent" />
             <stroke android:width="2dp" android:color="#47FFFFFF" />
             <corners android:radius="22.5dp" />
         </shape>
@@ -27,6 +29,7 @@
         android:right="3.25dp"
         android:top="3.25dp">
         <shape android:shape="rectangle">
+            <solid android:color="@android:color/transparent" />
             <stroke android:width="1.5dp" android:color="#FFFFFFFF" />
             <corners android:radius="20.75dp" />
         </shape>
@@ -37,6 +40,7 @@
         android:right="4.75dp"
         android:top="4.75dp">
         <shape android:shape="rectangle">
+            <solid android:color="@android:color/transparent" />
             <stroke android:width="2dp" android:color="#2EFFFFFF" />
             <corners android:radius="19.25dp" />
         </shape>
