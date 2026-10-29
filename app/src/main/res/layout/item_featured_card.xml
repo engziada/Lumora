@@ -24,20 +24,11 @@
             android:layout_height="match_parent"
             android:background="@drawable/bg_icon_plate" />
 
-        <!-- Focus animation: accent glow that breathes, plus one light sweep (AppRowAdapter). -->
-        <FrameLayout
-            android:id="@+id/hoverLayer"
+        <!-- Lightning or Arabic ornaments behind the focused card (AppRowAdapter, Settings › Appearance). -->
+        <com.firestick.aura.launcher.ui.CardEffectView
+            android:id="@+id/cardEffect"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:alpha="0">
-
-            <View
-                android:id="@+id/hoverSheen"
-                android:layout_width="64dp"
-                android:layout_height="match_parent"
-                android:background="@drawable/bg_card_sheen"
-                android:translationX="-64dp" />
-        </FrameLayout>
+            android:layout_height="match_parent" />
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -75,10 +66,12 @@
                 android:textStyle="bold" />
         </LinearLayout>
 
+        <!-- 4 dp larger than the plate on every side so the glow sits around its edge. -->
         <View
             android:id="@+id/focusRingView"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:layout_margin="-4dp"
             android:background="@drawable/bg_focus_ring_wide"
             android:visibility="invisible" />
 

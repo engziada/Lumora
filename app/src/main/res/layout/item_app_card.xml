@@ -27,6 +27,13 @@
             android:layout_gravity="center"
             android:background="@drawable/bg_icon_plate" />
 
+        <!-- Lightning or Arabic ornaments behind the focused tile (AppRowAdapter). -->
+        <com.firestick.aura.launcher.ui.CardEffectView
+            android:id="@+id/cardEffect"
+            android:layout_width="72dp"
+            android:layout_height="72dp"
+            android:layout_gravity="center" />
+
         <ImageView
             android:id="@+id/imgAppIcon"
             android:layout_width="44dp"
@@ -35,10 +42,11 @@
             android:contentDescription="@null"
             android:scaleType="fitCenter" />
 
+        <!-- Plate + 4 dp on every side, so the glow sits around the plate edge. -->
         <View
             android:id="@+id/focusRingView"
-            android:layout_width="78dp"
-            android:layout_height="78dp"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
             android:layout_gravity="center"
             android:background="@drawable/bg_focus_ring"
             android:visibility="invisible" />

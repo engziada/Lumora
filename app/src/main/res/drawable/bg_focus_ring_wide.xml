@@ -1,7 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Tinted with the accent at runtime: a 3 dp ring plus a faint fill glow. -->
-<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-    <solid android:color="#1AFFFFFF" />
-    <stroke android:width="3dp" android:color="#FFFFFFFF" />
-    <corners android:radius="22dp" />
-</shape>
+<!--
+  Thin glowing ring, tinted with the theme colour at runtime. The view is 4 dp larger than the
+  20 dp-radius plate on every side: soft outer halo, 1.5 dp core line on the plate edge, faint
+  inner halo. No fill, so the card itself is not tinted.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <stroke android:width="2dp" android:color="#1FFFFFFF" />
+            <corners android:radius="24dp" />
+        </shape>
+    </item>
+    <item
+        android:bottom="1.5dp"
+        android:left="1.5dp"
+        android:right="1.5dp"
+        android:top="1.5dp">
+        <shape android:shape="rectangle">
+            <stroke android:width="2dp" android:color="#47FFFFFF" />
+            <corners android:radius="22.5dp" />
+        </shape>
+    </item>
+    <item
+        android:bottom="3.25dp"
+        android:left="3.25dp"
+        android:right="3.25dp"
+        android:top="3.25dp">
+        <shape android:shape="rectangle">
+            <stroke android:width="1.5dp" android:color="#FFFFFFFF" />
+            <corners android:radius="20.75dp" />
+        </shape>
+    </item>
+    <item
+        android:bottom="4.75dp"
+        android:left="4.75dp"
+        android:right="4.75dp"
+        android:top="4.75dp">
+        <shape android:shape="rectangle">
+            <stroke android:width="2dp" android:color="#2EFFFFFF" />
+            <corners android:radius="19.25dp" />
+        </shape>
+    </item>
+</layer-list>
