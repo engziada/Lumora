@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- User guide at the end of Settings › AI assistant (SettingsActivity.bindAssistant). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <TextView
+        style="@style/Lumora.PanelEyebrow"
+        android:layout_marginTop="22dp"
+        android:text="@string/ai_manual_label" />
+
+    <TextView
+        style="@style/Lumora.ManualBlock"
+        android:text="@string/ai_manual_open" />
+
+    <TextView
+        style="@style/Lumora.ManualBlock"
+        android:text="@string/ai_manual_talk" />
+
+    <TextView
+        style="@style/Lumora.ManualBlock"
+        android:text="@string/ai_manual_instant" />
+
+    <TextView
+        style="@style/Lumora.ManualBlock"
+        android:text="@string/ai_manual_ask" />
+
+    <TextView
+        style="@style/Lumora.ManualBlock"
+        android:text="@string/ai_manual_limits" />
+
+    <TextView
+        style="@style/Lumora.ManualBlock"
+        android:text="@string/ai_manual_tips" />
+</LinearLayout>

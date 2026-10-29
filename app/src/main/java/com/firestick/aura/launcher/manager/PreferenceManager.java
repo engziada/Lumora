@@ -3,6 +3,8 @@ package com.firestick.aura.launcher.manager;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import com.firestick.aura.launcher.ui.CardEffects;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -22,6 +24,7 @@ public class PreferenceManager {
     private static final String KEY_LAUNCH_COUNT = "pref_launch_count";
     private static final String KEY_RECENT = "pref_recent_apps";
     private static final String KEY_HD_ICONS = "pref_hd_icons";
+    private static final String KEY_CARD_EFFECT = "pref_card_effect";
     private static final String KEY_SHOWS_ENABLED = "pref_shows_enabled";
     private static final String KEY_SHOWS_COUNTRY = "pref_shows_country";
     private static final String KEY_HOME_REVISION = "pref_home_revision";
@@ -196,6 +199,16 @@ public class PreferenceManager {
 
     public void setHdIconsEnabled(boolean enabled) {
         if (isHdIconsEnabled() != enabled) applyHomeChange(prefs.edit().putBoolean(KEY_HD_ICONS, enabled));
+    }
+
+    /** Background effect of the focused card, one of {@link CardEffects}' ids. */
+    public String getCardEffect() {
+        return CardEffects.normalize(prefs.getString(KEY_CARD_EFFECT, CardEffects.DEFAULT));
+    }
+
+    public void setCardEffect(String effect) {
+        String normalized = CardEffects.normalize(effect);
+        if (!normalized.equals(getCardEffect())) applyHomeChange(prefs.edit().putString(KEY_CARD_EFFECT, normalized));
     }
 
     // -------------------------------------------------------------- wallpaper

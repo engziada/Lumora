@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Assistant user guide and the focused-card effect (v5.4.1). -->
+<resources>
+    <style name="Lumora.ManualBlock">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">8dp</item>
+        <item name="android:padding">12dp</item>
+        <item name="android:background">@drawable/bg_manual_block</item>
+        <item name="android:focusable">true</item>
+        <item name="android:textColor">@color/nova_text_dim</item>
+        <item name="android:textSize">10sp</item>
+        <item name="android:lineSpacingMultiplier">1.35</item>
+    </style>
+
+    <!-- Settings › Appearance -->
+    <string name="card_effect_label">Focus effect</string>
+    <string name="card_effect_lightning">Focus effect: Lightning</string>
+    <string name="card_effect_arabic">Focus effect: Arabic ornaments</string>
+    <string name="card_effect_off">Focus effect: Off</string>
+    <string name="card_effect_hint">Plays behind the focused app on Home and in the app grids, in the theme colour: random lightning strikes, or Arabic letters and eight-point stars that fade in and out.</string>
+
+    <!-- Settings › AI assistant › User guide -->
+    <string name="ai_manual_label">User guide</string>
+    <string name="ai_manual_open"><b>1 · Open the assistant</b>\n• On Home: the round assistant button at the end of the bottom bar.\n• Anywhere: hold the ☰ Menu button for about half a second. In other apps this needs quick actions (Settings › Home &amp; system); without them it works only inside Lumora.\n• From here: Open assistant (above).</string>
+    <string name="ai_manual_talk"><b>2 · Type or speak</b>\n• Type with the remote, then Send.\n• Speak: press the phone button in the panel, scan the QR code with your phone (same Wi-Fi), tap the microphone on the phone keyboard, speak, tap Send. English and Arabic both work.\n• The phone link stays open while the panel is open, and closes after 10 idle minutes.</string>
+    <string name="ai_manual_instant"><b>3 · Instant commands</b> (no API key, no internet)\nSend the command on its own; a polite word such as \"please\" or \"لو سمحت\" is fine.\n• Play: play, resume, continue · شغل، كمل، استمر\n• Pause: pause, stop, hold on · وقف، ايقاف، استوب\n• Next: next, skip, next episode · التالي، الحلقة التالية\n• Previous: previous, previous episode · السابق، الحلقة السابقة\n• Seek: fast forward, rewind · قدم، ترجيع\n• Volume (2 steps): volume up, louder · volume down, quieter · علي الصوت، ارفع الصوت · وطي الصوت، قلل الصوت\n• Mute: mute, unmute · اكتم، فك الكتم\n• Navigate: back, home · ارجع، الرئيسية\n• Screenshot, power menu · لقطة شاشة، قائمة الطاقة\n• Settings: settings, wifi settings, bluetooth settings, display settings, sound settings · الاعدادات، اعدادات الواي فاي، اعدادات البلوتوث، اعدادات الشاشة، اعدادات الصوت</string>
+    <string name="ai_manual_ask"><b>4 · Ask in your own words</b> (needs the OpenRouter key and TV control On)\n• Open an app: \"open YouTube\" · \"افتح نتفليكس\"\n• Search inside an app: \"search Netflix for Dark\" · \"ابحث في يوتيوب عن وصفات\"\n• Volume by steps (1–10): \"turn the volume up 5 steps\"\n• Theme: \"switch the theme to rose\" (amber, copper, rose, moonlight)\n• Settings pages: \"open Bluetooth settings\", also apps and about\n• Several at once: \"pause and lower the volume\" (up to 4 actions)\n• Anything else: \"what should I watch tonight?\" · \"ما عاصمة اليابان؟\"\nLocked apps still ask for the lock code.</string>
+    <string name="ai_manual_limits"><b>5 · What it cannot do</b>\n• Back, Home, Screenshot and Power menu need quick actions.\n• When the TV or soundbar controls the volume (HDMI-CEC), use the remote\'s volume keys.\n• Some players ignore fast forward and rewind.\n• It cannot read the screen, press other buttons or type inside other apps.\n• The Alexa button stays with Alexa; Fire OS does not pass it to apps.</string>
+    <string name="ai_manual_tips"><b>6 · Tips</b>\n• Clear starts a new conversation.\n• TV control Off: answers only, nothing changes on the TV.\n• Free models are limited per minute and per day; instant commands are not affected.\n• Answers come from a free model picked at random; if one is weak, ask again.</string>
+</resources>
