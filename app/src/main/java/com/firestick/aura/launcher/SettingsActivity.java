@@ -42,6 +42,7 @@ import com.firestick.aura.launcher.manager.SoundManager;
 import com.firestick.aura.launcher.manager.WallpaperCatalog;
 import com.firestick.aura.launcher.manager.WallpaperManager;
 import com.firestick.aura.launcher.service.QuickActionService;
+import com.firestick.aura.launcher.ui.CardEffects;
 import com.firestick.aura.launcher.ui.Glass;
 import com.firestick.aura.launcher.ui.GlassMenu;
 import com.firestick.aura.launcher.ui.LockPad;
@@ -97,7 +98,7 @@ public class SettingsActivity extends AppCompatActivity {
     private Button iconStyle, wallpaperSource, wallCategories, sound, showsToggle, showsCountry;
     private Button lockCode, lockedApps, lockSettings, quickPermission, homeRedirect;
     private Button aiKey, aiTest, aiRemoveKey, aiModel, aiFloating, aiRemote, aiShareApps, aiControl;
-    private Button updateCheck, updateAuto;
+    private Button updateCheck, updateAuto, cardEffect;
     private TextView updateStatus;
     private UpdateManager updates;
     private int currentSection;
@@ -193,6 +194,7 @@ public class SettingsActivity extends AppCompatActivity {
         refreshStats();
         updateThemeButtons();
         updateIconStyleButton();
+        updateCardEffectButton();
         updateWallpaperButtons();
         updateSoundButton();
         updateShowsButtons();
@@ -267,6 +269,22 @@ public class SettingsActivity extends AppCompatActivity {
             SoundManager.playClick(v, preferences);
             updateIconStyleButton();
         });
+        ViewGroup appearance = findViewById(R.id.panelAppearance);
+        View effectSection = getLayoutInflater().inflate(R.layout.section_card_effect, appearance, false);
+        appearance.addView(effectSection);
+        cardEffect = effectSection.findViewById(R.id.btnCardEffect);
+        cardEffect.setOnClickListener(v -> {
+            SoundManager.playClick(v, preferences);
+            preferences.setCardEffect(CardEffects.next(preferences.getCardEffect()));
+            updateCardEffectButton();
+        });
+    }
+
+    private void updateCardEffectButton() {
+        if (cardEffect == null) return;
+        String effect = preferences.getCardEffect();
+        cardEffect.setText(CardEffects.ARABIC.equals(effect) ? R.string.card_effect_arabic
+                : CardEffects.OFF.equals(effect) ? R.string.card_effect_off : R.string.card_effect_lightning);
     }
 
     private String themeName() {
@@ -508,6 +526,8 @@ public class SettingsActivity extends AppCompatActivity {
             updateAssistantButtons();
         });
         findViewById(R.id.btnAiOpen).setOnClickListener(v -> startActivity(new Intent(this, AssistantActivity.class)));
+        // User guide below the settings; each block is focusable so the D-pad scrolls through it.
+        assistantList.addView(getLayoutInflater().inflate(R.layout.section_ai_manual, assistantList, false));
     }
 
     private void saveKey(String value) {
