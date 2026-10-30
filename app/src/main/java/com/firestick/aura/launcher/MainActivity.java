@@ -377,7 +377,7 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override protected void onDestroy() {
-        if (appPreview != null) appPreview.hide();
+        if (appPreview != null) appPreview.destroy();
         homeView.getRootView().getViewTreeObserver().removeOnGlobalFocusChangeListener(previewFocusListener);
         if (packageReceiverRegistered) {
             try {

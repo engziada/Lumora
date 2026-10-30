@@ -20,13 +20,17 @@ public final class Http {
 
     /** @return the response body for HTTP 200, otherwise {@code null}. */
     public static byte[] get(String url, int connectTimeoutMs, int readTimeoutMs) {
+        return get(url, connectTimeoutMs, readTimeoutMs, USER_AGENT);
+    }
+
+    public static byte[] get(String url, int connectTimeoutMs, int readTimeoutMs, String userAgent) {
         HttpURLConnection connection = null;
         try {
             connection = (HttpURLConnection) new URL(url).openConnection();
             connection.setConnectTimeout(connectTimeoutMs);
             connection.setReadTimeout(readTimeoutMs);
             connection.setInstanceFollowRedirects(true);
-            connection.setRequestProperty("User-Agent", USER_AGENT);
+            connection.setRequestProperty("User-Agent", userAgent);
             if (connection.getResponseCode() != HttpURLConnection.HTTP_OK) return null;
             try (InputStream in = connection.getInputStream()) {
                 return readAll(in);

@@ -44,6 +44,7 @@ public final class AppPreviewSamples {
                 return Provider.YOUTUBE;
             case "com.amazon.amazonvideo.livingroom":
             case "com.amazon.avod.thirdpartyclient":
+            case "com.amazon.firebat":
             case "com.amazon.avod":
                 return Provider.PRIME;
             case "com.netflix.ninja":

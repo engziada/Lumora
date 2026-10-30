@@ -122,24 +122,41 @@ Downloads are cached on the device (icons indefinitely, schedules 3 hours, poste
 wallpapers until the cache is cleared; only the last downloaded update APK is kept, replaced by
 the next update download). With every feature off, Lumora makes no network requests.
 
-### Home app preview experiment
+### Home video preview feasibility build
 
-Enable **Settings > Appearance > App preview demo** (off by default). On Home, focus YouTube,
-Prime Video, or Netflix for 600 ms to reveal a passive title card. Three bundled samples rotate
-every six seconds; OK opens the focused app through the existing lock and launch flow.
-Leaving the strip, changing tabs, or leaving Lumora hides the panel. Locked apps have no preview.
+The local debug app installs separately as **Lumora Preview Test** (`com.firestick.aura.launcher.localtest`).
+Enable Settings > Appearance > Video previews. Focus Netflix, YouTube, or Prime Video on Home
+for 600 ms. A passive video window appears in the middle-right above the app ribbon. Playback
+is muted and advances after 15 seconds of playing; leaving the tile unloads the player.
+OK still opens the focused application. Locked apps do not show previews.
 
-This offline prototype uses sample titles, descriptions, and abstract vector artwork. It does not
-access accounts, mirror an app screen, fetch live rankings, or establish regional availability.
-No new permissions, keys, or network hosts are needed. Provider feeds remain future work.
+The preview fetches recent public uploads from the official Netflix, Prime Video, and YouTube
+channels through YouTube Atom feeds, with trailers/teasers preferred for Netflix and Prime.
+There are no bundled fallback video IDs. Lists refresh on focus after a one-hour cache expires;
+valid cached lists may be reused for up to one day when offline. Unavailable embedded videos are
+skipped, stopping after a full failed cycle. Empty or failed feeds show an explicit message.
 
-Validation commands (JDK 17): `gradlew.bat testDebugUnitTest assembleDebug assembleDebugAndroidTest lintDebug`.
-With a TV emulator connected, install the debug and androidTest APKs, then run
-`adb shell am instrument -w com.firestick.aura.launcher.test/com.firestick.aura.launcher.PreviewInstrumentation`.
-The instrumentation injects temporary service tiles, exercises focus/cancellation/rotation/opt-out,
-and writes preview screenshots to the target app's external files directory. It restores its preview
-and YouTube lock preferences afterward; it launches YouTube for the OK check when installed.
-See [the preview plan](docs/APP_PREVIEW_PLAN.md).
+These are global recent-upload feeds, not trending charts or personalized recommendations.
+The existing TV listings country preference scopes caching and selects Arabic player UI for
+EG/AE/SA, English otherwise; it does not establish regional title availability. The official
+YouTube channel highlights its own uploads rather than all videos across YouTube. Stremio,
+CloudStream, and Tubi are outside this initial integration. App locks suppress previews.
+
+Playback uses the official YouTube player and contacts YouTube/Google infrastructure including
+youtube.com, ytimg.com, and googlevideo.com; provider playback data collection policies apply.
+No API keys or streaming-account logins are required. Video fills the window without a launcher
+header/footer. Loading and failure messages appear only when necessary. Player branding and
+provider UI are controlled by YouTube. Debug builds remain separate from signed release installs.
+
+Previews have a thin amber frame. Public video-dimension metadata is checked before playback:
+only aspect ratios between 1.65 and 1.90 are accepted. Portrait, square, ultrawide, and unknown
+dimensions are excluded. Decisions are cached for one day. This key-free check depends on
+YouTube's public page structure and fails closed when dimensions cannot be read. It does not
+extract playback URLs. Black bars encoded into an otherwise 16:9 video remain possible.
+
+Build validation: `gradlew.bat testDebugUnitTest assembleDebug assembleDebugAndroidTest lintDebug`.
+The focus/lifecycle instrumentation remains available; actual playback and rotation require online
+player telemetry and device observation rather than static title assertions.
 
 **Movie posters:** TVmaze covers TV and streaming series only. Film posters would need TMDB, which
 requires a free account and API key; it is not integrated.
