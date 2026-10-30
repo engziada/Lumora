@@ -71,7 +71,9 @@ Android's installer then asks for confirmation; nothing installs silently.
 Every push to `main` runs CI; when tests and lint pass, it builds a release APK signed with the
 key from the repository secrets `LUMORA_KEYSTORE_B64`, `LUMORA_KEYSTORE_PASSWORD`,
 `LUMORA_KEY_ALIAS`, `LUMORA_KEY_PASSWORD`, and publishes release `build-<versionCode>` with the APK
-and `update.json`. Version code = 1000 + CI run number. The 5 newest releases are kept. **Losing the
+and `update.json`. Version code = 1100 + CI run number, advancing beyond older installations
+reporting build 1085. The feed reads its version code from the signed APK. Feature branch pushes
+do not publish launcher updates. The 5 newest releases are kept. **Losing the
 keystore means every device must uninstall once again**; keep an offline backup.
 
 ## One-time setup: quick actions and the Home button

@@ -137,7 +137,11 @@ jobs:
           APKSIGNER="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)/apksigner"
           "$APKSIGNER" verify --print-certs "$APK_IN" | tee signer.txt
           CERT=$(grep -m1 'certificate SHA-256 digest' signer.txt | awk '{print $NF}')
-          CODE=$((1000 + GITHUB_RUN_NUMBER))
+          # Read the built APK rather than duplicating Gradle's version-code formula.
+          AAPT="$(dirname "$APKSIGNER")/aapt"
+          BADGING=$("$AAPT" dump badging "$APK_IN")
+          CODE=$(printf '%s\n' "$BADGING" | sed -nE "s/^package:.*versionCode='([0-9]+)'.*/\1/p")
+          if [[ ! "$CODE" =~ ^[0-9]+$ ]]; then echo "::error::APK versionCode is missing or invalid"; exit 1; fi
           NAME=$(sed -nE "s/^ *versionName '([^']+)'.*/\1/p" app/build.gradle | head -1)
           TAG="build-$CODE"
           APK="lumora-$NAME-$CODE.apk"
