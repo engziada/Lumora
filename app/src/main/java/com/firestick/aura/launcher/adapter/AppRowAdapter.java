@@ -195,6 +195,15 @@ public class AppRowAdapter extends RecyclerView.Adapter<AppRowAdapter.AppViewHol
         return entries.size();
     }
 
+    /** Reads the bound tile, so refreshes cannot leave a preview attached to a stale app. */
+    public AppModel getFocusedApp() {
+        if (recyclerView == null) return null;
+        View child = recyclerView.getFocusedChild();
+        if (child == null) return null;
+        int position = recyclerView.getChildAdapterPosition(child);
+        return position >= 0 && position < entries.size() ? entries.get(position).app : null;
+    }
+
     final class AppViewHolder extends RecyclerView.ViewHolder {
         private final View iconContainer, focusRingView;
         private final CardEffectView effect;
@@ -262,6 +271,10 @@ public class AppRowAdapter extends RecyclerView.Adapter<AppRowAdapter.AppViewHol
                 return true;
             });
             applyFocus(itemView.isFocused());
+            if (itemView.isFocused() && focusListener != null) {
+                focusedPackage = pkg;
+                focusListener.onAppFocused(rowId, app);
+            }
         }
 
         /** Lift and thin glowing ring; the background effect runs only on the focused card. */

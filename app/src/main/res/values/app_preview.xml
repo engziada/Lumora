@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="preview_toggle_on">App preview demo: On</string>
+    <string name="preview_toggle_off">App preview demo: Off</string>
+    <string name="preview_settings_hint">Test offline sample title cards on Home. Focus YouTube, Prime Video, or Netflix. No account needed.</string>
+    <string name="preview_service">%1$s · PREVIEW DEMO</string>
+    <string name="preview_position">%1$d / %2$d</string>
+    <string name="preview_disclaimer">Sample titles and artwork · Not personal recommendations · OK opens app</string>
+</resources>

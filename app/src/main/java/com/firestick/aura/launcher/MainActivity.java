@@ -21,6 +21,7 @@ import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.PopupWindow;
@@ -51,6 +52,7 @@ import com.firestick.aura.launcher.model.AppModel;
 import com.firestick.aura.launcher.model.ShowItem;
 import com.firestick.aura.launcher.service.QuickActionService;
 import com.firestick.aura.launcher.ui.Glass;
+import com.firestick.aura.launcher.ui.AppPreview;
 import com.firestick.aura.launcher.ui.GlassMenu;
 import com.firestick.aura.launcher.ui.LockPad;
 
@@ -80,6 +82,10 @@ public class MainActivity extends AppCompatActivity
     private WallpaperManager wallpapers;
     private QuickMenu quickMenu;
     private ShowDetails showDetails;
+    private AppPreview appPreview;
+    private boolean previewResumed;
+    private final ViewTreeObserver.OnGlobalFocusChangeListener previewFocusListener =
+            (oldFocus, newFocus) -> updateAppPreview();
     private TextView greeting, greetingSub, heroTitle, heroMeta, showsStatus, gridEmpty, moveHint;
     private View homePanel, gridPanel, showsPanel, gear, assistantButton;
     private ImageView assistantIcon;
@@ -155,6 +161,8 @@ public class MainActivity extends AppCompatActivity
         homeAdapter = new AppRowAdapter(preferences, this, AppRepository.ROW_HOME, AppRowAdapter.STYLE_WIDE,
                 (rowId, app) -> setHero(app));
         homeView.setAdapter(homeAdapter);
+        appPreview = new AppPreview(findViewById(R.id.appPreview));
+        homeView.getRootView().getViewTreeObserver().addOnGlobalFocusChangeListener(previewFocusListener);
 
         gridView = findViewById(R.id.recyclerGrid);
         gridView.setLayoutManager(new GridLayoutManager(this, GRID_COLUMNS));
@@ -315,6 +323,7 @@ public class MainActivity extends AppCompatActivity
     }
 
     private void applyTabVisibility() {
+        if (currentTab != TAB_HOME && appPreview != null) appPreview.hide();
         homePanel.setVisibility(currentTab == TAB_HOME ? View.VISIBLE : View.GONE);
         showsPanel.setVisibility(currentTab == TAB_SHOWS ? View.VISIBLE : View.GONE);
         boolean grid = currentTab == TAB_APPS || currentTab == TAB_STREAMING;
@@ -368,6 +377,8 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override protected void onDestroy() {
+        if (appPreview != null) appPreview.hide();
+        homeView.getRootView().getViewTreeObserver().removeOnGlobalFocusChangeListener(previewFocusListener);
         if (packageReceiverRegistered) {
             try {
                 unregisterReceiver(packageReceiver);
@@ -383,6 +394,7 @@ public class MainActivity extends AppCompatActivity
 
     @Override protected void onResume() {
         super.onResume();
+        previewResumed = true;
         // Keeps the quick-actions service on once WRITE_SECURE_SETTINGS has been granted over ADB.
         QuickAccess.ensureServiceEnabled(this);
         long revision = preferences.getHomeRevision();
@@ -402,14 +414,36 @@ public class MainActivity extends AppCompatActivity
             loadShows(false);
         }
         if (wallpapers != null) wallpapers.start();
+        homeView.post(this::updateAppPreview);
     }
 
     @Override protected void onPause() {
+        previewResumed = false;
+        appPreview.hide();
         if (movingPackage != null) finishMove();
         if (gearMenu != null) gearMenu.dismiss();
         if (wallpapers != null) wallpapers.stop();
         menuPress.up();
         super.onPause();
+    }
+
+    @Override public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (appPreview == null) return;
+        if (!hasFocus) appPreview.hide();
+        else homeView.post(this::updateAppPreview);
+    }
+
+    private void updateAppPreview() {
+        if (appPreview == null) return;
+        AppModel focusedHomeApp = homeAdapter.getFocusedApp();
+        if (!previewResumed || !hasWindowFocus() || currentTab != TAB_HOME || !homeView.hasFocus()
+                || !preferences.isAppPreviewEnabled() || movingPackage != null || focusedHomeApp == null
+                || preferences.isLocked(focusedHomeApp.getPackageName())) {
+            appPreview.hide();
+            return;
+        }
+        appPreview.focus(focusedHomeApp.getPackageName(), focusedHomeApp.getLabel());
     }
 
     /**
@@ -505,6 +539,7 @@ public class MainActivity extends AppCompatActivity
         gridEmpty.setText(currentTab == TAB_APPS ? R.string.grid_empty_apps : R.string.grid_empty_streaming);
 
         if (homeApps.isEmpty()) {
+            appPreview.hide();
             heroTitle.setText(R.string.hero_no_apps);
             heroMeta.setText("");
         } else if (heroTitle.getText().length() == 0 || !homeView.hasFocus()) {
@@ -522,6 +557,7 @@ public class MainActivity extends AppCompatActivity
     private void setHero(AppModel app) {
         heroTitle.setText(app.getLabel());
         heroMeta.setText(homeIsFallback ? R.string.hero_empty_home : R.string.hero_hint);
+        updateAppPreview();
     }
 
     private void updateGreeting() {
@@ -707,6 +743,7 @@ public class MainActivity extends AppCompatActivity
     }
 
     private void startMove(AppModel app, String rowId) {
+        appPreview.hide();
         List<AppModel> source = AppRepository.ROW_HOME.equals(rowId) ? homeApps : row(rowId);
         if (source.size() < 2) return;
         movingRow = rowId;

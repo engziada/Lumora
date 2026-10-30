@@ -14,6 +14,7 @@ android {
         applicationId 'com.firestick.aura.launcher'
         minSdk 26
         targetSdk 34
+        testInstrumentationRunner 'com.firestick.aura.launcher.PreviewInstrumentation'
         // Every CI build is newer than the last, which the in-app updater relies on.
         versionCode ciRunNumber ? 1000 + ciRunNumber.toInteger() : 9
         versionName '5.4.1'

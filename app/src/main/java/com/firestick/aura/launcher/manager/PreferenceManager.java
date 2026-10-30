@@ -25,6 +25,7 @@ public class PreferenceManager {
     private static final String KEY_RECENT = "pref_recent_apps";
     private static final String KEY_HD_ICONS = "pref_hd_icons";
     private static final String KEY_CARD_EFFECT = "pref_card_effect";
+    private static final String KEY_APP_PREVIEW = "pref_app_preview_demo";
     private static final String KEY_SHOWS_ENABLED = "pref_shows_enabled";
     private static final String KEY_SHOWS_COUNTRY = "pref_shows_country";
     private static final String KEY_HOME_REVISION = "pref_home_revision";
@@ -52,6 +53,14 @@ public class PreferenceManager {
     /** Incremented by every change that affects the app rows, so Home can rebuild on resume. */
     public long getHomeRevision() {
         return prefs.getLong(KEY_HOME_REVISION, 0L);
+    }
+
+    public boolean isAppPreviewEnabled() {
+        return prefs.getBoolean(KEY_APP_PREVIEW, false);
+    }
+
+    public void setAppPreviewEnabled(boolean enabled) {
+        applyHomeChange(prefs.edit().putBoolean(KEY_APP_PREVIEW, enabled));
     }
 
     private void applyHomeChange(SharedPreferences.Editor editor) {

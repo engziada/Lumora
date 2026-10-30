@@ -194,6 +194,7 @@ public class SettingsActivity extends AppCompatActivity {
         refreshStats();
         updateThemeButtons();
         updateIconStyleButton();
+        updateAppPreviewButton();
         updateCardEffectButton();
         updateWallpaperButtons();
         updateSoundButton();
@@ -246,6 +247,11 @@ public class SettingsActivity extends AppCompatActivity {
     // ---------------------------------------------------------- appearance
 
     private void bindAppearance() {
+        findViewById(R.id.btnAppPreview).setOnClickListener(v -> {
+            preferences.setAppPreviewEnabled(!preferences.isAppPreviewEnabled());
+            SoundManager.playClick(v, preferences);
+            updateAppPreviewButton();
+        });
         for (int i = 0; i < THEME_BUTTONS.length; i++) {
             int index = i;
             Button button = findViewById(THEME_BUTTONS[i]);
@@ -285,6 +291,11 @@ public class SettingsActivity extends AppCompatActivity {
         String effect = preferences.getCardEffect();
         cardEffect.setText(CardEffects.ARABIC.equals(effect) ? R.string.card_effect_arabic
                 : CardEffects.OFF.equals(effect) ? R.string.card_effect_off : R.string.card_effect_lightning);
+    }
+
+    private void updateAppPreviewButton() {
+        ((Button) findViewById(R.id.btnAppPreview)).setText(preferences.isAppPreviewEnabled()
+                ? R.string.preview_toggle_on : R.string.preview_toggle_off);
     }
 
     private String themeName() {

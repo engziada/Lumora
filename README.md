@@ -120,6 +120,25 @@ Downloads are cached on the device (icons indefinitely, schedules 3 hours, poste
 wallpapers until the cache is cleared; only the last downloaded update APK is kept, replaced by
 the next update download). With every feature off, Lumora makes no network requests.
 
+### Home app preview experiment
+
+Enable **Settings > Appearance > App preview demo** (off by default). On Home, focus YouTube,
+Prime Video, or Netflix for 600 ms to reveal a passive title card. Three bundled samples rotate
+every six seconds; OK opens the focused app through the existing lock and launch flow.
+Leaving the strip, changing tabs, or leaving Lumora hides the panel. Locked apps have no preview.
+
+This offline prototype uses sample titles, descriptions, and abstract vector artwork. It does not
+access accounts, mirror an app screen, fetch live rankings, or establish regional availability.
+No new permissions, keys, or network hosts are needed. Provider feeds remain future work.
+
+Validation commands (JDK 17): `gradlew.bat testDebugUnitTest assembleDebug assembleDebugAndroidTest lintDebug`.
+With a TV emulator connected, install the debug and androidTest APKs, then run
+`adb shell am instrument -w com.firestick.aura.launcher.test/com.firestick.aura.launcher.PreviewInstrumentation`.
+The instrumentation injects temporary service tiles, exercises focus/cancellation/rotation/opt-out,
+and writes preview screenshots to the target app's external files directory. It restores its preview
+and YouTube lock preferences afterward; it launches YouTube for the OK check when installed.
+See [the preview plan](docs/APP_PREVIEW_PLAN.md).
+
 **Movie posters:** TVmaze covers TV and streaming series only. Film posters would need TMDB, which
 requires a free account and API key; it is not integrated.
 
