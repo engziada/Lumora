@@ -37,6 +37,7 @@ public class PreferenceManager {
     private static final String KEY_LOCK_LENGTH = "pref_lock_length";
     private static final String KEY_LOCK_SETTINGS = "pref_lock_settings";
     private static final String KEY_HOME_REDIRECT = "pref_home_redirect";
+    private static final String KEY_PANEL_CONTENT = "pref_panel_content";
     private static final int MAX_RECENT = 12;
 
     /** Procedurally rendered offline scenes: zero network, instant. */
@@ -44,10 +45,29 @@ public class PreferenceManager {
     /** Live catalog: ESA/Hubble and Unsplash stills, downloaded once and cached. */
     public static final int WALLPAPER_SOURCE_ONLINE = 1;
 
+    /** Home preview panel shows nothing. */
+    public static final int PANEL_CONTENT_OFF = 0;
+    /** Home preview panel shows the generative particles/plasma ambient: offline, no data. */
+    public static final int PANEL_CONTENT_PARTICLES = 1;
+    /** Home preview panel plays public videos from the provider feeds: needs network. */
+    public static final int PANEL_CONTENT_VIDEOS = 2;
+
     private final SharedPreferences prefs;
 
     public PreferenceManager(Context context) {
         prefs = context.getApplicationContext().getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        migrateAppPreview();
+    }
+
+    /**
+     * The video preview's boolean toggle became a panel-content selector (off / particles /
+     * videos). Users who had videos on keep playing videos; particles are the new default for
+     * everyone else.
+     */
+    private void migrateAppPreview() {
+        if (prefs.contains(KEY_PANEL_CONTENT) || !prefs.contains(KEY_APP_PREVIEW)) return;
+        prefs.edit().putInt(KEY_PANEL_CONTENT,
+                prefs.getBoolean(KEY_APP_PREVIEW, false) ? PANEL_CONTENT_VIDEOS : PANEL_CONTENT_OFF).apply();
     }
 
     /** Incremented by every change that affects the app rows, so Home can rebuild on resume. */
@@ -55,12 +75,18 @@ public class PreferenceManager {
         return prefs.getLong(KEY_HOME_REVISION, 0L);
     }
 
+    /** True when the home preview panel shows anything at all. */
     public boolean isAppPreviewEnabled() {
-        return prefs.getBoolean(KEY_APP_PREVIEW, false);
+        return getPanelContent() != PANEL_CONTENT_OFF;
     }
 
-    public void setAppPreviewEnabled(boolean enabled) {
-        applyHomeChange(prefs.edit().putBoolean(KEY_APP_PREVIEW, enabled));
+    /** What the home preview panel shows: {@link #PANEL_CONTENT_OFF}, {@code _PARTICLES} or {@code _VIDEOS}. */
+    public int getPanelContent() {
+        return prefs.getInt(KEY_PANEL_CONTENT, PANEL_CONTENT_PARTICLES);
+    }
+
+    public void setPanelContent(int content) {
+        prefs.edit().putInt(KEY_PANEL_CONTENT, content).apply();
     }
 
     private void applyHomeChange(SharedPreferences.Editor editor) {

@@ -69,14 +69,17 @@
     <string name="ai_open_label">Open the assistant</string>
     <string name="ai_floating_on">Floating button: On</string>
     <string name="ai_floating_off">Floating button: Off</string>
+    <string name="ai_floating_card">Floating button</string>
     <string name="ai_remote_on">Hold ☰ Menu: On</string>
     <string name="ai_remote_off">Hold ☰ Menu: Off</string>
+    <string name="ai_remote_card">Hold ☰ Menu opens assistant</string>
     <string name="ai_remote_title">Hold ☰ Menu</string>
     <string name="ai_remote_needs_quick">Holding Menu opens the assistant in every app once quick actions are on (one-time ADB setup). Until then it works only while Lumora is open.</string>
     <string name="ai_remote_hint">Hold the ☰ Menu button for about half a second to open the assistant; a short press still works as Menu. Works in every app with quick actions on, otherwise only inside Lumora. The Alexa button cannot be used: Fire OS sends it only to Alexa.</string>
     <string name="ai_privacy_label">Privacy</string>
     <string name="ai_share_on">Share installed app names: On</string>
     <string name="ai_share_off">Share installed app names: Off</string>
+    <string name="ai_share_card">Share installed app names</string>
     <string name="ai_privacy_hint">Your questions, the recent conversation and (if on) the names of installed apps are sent to OpenRouter and the model provider it selects. Nothing else leaves the TV. With sharing off the assistant cannot suggest apps to open. The phone link works only inside your home network.</string>
 
     <!-- Settings: device info -->
@@ -103,6 +106,21 @@
     <string name="dev_uptime">Uptime</string>
     <string name="dev_lumora">Lumora memory</string>
     <string name="dev_hint">Updated every second while this page is open. Fire OS hides some figures (for example overall CPU load) from apps; the bar then shows the current clock speed instead.</string>
+    <string name="dev_static_label">Device</string>
+    <string name="dev_firmware">Firmware</string>
+    <string name="dev_kernel">Kernel</string>
+    <string name="dev_security">Security patch</string>
+    <string name="dev_home">Home screen</string>
+    <string name="dev_home_lumora">Lumora is the default home</string>
+    <string name="dev_home_other">%1$s — Lumora is not the default home</string>
+    <string name="dev_home_unknown">Default home unknown</string>
+
+    <!-- ADB command sharing over the phone link (MODE_OUT) -->
+    <string name="phone_title_share">Send commands to your phone</string>
+    <string name="phone_message_share">Scan the code with the phone camera, or open the address in the phone\'s browser while both devices are on the same Wi-Fi. Every block you send from the ADB tools appears there with a Copy button, ready to paste into your computer\'s terminal.</string>
+    <string name="phone_share_first">Open the phone link first, then press Send under any command block. The text arrives on the paired phone page.</string>
+    <string name="phone_share_ready">If the page is not open on the phone yet, pair it first — commands wait and appear on open.</string>
+    <string name="phone_share_sent">Sent to your phone.</string>
 
     <string name="a11y_service_description_keys">Lets Lumora take screenshots, open the power menu, return to Lumora when the Home button opens the stock Fire TV home, and open the Lumora assistant when the Menu button is held. It looks only at the Menu button and does not read screen content.</string>
 

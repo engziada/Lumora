@@ -198,6 +198,31 @@ public final class PhoneProtocol {
         return response(status, "application/json; charset=utf-8", body.getBytes(StandardCharsets.UTF_8));
     }
 
+    /** {@code {"ok":true,"text":"…"}} with the text JSON-escaped (newlines, quotes, controls). */
+    public static byte[] jsonWithText(int status, String text) {
+        String body = "{\"ok\":true,\"text\":\"" + escapeJson(text) + "\"}";
+        return response(status, "application/json; charset=utf-8", body.getBytes(StandardCharsets.UTF_8));
+    }
+
+    static String escapeJson(String text) {
+        if (text == null) return "";
+        StringBuilder out = new StringBuilder(text.length() + 16);
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            switch (c) {
+                case '"': out.append("\\\""); break;
+                case '\\': out.append("\\\\"); break;
+                case '\n': out.append("\\n"); break;
+                case '\r': out.append("\\r"); break;
+                case '\t': out.append("\\t"); break;
+                default:
+                    if (c < 0x20) out.append(String.format(Locale.US, "\\u%04x", (int) c));
+                    else out.append(c);
+            }
+        }
+        return out.toString();
+    }
+
     private static String reason(int status) {
         switch (status) {
             case 200: return "OK";
@@ -216,6 +241,12 @@ public final class PhoneProtocol {
     }
 
     // ------------------------------------------------------------------ page
+
+    /** Mobile page for a PhoneBridge mode. Outbox mode serves the command-outbox page instead. */
+    public static String page(int mode) {
+        if (mode == PhoneBridge.MODE_OUT) return OUT_PAGE;
+        return page(mode == PhoneBridge.MODE_KEY);
+    }
 
     /** Mobile page. {@code keyMode} asks for the OpenRouter key in a masked field instead of a question. */
     public static String page(boolean keyMode) {
@@ -290,5 +321,73 @@ public final class PhoneProtocol {
             + "}).catch(function(){status.textContent='The TV did not answer. Is the phone link still open on the TV?';})\n"
             + ".then(function(){btn.disabled=false;});};\n"
             + "show();})();\n"
+            + "</script></body></html>\n";
+
+    /**
+     * Outbox page for MODE_OUT: the TV pushes command blocks here and the phone shows them with
+     * a Copy button each. Polls every two seconds with the pairing code in an X-Code header, so
+     * only the paired browser receives the pushed text.
+     */
+    private static final String OUT_PAGE = "<!doctype html>\n"
+            + "<html lang=\"en\"><head><meta charset=\"utf-8\">\n"
+            + "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n"
+            + "<meta name=\"color-scheme\" content=\"dark\"><title>Lumora</title>\n"
+            + "<style>\n"
+            + ":root{--bg:#1c1511;--panel:#2a201a;--line:#4a3a2e;--text:#f6ece0;--muted:#c4b2a0;--accent:#e3a15a;--ink:#24170c}\n"
+            + "*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);"
+            + "font:clamp(1rem,0.95rem + 0.4vw,1.125rem)/1.5 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}\n"
+            + "main{max-width:40rem;margin:0 auto;padding:1.5rem 1.25rem 3rem}\n"
+            + "h1{margin:0;font-size:1.75rem;letter-spacing:.02em;color:var(--accent)}\n"
+            + ".sub{margin:.25rem 0 1.5rem;color:var(--muted)}\n"
+            + "label{display:block;margin-bottom:.5rem;font-weight:600}\n"
+            + "input{width:100%;padding:.85rem 1rem;border:1px solid var(--line);border-radius:.9rem;"
+            + "background:var(--panel);color:var(--text);font:inherit}\n"
+            + "input:focus{outline:2px solid var(--accent);outline-offset:1px}\n"
+            + "button{margin:.6rem 0 0;width:100%;min-height:2.6rem;border:0;border-radius:.7rem;"
+            + "background:var(--accent);color:var(--ink);font:inherit;font-weight:700}\n"
+            + ".hint{margin:.5rem 0 0;color:var(--muted);font-size:.9em}\n"
+            + "#status{min-height:1.5em;margin:.75rem 0 0;color:var(--muted)}\n"
+            + "ol{list-style:none;margin:1rem 0 0;padding:0}\n"
+            + "li{padding:.8rem .9rem;margin-top:.6rem;border-radius:.9rem;background:var(--panel);"
+            + "border:1px solid var(--line)}\n"
+            + "pre{margin:0;white-space:pre-wrap;word-break:break-all;font-size:.85em;color:var(--text)}\n"
+            + "li button{margin-top:.6rem}\n"
+            + "[hidden]{display:none!important}\n"
+            + "</style></head><body><main>\n"
+            + "<h1>Lumora</h1><p class=\"sub\">Commands beamed from your TV</p>\n"
+            + "<section id=\"pair\" hidden><label for=\"code\">Pairing code shown on the TV</label>\n"
+            + "<input id=\"code\" inputmode=\"numeric\" autocomplete=\"one-time-code\" maxlength=\"6\">\n"
+            + "<button id=\"pairBtn\" type=\"button\">Connect</button></section>\n"
+            + "<p class=\"hint\">New commands from the TV appear here automatically; use Copy, then paste into your computer's terminal.</p>\n"
+            + "<p id=\"status\" role=\"status\" aria-live=\"polite\"></p><ol id=\"cmds\"></ol>\n"
+            + "</main><script>\n"
+            + "(function(){\n"
+            + "var code=sessionStorage.getItem('c')||'';\n"
+            + "var m=location.hash.match(/c=(\\d{6})/);\n"
+            + "if(m){code=m[1];sessionStorage.setItem('c',code);history.replaceState(null,'',location.pathname);}\n"
+            + "var pair=document.getElementById('pair'),status=document.getElementById('status'),cmds=document.getElementById('cmds');\n"
+            + "function show(){pair.hidden=!!code;}\n"
+            + "document.getElementById('pairBtn').onclick=function(){var v=document.getElementById('code').value.trim();"
+            + "if(/^\\d{6}$/.test(v)){code=v;sessionStorage.setItem('c',v);status.textContent='';show();poll();}"
+            + "else{status.textContent='Enter the 6 digits shown on the TV.';}};\n"
+            + "function poll(){if(!code)return;"
+            + "fetch('/outbox',{headers:{'X-Code':code}}).then(function(r){return r.json();}).then(function(j){\n"
+            + "if(j.ok&&j.text){copyBlock(j.text);status.textContent='Received. Waiting for more…';}\n"
+            + "else if(j.error==='code'){code='';sessionStorage.removeItem('c');"
+            + "status.textContent='The code is wrong or has changed. Enter the code shown on the TV.';show();}\n"
+            + "}).catch(function(){});}\n"
+            + "function copyBlock(text){text.split('\\n\\n').forEach(function(block){if(!block)return;"
+            + "var li=document.createElement('li');li.dir='ltr';\n"
+            + "var pre=document.createElement('pre');pre.textContent=block;li.appendChild(pre);\n"
+            + "var btn=document.createElement('button');btn.textContent='Copy';\n"
+            + "btn.onclick=function(){\n"
+            + "function done(){status.textContent='Copied. Paste it into your terminal.';btn.textContent='Copied';"
+            + "setTimeout(function(){btn.textContent='Copy';},2000);}\n"
+            + "if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(block).then(done);}else{\n"
+            + "var t=document.createElement('textarea');t.value=block;t.style.position='fixed';t.style.opacity='0';"
+            + "document.body.appendChild(t);t.select();try{document.execCommand('copy');done();}catch(e){status.textContent='Select the text above and copy it by hand.';}\n"
+            + "document.body.removeChild(t);}};li.appendChild(btn);cmds.insertBefore(li,cmds.firstChild);});}\n"
+            + "show();setInterval(poll,2000);poll();\n"
+            + "})();\n"
             + "</script></body></html>\n";
 }

@@ -5,11 +5,13 @@ import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.content.res.ColorStateList;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -17,11 +19,13 @@ import android.provider.Settings;
 import android.text.format.DateUtils;
 import android.util.DisplayMetrics;
 import android.view.Display;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -46,6 +50,7 @@ import com.firestick.aura.launcher.ui.CardEffects;
 import com.firestick.aura.launcher.ui.Glass;
 import com.firestick.aura.launcher.ui.GlassMenu;
 import com.firestick.aura.launcher.ui.LockPad;
+import com.firestick.aura.launcher.ui.OptionToggleView;
 import com.firestick.aura.launcher.ui.PhonePairDialog;
 import com.firestick.aura.launcher.ui.TextPrompt;
 import com.firestick.aura.launcher.ui.UpdateFlow;
@@ -65,13 +70,14 @@ public class SettingsActivity extends AppCompatActivity {
     public static final String EXTRA_SECTION = "com.firestick.aura.launcher.extra.SETTINGS_SECTION";
     public static final int SECTION_ASSISTANT = 5;
     private static final int SECTION_DEVICE = 7;
+    private static final int SECTION_ADB = 8;
 
     private static final int[] SECTIONS = {R.id.secAppearance, R.id.secWallpaper, R.id.secAudio, R.id.secShows,
             R.id.secLock, R.id.secAssistant, R.id.secSystem, R.id.secDevice, R.id.secAdb, R.id.secAbout};
     private static final int[] PANELS = {R.id.panelAppearance, R.id.panelWallpaper, R.id.panelAudio, R.id.panelShows,
             R.id.panelLock, R.id.panelAssistant, R.id.panelSystem, R.id.panelDevice, R.id.scrollAdb, R.id.panelAbout};
-    private static final int[] FIRST_FOCUS = {R.id.btnThemeAmber, R.id.btnWallpaperSource, R.id.btnToggleSound,
-            R.id.btnShowsToggle, R.id.btnLockCode, R.id.btnAiKey, R.id.btnQuickPermission, R.id.panelDevice,
+    private static final int[] FIRST_FOCUS = {R.id.btnThemeAmber, R.id.btnWallpaperSource, R.id.toggleSound,
+            R.id.toggleShows, R.id.btnLockCode, R.id.btnAiKey, R.id.btnQuickPermission, R.id.panelDevice,
             R.id.scrollAdb, R.id.btnAboutEmail};
 
     private static final int[] THEME_BUTTONS = {R.id.btnThemeAmber, R.id.btnThemeCopper, R.id.btnThemeRose, R.id.btnThemeMoon};
@@ -95,10 +101,11 @@ public class SettingsActivity extends AppCompatActivity {
     private AssistantSettings assistant;
     private WallpaperManager wallpapers;
     private TextView stats, themeHint;
-    private Button iconStyle, wallpaperSource, wallCategories, sound, showsToggle, showsCountry;
-    private Button lockCode, lockedApps, lockSettings, quickPermission, homeRedirect;
-    private Button aiKey, aiTest, aiRemoveKey, aiModel, aiFloating, aiRemote, aiShareApps, aiControl;
-    private Button updateCheck, updateAuto, cardEffect;
+    private OptionToggleView iconStyle, sound, showsToggle, lockSettings, homeRedirect;
+    private OptionToggleView aiFloating, aiRemote, aiShareApps, aiControl;
+    private Button wallpaperSource, wallCategories, showsCountry, lockCode, lockedApps, quickPermission;
+    private Button aiKey, aiTest, aiRemoveKey, aiModel;
+    private Button updateCheck, updateAuto, cardEffect, appPreviewBtn;
     private TextView updateStatus;
     private UpdateManager updates;
     private int currentSection;
@@ -107,11 +114,15 @@ public class SettingsActivity extends AppCompatActivity {
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
     private DeviceMonitor monitor;
     private boolean deviceRunning;
-    private TextView devModel, devSystem, devCpu, devClock, devTemp, devRam, devStorage, devNetwork, devDisplay,
+    private TextView devModel, devSystem, devFirmware, devKernel, devSecurity, devHome;
+    private TextView devCpu, devClock, devTemp, devRam, devStorage, devNetwork, devDisplay,
             devUptime, devLumora;
     private ProgressBar barCpu, barRam, barStorage;
     private PhoneBridge keyPhone;
     private PhonePairDialog keyDialog;
+    /** MODE_OUT link used by the ADB screen to beam commands to the phone. */
+    private PhoneBridge sharePhone;
+    private PhonePairDialog shareDialog;
 
     private final Runnable deviceTick = new Runnable() {
         @Override public void run() {
@@ -135,17 +146,17 @@ public class SettingsActivity extends AppCompatActivity {
         wallpapers = new WallpaperManager(this, preferences, findViewById(R.id.imgSettingsBack), findViewById(R.id.imgSettingsFront));
         stats = findViewById(R.id.txtStats);
         themeHint = findViewById(R.id.txtThemeHint);
-        iconStyle = findViewById(R.id.btnIconStyle);
+        iconStyle = findViewById(R.id.toggleIconStyle);
         wallpaperSource = findViewById(R.id.btnWallpaperSource);
         wallCategories = findViewById(R.id.btnWallCategories);
-        sound = findViewById(R.id.btnToggleSound);
-        showsToggle = findViewById(R.id.btnShowsToggle);
+        sound = findViewById(R.id.toggleSound);
+        showsToggle = findViewById(R.id.toggleShows);
         showsCountry = findViewById(R.id.btnShowsCountry);
         lockCode = findViewById(R.id.btnLockCode);
         lockedApps = findViewById(R.id.btnLockedApps);
-        lockSettings = findViewById(R.id.btnLockSettings);
+        lockSettings = findViewById(R.id.toggleLockSettings);
         quickPermission = findViewById(R.id.btnQuickPermission);
-        homeRedirect = findViewById(R.id.btnHomeRedirect);
+        homeRedirect = findViewById(R.id.toggleHomeRedirect);
         bindSections();
         bindAppearance();
         bindWallpaper();
@@ -179,15 +190,25 @@ public class SettingsActivity extends AppCompatActivity {
     /** The phone link closes as soon as Settings is no longer on screen. */
     @Override protected void onStop() {
         stopKeyPhone();
+        stopSharePhone();
         super.onStop();
     }
 
     @Override protected void onDestroy() {
         stopDeviceUpdates();
         stopKeyPhone();
+        stopSharePhone();
         worker.shutdownNow();
         wallpapers.shutdown();
         super.onDestroy();
+    }
+
+    /** Wires one graphical checkbox card to a boolean preference. */
+    private OptionToggleView bindToggle(OptionToggleView toggle, boolean checked) {
+        toggle.accentColor(accent());
+        toggle.setCheckedState(checked);
+        toggle.setOnFocusChangeListener((v, focused) -> SoundManager.playFocus(v, preferences));
+        return toggle;
     }
 
     private void refreshAll() {
@@ -209,14 +230,36 @@ public class SettingsActivity extends AppCompatActivity {
         for (int i = 0; i < SECTIONS.length; i++) {
             int section = i;
             View view = findViewById(SECTIONS[i]);
-            view.setOnClickListener(v -> showSection(section));
-            view.setOnFocusChangeListener((v, focused) -> {
-                if (focused) SoundManager.playFocus(v, preferences);
+            view.setOnClickListener(v -> {
+                SoundManager.playClick(v, preferences);
+                showSection(section);
             });
+            view.setOnFocusChangeListener((v, focused) -> {
+                if (focused) {
+                    SoundManager.playFocus(v, preferences);
+                    // Follow the focused rail row so the panel never shows a different section.
+                    // Focus itself stays on the row; OK switches and enters the panel.
+                    setSection(section);
+                }
+            });
+            // Deterministic rail paths: DOWN walks the rail, RIGHT lands on the section's first
+            // control regardless of geometry.
+            view.setNextFocusRightId(FIRST_FOCUS[section]);
+            if (section < SECTIONS.length - 1) view.setNextFocusDownId(SECTIONS[section + 1]);
+            // The section's first control returns UP to its rail row instead of the header.
+            View first = findViewById(FIRST_FOCUS[section]);
+            if (first != null) first.setNextFocusUpId(SECTIONS[section]);
         }
     }
 
     private void showSection(int section) {
+        setSection(section);
+        View focus = findViewById(FIRST_FOCUS[section]);
+        if (focus != null) focus.requestFocus();
+    }
+
+    /** Switches the visible panel without moving focus, so the panel matches the rail row. */
+    private void setSection(int section) {
         currentSection = section;
         for (int i = 0; i < PANELS.length; i++) {
             findViewById(PANELS[i]).setVisibility(i == section ? View.VISIBLE : View.GONE);
@@ -224,8 +267,6 @@ public class SettingsActivity extends AppCompatActivity {
         }
         if (section == SECTION_DEVICE) startDeviceUpdates();
         else stopDeviceUpdates();
-        View focus = findViewById(FIRST_FOCUS[section]);
-        if (focus != null) focus.requestFocus();
     }
 
     private int color(int res) {
@@ -247,11 +288,8 @@ public class SettingsActivity extends AppCompatActivity {
     // ---------------------------------------------------------- appearance
 
     private void bindAppearance() {
-        findViewById(R.id.btnAppPreview).setOnClickListener(v -> {
-            preferences.setAppPreviewEnabled(!preferences.isAppPreviewEnabled());
-            SoundManager.playClick(v, preferences);
-            updateAppPreviewButton();
-        });
+        appPreviewBtn = findViewById(R.id.btnAppPreview);
+        appPreviewBtn.setOnClickListener(v -> pickPanelContent());
         for (int i = 0; i < THEME_BUTTONS.length; i++) {
             int index = i;
             Button button = findViewById(THEME_BUTTONS[i]);
@@ -270,10 +308,11 @@ public class SettingsActivity extends AppCompatActivity {
                 toast(getString(R.string.accent_saved, getString(THEME_NAMES[index])));
             });
         }
-        iconStyle.setOnClickListener(v -> {
-            preferences.setHdIconsEnabled(!preferences.isHdIconsEnabled());
-            SoundManager.playClick(v, preferences);
-            updateIconStyleButton();
+        iconStyle = findViewById(R.id.toggleIconStyle);
+        bindToggle(iconStyle, preferences.isHdIconsEnabled());
+        iconStyle.listener(checked -> {
+            preferences.setHdIconsEnabled(checked);
+            SoundManager.playClick(iconStyle, preferences);
         });
         ViewGroup appearance = findViewById(R.id.panelAppearance);
         View effectSection = getLayoutInflater().inflate(R.layout.section_card_effect, appearance, false);
@@ -286,6 +325,27 @@ public class SettingsActivity extends AppCompatActivity {
         });
     }
 
+    /** The home panel shows generative particles (offline), public videos, or nothing. */
+    private void pickPanelContent() {
+        SoundManager.playClick(appPreviewBtn, preferences);
+        int current = preferences.getPanelContent();
+        List<GlassMenu.Item> items = new ArrayList<>();
+        items.add(new GlassMenu.Item(R.drawable.ic_nav_home, getString(R.string.panel_mode_off))
+                .checked(current == PreferenceManager.PANEL_CONTENT_OFF));
+        items.add(new GlassMenu.Item(R.drawable.ic_palette, getString(R.string.panel_mode_particles))
+                .checked(current == PreferenceManager.PANEL_CONTENT_PARTICLES));
+        items.add(new GlassMenu.Item(R.drawable.ic_web, getString(R.string.panel_mode_videos))
+                .checked(current == PreferenceManager.PANEL_CONTENT_VIDEOS));
+        GlassMenu.show(this, getString(R.string.panel_content_title), getString(R.string.panel_content_pick),
+                null, items, false, (index, item) -> {
+                    int mode = index == 1 ? PreferenceManager.PANEL_CONTENT_PARTICLES
+                            : index == 2 ? PreferenceManager.PANEL_CONTENT_VIDEOS
+                            : PreferenceManager.PANEL_CONTENT_OFF;
+                    preferences.setPanelContent(mode);
+                    updateAppPreviewButton();
+                });
+    }
+
     private void updateCardEffectButton() {
         if (cardEffect == null) return;
         String effect = preferences.getCardEffect();
@@ -294,8 +354,11 @@ public class SettingsActivity extends AppCompatActivity {
     }
 
     private void updateAppPreviewButton() {
-        ((Button) findViewById(R.id.btnAppPreview)).setText(preferences.isAppPreviewEnabled()
-                ? R.string.preview_toggle_on : R.string.preview_toggle_off);
+        int mode = preferences.getPanelContent();
+        appPreviewBtn.setText(getString(R.string.panel_content_value,
+                getString(mode == PreferenceManager.PANEL_CONTENT_PARTICLES ? R.string.panel_mode_particles
+                        : mode == PreferenceManager.PANEL_CONTENT_VIDEOS ? R.string.panel_mode_videos
+                        : R.string.panel_mode_off)));
     }
 
     private String themeName() {
@@ -318,7 +381,7 @@ public class SettingsActivity extends AppCompatActivity {
 
     private void updateIconStyleButton() {
         boolean hd = preferences.isHdIconsEnabled();
-        iconStyle.setText(hd ? R.string.icon_style_hd : R.string.icon_style_installed);
+        bindToggle(iconStyle, hd);
     }
 
     // ----------------------------------------------------------- wallpaper
@@ -390,23 +453,25 @@ public class SettingsActivity extends AppCompatActivity {
     // --------------------------------------------------------------- audio
 
     private void bindAudio() {
-        sound.setOnClickListener(v -> {
-            preferences.setSoundEnabled(!preferences.isSoundEnabled());
-            updateSoundButton();
-            SoundManager.playClick(v, preferences);
+        sound = findViewById(R.id.toggleSound);
+        bindToggle(sound, preferences.isSoundEnabled());
+        sound.listener(checked -> {
+            preferences.setSoundEnabled(checked);
+            SoundManager.playClick(sound, preferences);
         });
     }
 
     private void updateSoundButton() {
-        sound.setText(preferences.isSoundEnabled() ? R.string.sound_on : R.string.sound_off);
+        bindToggle(sound, preferences.isSoundEnabled());
     }
 
     // --------------------------------------------------------------- shows
 
     private void bindShows() {
-        showsToggle.setOnClickListener(v -> {
-            SoundManager.playClick(v, preferences);
-            preferences.setShowsEnabled(!preferences.isShowsEnabled());
+        showsToggle = findViewById(R.id.toggleShows);
+        bindToggle(showsToggle, preferences.isShowsEnabled());
+        showsToggle.listener(checked -> {
+            preferences.setShowsEnabled(checked);
             updateShowsButtons();
         });
         showsCountry.setOnClickListener(v -> {
@@ -429,7 +494,7 @@ public class SettingsActivity extends AppCompatActivity {
 
     private void updateShowsButtons() {
         boolean enabled = preferences.isShowsEnabled();
-        showsToggle.setText(enabled ? R.string.shows_toggle_on : R.string.shows_toggle_off);
+        bindToggle(showsToggle, enabled);
         showsCountry.setText(getString(R.string.shows_country, countryLabel(preferences.getShowsCountry())));
         showsCountry.setEnabled(enabled);
         showsCountry.setAlpha(enabled ? 1f : .5f);
@@ -449,20 +514,24 @@ public class SettingsActivity extends AppCompatActivity {
             }
             LockPad.verify(this, preferences, getString(R.string.lock_sub_manage), this::showLockedApps);
         });
-        lockSettings.setOnClickListener(v -> {
-            if (preferences.isSettingsLocked()) {
+        lockSettings.listener(checked -> {
+            if (checked) {
+                if (!AppLock.hasCode(preferences)) {
+                    bindToggle(lockSettings, false);
+                    LockPad.create(this, preferences, () -> {
+                        preferences.setSettingsLocked(true);
+                        updateLockButtons();
+                    });
+                } else {
+                    preferences.setSettingsLocked(true);
+                }
+            } else if (preferences.isSettingsLocked()) {
                 LockPad.verify(this, preferences, getString(R.string.lock_sub_manage), () -> {
                     preferences.setSettingsLocked(false);
                     updateLockButtons();
                 });
-            } else if (!AppLock.hasCode(preferences)) {
-                LockPad.create(this, preferences, () -> {
-                    preferences.setSettingsLocked(true);
-                    updateLockButtons();
-                });
             } else {
-                preferences.setSettingsLocked(true);
-                updateLockButtons();
+                preferences.setSettingsLocked(false);
             }
         });
     }
@@ -483,7 +552,7 @@ public class SettingsActivity extends AppCompatActivity {
         boolean hasCode = AppLock.hasCode(preferences);
         lockCode.setText(hasCode ? R.string.lock_change_code : R.string.lock_set_code);
         lockedApps.setText(getString(R.string.lock_apps_count, preferences.getLockedApps().size()));
-        lockSettings.setText(preferences.isSettingsLocked() ? R.string.lock_settings_on : R.string.lock_settings_off);
+        bindToggle(lockSettings, preferences.isSettingsLocked());
     }
 
     // ----------------------------------------------------------- assistant
@@ -493,16 +562,16 @@ public class SettingsActivity extends AppCompatActivity {
         aiTest = findViewById(R.id.btnAiTest);
         aiRemoveKey = findViewById(R.id.btnAiRemoveKey);
         aiModel = findViewById(R.id.btnAiModel);
-        aiFloating = findViewById(R.id.btnAiFloating);
-        aiRemote = findViewById(R.id.btnAiRemote);
-        aiShareApps = findViewById(R.id.btnAiShareApps);
+        aiFloating = findViewById(R.id.toggleAiFloating);
+        aiRemote = findViewById(R.id.toggleAiRemote);
+        aiShareApps = findViewById(R.id.toggleAiShareApps);
         ViewGroup assistantList = (ViewGroup) ((ViewGroup) findViewById(R.id.panelAssistant)).getChildAt(0);
         View controlSection = getLayoutInflater().inflate(R.layout.section_ai_control, assistantList, false);
         assistantList.addView(controlSection, assistantList.indexOfChild(findViewById(R.id.btnAiOpen)));
-        aiControl = controlSection.findViewById(R.id.btnAiControl);
-        aiControl.setOnClickListener(v -> {
-            SoundManager.playClick(v, preferences);
-            assistant.setControlEnabled(!assistant.isControlEnabled());
+        aiControl = controlSection.findViewById(R.id.toggleAiControl);
+        aiControl.listener(checked -> {
+            SoundManager.playClick(aiControl, preferences);
+            assistant.setControlEnabled(checked);
             updateAssistantButtons();
         });
 
@@ -516,24 +585,23 @@ public class SettingsActivity extends AppCompatActivity {
             toast(getString(R.string.ai_key_removed));
         });
         aiModel.setOnClickListener(v -> pickModel());
-        aiFloating.setOnClickListener(v -> {
-            SoundManager.playClick(v, preferences);
-            assistant.setFloatingButtonEnabled(!assistant.isFloatingButtonEnabled());
+        aiFloating.listener(checked -> {
+            SoundManager.playClick(aiFloating, preferences);
+            assistant.setFloatingButtonEnabled(checked);
             updateAssistantButtons();
         });
-        aiRemote.setOnClickListener(v -> {
-            SoundManager.playClick(v, preferences);
-            boolean enable = !assistant.isRemoteButtonEnabled();
-            assistant.setRemoteButtonEnabled(enable);
+        aiRemote.listener(checked -> {
+            SoundManager.playClick(aiRemote, preferences);
+            assistant.setRemoteButtonEnabled(checked);
             updateAssistantButtons();
-            if (enable && !QuickActionService.isRunning()) {
+            if (checked && !QuickActionService.isRunning()) {
                 Glass.info(this, getString(R.string.ai_remote_title), getString(R.string.ai_remote_needs_quick), null,
                         getString(R.string.home_default_setup), () -> QuickAccess.showSetup(this));
             }
         });
-        aiShareApps.setOnClickListener(v -> {
-            SoundManager.playClick(v, preferences);
-            assistant.setShareAppsEnabled(!assistant.isShareAppsEnabled());
+        aiShareApps.listener(checked -> {
+            SoundManager.playClick(aiShareApps, preferences);
+            assistant.setShareAppsEnabled(checked);
             updateAssistantButtons();
         });
         findViewById(R.id.btnAiOpen).setOnClickListener(v -> startActivity(new Intent(this, AssistantActivity.class)));
@@ -647,10 +715,10 @@ public class SettingsActivity extends AppCompatActivity {
         aiRemoveKey.setEnabled(hasKey);
         aiRemoveKey.setAlpha(hasKey ? 1f : .5f);
         aiModel.setText(getString(R.string.ai_model_value, assistant.getModel()));
-        aiFloating.setText(assistant.isFloatingButtonEnabled() ? R.string.ai_floating_on : R.string.ai_floating_off);
-        aiRemote.setText(assistant.isRemoteButtonEnabled() ? R.string.ai_remote_on : R.string.ai_remote_off);
-        aiShareApps.setText(assistant.isShareAppsEnabled() ? R.string.ai_share_on : R.string.ai_share_off);
-        aiControl.setText(assistant.isControlEnabled() ? R.string.ai_control_on : R.string.ai_control_off);
+        bindToggle(aiFloating, assistant.isFloatingButtonEnabled());
+        bindToggle(aiRemote, assistant.isRemoteButtonEnabled());
+        bindToggle(aiShareApps, assistant.isShareAppsEnabled());
+        bindToggle(aiControl, assistant.isControlEnabled());
     }
 
     // -------------------------------------------------------------- system
@@ -666,9 +734,9 @@ public class SettingsActivity extends AppCompatActivity {
             }
             updateSystemButtons();
         });
-        homeRedirect.setOnClickListener(v -> {
-            SoundManager.playClick(v, preferences);
-            preferences.setHomeRedirectEnabled(!preferences.isHomeRedirectEnabled());
+        homeRedirect.listener(checked -> {
+            SoundManager.playClick(homeRedirect, preferences);
+            preferences.setHomeRedirectEnabled(checked);
             updateSystemButtons();
         });
         findViewById(R.id.btnSetHome).setOnClickListener(v -> Glass.info(this, getString(R.string.home_default_title),
@@ -694,7 +762,60 @@ public class SettingsActivity extends AppCompatActivity {
         int status = QuickActionService.isRunning() ? R.string.quick_permission_on
                 : QuickAccess.isServiceEnabled(this) ? R.string.quick_permission_starting : R.string.quick_permission_off;
         quickPermission.setText(status);
-        homeRedirect.setText(preferences.isHomeRedirectEnabled() ? R.string.home_redirect_on : R.string.home_redirect_off);
+        bindToggle(homeRedirect, preferences.isHomeRedirectEnabled());
+        if (devHome != null) devHome.setText(homeSummary());
+    }
+
+    /** The home intent resolves to whoever Fire OS currently treats as the default home. */
+    private boolean isDefaultHome() {
+        Intent home = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
+        ResolveInfo resolved = getPackageManager().resolveActivity(home, PackageManager.MATCH_DEFAULT_ONLY);
+        return resolved != null && getPackageName().equals(resolved.activityInfo.packageName);
+    }
+
+    private CharSequence homeSummary() {
+        if (isDefaultHome()) return getString(R.string.dev_home_lumora);
+        try {
+            Intent home = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
+            ResolveInfo resolved = getPackageManager().resolveActivity(home, PackageManager.MATCH_DEFAULT_ONLY);
+            if (resolved != null && resolved.activityInfo != null) {
+                return getString(R.string.dev_home_other, getPackageManager()
+                        .getApplicationLabel(getPackageManager().getApplicationInfo(resolved.activityInfo.packageName, 0)));
+            }
+        } catch (PackageManager.NameNotFoundException ignored) {
+            // Fall through to the generic line.
+        }
+        return getString(R.string.dev_home_other, getString(R.string.dev_home_unknown));
+    }
+
+    // -------------------------------------------------- d-pad scrolling for text panels
+
+    /**
+     * Device info rows are plain text, so the Device panel has nothing focusable to move into;
+     * with focus nowhere the arrow keys are lost and the panel never scrolls. When no view holds
+     * focus these two sections scroll in steps here instead. When a real control has the focus —
+     * for example the "Send to phone" pills in the ADB panel — the default focus traversal and
+     * the ScrollView's own arrow handling (focus moves through the pills while the panel scrolls
+     * to keep them on screen) take over untouched.
+     */
+    @Override public boolean dispatchKeyEvent(KeyEvent event) {
+        if (event.getAction() == KeyEvent.ACTION_DOWN && getCurrentFocus() == null
+                && (currentSection == SECTION_DEVICE || currentSection == SECTION_ADB)) {
+            int key = event.getKeyCode();
+            if (key == KeyEvent.KEYCODE_DPAD_UP || key == KeyEvent.KEYCODE_DPAD_DOWN
+                    || key == KeyEvent.KEYCODE_PAGE_UP || key == KeyEvent.KEYCODE_PAGE_DOWN) {
+                ScrollView scroller = findViewById(currentSection == SECTION_DEVICE ? R.id.panelDevice : R.id.scrollAdb);
+                scroller.requestFocus();
+                int current = scroller.getScrollY();
+                int max = Math.max(0, scroller.getChildAt(0).getHeight() - scroller.getHeight());
+                int step = key == KeyEvent.KEYCODE_PAGE_UP || key == KeyEvent.KEYCODE_PAGE_DOWN
+                        ? scroller.getHeight() - dp(80) : dp(150);
+                scroller.smoothScrollTo(0, Math.max(0, Math.min(max, current
+                        + (key == KeyEvent.KEYCODE_DPAD_UP || key == KeyEvent.KEYCODE_PAGE_UP ? -step : step))));
+                return true;
+            }
+        }
+        return super.dispatchKeyEvent(event);
     }
 
     private void showHiddenApps() {
@@ -743,8 +864,19 @@ public class SettingsActivity extends AppCompatActivity {
     private void buildDevicePanel() {
         LinearLayout list = findViewById(R.id.deviceRows);
         list.removeAllViews();
+        addEyebrow(list, R.string.dev_static_label);
         devModel = addDeviceRow(list, R.string.dev_model);
         devSystem = addDeviceRow(list, R.string.dev_system);
+        devFirmware = addDeviceRow(list, R.string.dev_firmware);
+        devKernel = addDeviceRow(list, R.string.dev_kernel);
+        devSecurity = addDeviceRow(list, R.string.dev_security);
+        devHome = addDeviceRow(list, R.string.dev_home);
+        devFirmware.setText(firmwareSummary());
+        devKernel.setText(kernelVersion());
+        devSecurity.setText(Build.VERSION.SECURITY_PATCH == null || Build.VERSION.SECURITY_PATCH.isEmpty()
+                ? getString(R.string.dev_unavailable) : Build.VERSION.SECURITY_PATCH);
+        devHome.setText(homeSummary());
+        addEyebrow(list, R.string.dev_live_label);
         devCpu = addDeviceRow(list, R.string.dev_cpu);
         barCpu = addBar(list);
         devClock = addDeviceRow(list, R.string.dev_clock);
@@ -757,6 +889,46 @@ public class SettingsActivity extends AppCompatActivity {
         devDisplay = addDeviceRow(list, R.string.dev_display);
         devUptime = addDeviceRow(list, R.string.dev_uptime);
         devLumora = addDeviceRow(list, R.string.dev_lumora);
+    }
+
+    private void addEyebrow(LinearLayout list, int labelRes) {
+        TextView eyebrow = new TextView(this);
+        eyebrow.setText(labelRes);
+        eyebrow.setTextColor(color(R.color.nova_text_muted));
+        eyebrow.setTextSize(8);
+        eyebrow.setAllCaps(true);
+        eyebrow.setLetterSpacing(.22f);
+        eyebrow.setPadding(0, dp(12), 0, dp(2));
+        list.addView(eyebrow);
+    }
+
+    /**
+     * Fire OS version. Amazon exposes it in read-only system properties whose names vary by
+     * generation; the firmware image id ({@link Build#DISPLAY}) is the fallback.
+     */
+    private String firmwareSummary() {
+        String[] candidates = {"ro.build.version.fireos", "ro.amazon.os.version",
+                "ro.amazon.fireos", "ro.fireos.version"};
+        for (String name : candidates) {
+            String value = systemProperty(name);
+            if (value == null || value.isEmpty()) continue;
+            return value.toLowerCase(Locale.US).startsWith("fire os") ? value : "Fire OS " + value;
+        }
+        return Build.DISPLAY;
+    }
+
+    private static String systemProperty(String name) {
+        try {
+            Class<?> properties = Class.forName("android.os.SystemProperties");
+            return (String) properties.getMethod("get", String.class).invoke(null, name);
+        } catch (ReflectiveOperationException error) {
+            return null;
+        }
+    }
+
+    private String kernelVersion() {
+        String version = System.getProperty("os.version");
+        return version == null || version.isEmpty() ? getString(R.string.dev_unavailable) : version;
     }
 
     private TextView addDeviceRow(LinearLayout list, int labelRes) {
@@ -865,15 +1037,29 @@ public class SettingsActivity extends AppCompatActivity {
         warning.setTextSize(10);
         warning.setLineSpacing(0f, 1.2f);
         list.addView(warning);
-        addCommand(list, getString(R.string.adb_quick_title), QuickAccess.grantCommand(this));
-        addCommand(list, getString(R.string.adb_key_title), getString(R.string.adb_key_command));
-        addCommand(list, getString(R.string.adb_install_title), new UpdateManager(this).grantInstallCommand());
-        addCommand(list, getString(R.string.adb_disable_title), DebloatManager.disableStockLauncherCommands());
-        addCommand(list, getString(R.string.adb_enable_title), DebloatManager.enableStockLauncherCommands());
-        addCommand(list, getString(R.string.adb_telemetry_title), DebloatManager.telemetryCommands());
+        TextView localNote = new TextView(this);
+        localNote.setText(R.string.adb_local_note);
+        localNote.setTextColor(color(R.color.nova_text_dim));
+        localNote.setTextSize(9);
+        localNote.setLineSpacing(0f, 1.2f);
+        localNote.setPadding(0, dp(8), 0, 0);
+        list.addView(localNote);
+        // Failed setup drops Lumora from the default-home slot: offer the exact fix plus status.
+        boolean defaultHome = isDefaultHome();
+        String restore = "adb shell cmd package set-home-activity " + getPackageName() + "/.MainActivity";
+        addCommand(list, getString(R.string.adb_home_title),
+                getString(defaultHome ? R.string.adb_home_ok : R.string.adb_home_fix) + "\n" + restore,
+                getString(R.string.adb_share));
+        addCommand(list, getString(R.string.adb_quick_title), QuickAccess.grantCommand(this), getString(R.string.adb_share));
+        addCommand(list, getString(R.string.adb_key_title), getString(R.string.adb_key_command), getString(R.string.adb_share));
+        addCommand(list, getString(R.string.adb_install_title), new UpdateManager(this).grantInstallCommand(), getString(R.string.adb_share));
+        addCommand(list, getString(R.string.adb_disable_title), DebloatManager.disableStockLauncherCommands(), getString(R.string.adb_share));
+        addCommand(list, getString(R.string.adb_enable_title), DebloatManager.enableStockLauncherCommands(), getString(R.string.adb_share));
+        addCommand(list, getString(R.string.adb_telemetry_title), DebloatManager.telemetryCommands(), getString(R.string.adb_share));
     }
 
-    private void addCommand(LinearLayout list, String title, String commands) {
+    /** Each command block ends with a small focused button that beams it to the paired phone. */
+    private void addCommand(LinearLayout list, String title, String commands, String buttonLabel) {
         TextView heading = new TextView(this);
         heading.setText(title);
         heading.setAllCaps(true);
@@ -889,6 +1075,70 @@ public class SettingsActivity extends AppCompatActivity {
         body.setTextSize(9);
         body.setTextIsSelectable(true);
         list.addView(body);
+        Button share = new Button(this);
+        share.setText(buttonLabel);
+        share.setAllCaps(false);
+        share.setTextColor(color(R.color.nova_accent));
+        share.setTextSize(9);
+        share.setMinHeight(0);
+        share.setMinimumHeight(0);
+        share.setBackgroundResource(R.drawable.bg_glass_pill);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, dp(30));
+        params.topMargin = dp(6);
+        share.setLayoutParams(params);
+        share.setOnClickListener(v -> sendToPhone(commands));
+        share.setOnFocusChangeListener((v, focused) -> SoundManager.playFocus(v, preferences));
+        list.addView(share);
+    }
+
+    /** Opens the MODE_OUT phone link; the polling page shows and copies every pushed command. */
+    private void startSharePhone() {
+        stopSharePhone();
+        PhoneBridge bridge = new PhoneBridge(PhoneBridge.MODE_OUT, new PhoneBridge.Listener() {
+            @Override public void onText(String text) {
+                // Commands only travel TV → phone on this link.
+            }
+
+            @Override public void onCodeChanged(String code) {
+                if (shareDialog != null && shareDialog.isShowing()) shareDialog.refresh();
+            }
+
+            @Override public void onStopped(boolean idle) {
+                stopSharePhone();
+            }
+        });
+        int result = bridge.start();
+        if (result != PhoneBridge.START_OK) {
+            Glass.info(this, getString(R.string.phone_title_share),
+                    getString(result == PhoneBridge.START_NO_NETWORK ? R.string.phone_no_network
+                            : R.string.phone_start_failed), null, null, null);
+            return;
+        }
+        sharePhone = bridge;
+        shareDialog = PhonePairDialog.show(this, bridge, getString(R.string.phone_title_share),
+                getString(R.string.phone_message_share), this::stopSharePhone);
+    }
+
+    private void stopSharePhone() {
+        if (shareDialog != null) shareDialog.dismiss();
+        shareDialog = null;
+        if (sharePhone != null) sharePhone.stop();
+        sharePhone = null;
+    }
+
+    /** Sends one command block to the phone, opening the link first when needed. */
+    private void sendToPhone(String commands) {
+        if (sharePhone == null || !sharePhone.isRunning()) {
+            Glass.info(this, getString(R.string.phone_title_share), getString(R.string.phone_share_first),
+                    null, getString(R.string.quick_setup_button), this::startSharePhone);
+            return;
+        }
+        if (shareDialog == null || !shareDialog.isShowing()) {
+            toast(getString(R.string.phone_share_ready));
+        }
+        boolean queued = sharePhone.post(commands);
+        toast(getString(queued ? R.string.phone_share_sent : R.string.phone_start_failed));
     }
 
     // --------------------------------------------------------------- about

@@ -67,12 +67,11 @@
                 android:textStyle="bold" />
         </LinearLayout>
 
-        <!-- 4 dp larger than the plate on every side so the glow sits around its edge. -->
+        <!-- Same bounds as the plate, so the ring hugs the card edge exactly. -->
         <View
             android:id="@+id/focusRingView"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_margin="-4dp"
             android:background="@drawable/bg_focus_ring_wide"
             android:visibility="invisible" />
 

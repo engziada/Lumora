@@ -11,8 +11,8 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.TextView;
 import com.firestick.aura.launcher.R;
-import com.firestick.aura.launcher.manager.PreviewFeedRepository;
 import com.firestick.aura.launcher.manager.PreferenceManager;
+import com.firestick.aura.launcher.manager.PreviewFeedRepository;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -21,10 +21,15 @@ import org.json.JSONArray;
 import com.firestick.aura.launcher.model.AppPreviewSamples;
 import com.firestick.aura.launcher.model.AppPreviewSamples.Provider;
 
-/** Local feasibility player: public videos only; never reads streaming accounts. */
+/**
+ * Home preview panel. What it shows follows {@link PreferenceManager#getPanelContent()}:
+ * the generative particles/plasma ambient (offline), the public-video player from the provider
+ * feeds, or nothing. The WebView keeps reading public feeds only; the generator never touches it.
+ */
 public final class AppPreview {
     private final View panel;
     private final WebView player;
+    private final PreviewParticlesView particles;
     private final TextView service, status;
     private final ExecutorService io = Executors.newSingleThreadExecutor();
     private final PreviewFeedRepository feeds;
@@ -42,9 +47,12 @@ public final class AppPreview {
         feeds = new PreviewFeedRepository(panel.getContext());
         preferences = new PreferenceManager(panel.getContext());
         player = panel.findViewById(R.id.previewPlayer);
+        particles = panel.findViewById(R.id.previewParticles);
         service = panel.findViewById(R.id.previewService);
         status = panel.findViewById(R.id.previewStatus);
-        player.setBackgroundColor(Color.BLACK);
+        // Transparent surface: particles mode renders on views behind; video mode's HTML paints
+        // its own black frame. An opaque WebView would cover the generator with a black box.
+        player.setBackgroundColor(Color.TRANSPARENT);
         player.getSettings().setJavaScriptEnabled(true);
         player.getSettings().setDomStorageEnabled(true);
         player.getSettings().setMediaPlaybackRequiresUserGesture(false);
@@ -71,22 +79,45 @@ public final class AppPreview {
     }
 
     public void focus(String packageName, String label) {
+        int content = preferences.getPanelContent();
+        if (content == PreferenceManager.PANEL_CONTENT_OFF) {
+            hide();
+            return;
+        }
         Provider next = AppPreviewSamples.providerFor(packageName);
         if (next != null && packageName.equals(current) && preferences.getShowsCountry().equals(country)) return;
         hide();
-        if (next == null) return;
         current = packageName;
         provider = next;
         country = preferences.getShowsCountry();
-        service.setText(label + " · Public video preview");
-        panel.postDelayed(reveal, 600L);
+        if (content == PreferenceManager.PANEL_CONTENT_PARTICLES) {
+            // Offline generative ambient: no provider mapping and no network are involved.
+            panel.postDelayed(reveal, 150L);
+        } else if (next != null) {
+            service.setText(label + " · Public video preview");
+            panel.postDelayed(reveal, 600L);
+        } else {
+            // The package has no provider feed; leave the panel closed.
+            current = null;
+            provider = null;
+        }
     }
 
     private void reveal() {
-        if (provider == null) return;
-        panel.setVisibility(View.VISIBLE);
+        if (provider == null && preferences.getPanelContent() != PreferenceManager.PANEL_CONTENT_PARTICLES) return;
+        if (preferences.getPanelContent() == PreferenceManager.PANEL_CONTENT_PARTICLES) {
+            // Offline generative ambient: never let the WebView paint over the generator.
+            player.setVisibility(View.GONE);
+            status.setVisibility(View.GONE);
+            particles.setVisibility(View.VISIBLE);
+            panel.setVisibility(View.VISIBLE);
+            particles.start(current);
+            return;
+        }
+        player.setVisibility(View.VISIBLE);
         status.setVisibility(View.VISIBLE);
         status.setText("Loading public videos…");
+        panel.setVisibility(View.VISIBLE);
         int ticket = generation;
         Provider selected = provider;
         String selectedCountry = country;
@@ -124,6 +155,7 @@ public final class AppPreview {
     }
 
     public void hide() {
+        if (particles != null) particles.stop();
         if (current != null) Log.i("LumoraPreview", "PREVIEW:stopped " + current);
         generation++;
         if (pending != null) pending.cancel(true);

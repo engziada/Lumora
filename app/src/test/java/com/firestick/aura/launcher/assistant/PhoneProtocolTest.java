@@ -118,4 +118,25 @@ public class PhoneProtocolTest {
         assertTrue(key.contains("if(false)"));
         assertNotEquals(chat, key);
     }
+
+    @Test
+    public void outboxPageServesThePollingCommandList() {
+        String out = PhoneProtocol.page(PhoneBridge.MODE_OUT);
+        assertFalse(out.contains("{{"));
+        assertTrue(out.contains("fetch('/outbox'"));
+        assertTrue(out.contains("X-Code"));
+        assertTrue(out.contains("execCommand('copy')"));
+        assertNotEquals(out, PhoneProtocol.page(false));
+    }
+
+    @Test
+    public void jsonWithTextEscapesEverythingBrowsersParse() {
+        byte[] payload = PhoneProtocol.jsonWithText(200, "a \"quoted\"\n\\path");
+        String body = new String(payload, StandardCharsets.UTF_8)
+                .substring(new String(payload, StandardCharsets.UTF_8).indexOf("\r\n\r\n") + 4);
+        assertTrue(body.startsWith("{\"ok\":true,\"text\":\""));
+        assertTrue(body.endsWith("\"}"));
+        assertTrue(body.contains("a \\\"quoted\\\"\\n\\\\path"));
+        assertFalse(body.contains("\n"));
+    }
 }

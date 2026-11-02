@@ -162,6 +162,7 @@
     <string name="icon_style_label">App icons</string>
     <string name="icon_style_hd">App icons: HD icon pack (online)</string>
     <string name="icon_style_installed">App icons: Installed icons</string>
+    <string name="icon_style_hd_label">HD icon pack (online)</string>
     <string name="icon_style_hint">Downloads matching logos from the open dashboard-icons collection and keeps them on the device. Apps without a match keep their installed icon.</string>
 
     <string name="wallpaper_source_label">Source</string>
@@ -190,11 +191,13 @@
     <string name="sound_label">Navigation sound</string>
     <string name="sound_on">Remote sounds: On</string>
     <string name="sound_off">Remote sounds: Off</string>
+    <string name="sound_toggle_label">Remote sounds</string>
     <string name="sound_hint">Short synthesised tones on focus and select. No audio files are shipped.</string>
 
     <string name="shows_label">TV listings</string>
     <string name="shows_toggle_on">TV listings: On</string>
     <string name="shows_toggle_off">TV listings: Off</string>
+    <string name="shows_toggle_label">TV listings</string>
     <string name="shows_country">Country: %1$s</string>
     <string name="shows_hint">Broadcast TV and local streaming services of the selected country, plus global services (Netflix, Disney+, …) in the country\'s languages. From TVmaze, no account needed.</string>
 
@@ -207,6 +210,7 @@
     <string name="lock_none">No locked apps. Use Lock with code in an app\'s menu.</string>
     <string name="lock_settings_on">Code required for Lumora settings: On</string>
     <string name="lock_settings_off">Code required for Lumora settings: Off</string>
+    <string name="lock_settings_card">Settings need the code</string>
     <string name="lock_hint_settings">Locked apps ask for the code when opened from Lumora. Apps opened through Fire TV menus or voice are not covered.</string>
 
     <string name="settings_quick">Quick actions</string>
@@ -217,6 +221,7 @@
     <string name="home_button_label">Home button</string>
     <string name="home_redirect_on">Return to Lumora: On</string>
     <string name="home_redirect_off">Return to Lumora: Off</string>
+    <string name="home_redirect_card">Return to Lumora</string>
     <string name="set_home">Why Home opens Fire TV</string>
     <string name="home_redirect_hint">When the remote\'s Home button opens the Fire TV home, Lumora comes back to the front. Needs quick actions.</string>
     <string name="home_default_title">Default home on Fire TV</string>
@@ -234,6 +239,11 @@
     <string name="settings_open_failed">Could not open settings</string>
 
     <string name="adb_warning">These commands change Fire OS system packages and can leave the device without a home screen. Run them only from a computer connected over ADB, and keep the re-enable commands to hand.</string>
+    <string name="adb_local_note">A launcher cannot execute ADB commands on the device itself — ADB talks to the operating system from outside, and only root could bridge that. Nothing here runs automatically; but you do not have to retype anything either: open the phone link, then Send any block below to your paired phone for copying. The home-restore command brings Lumora back if Fire OS quietly drops it from the default-home slot.</string>
+    <string name="adb_share">Send to phone</string>
+    <string name="adb_home_title">Restore Lumora as the default home (fix)</string>
+    <string name="adb_home_ok">Lumora is currently the default home. Keep this command for later:</string>
+    <string name="adb_home_fix">Lumora is NOT the default home right now. Run:</string>
     <string name="adb_quick_title">Allow quick actions (one time)</string>
     <string name="adb_disable_title">Disable the stock launcher</string>
     <string name="adb_enable_title">Re-enable the stock launcher</string>

@@ -5,6 +5,7 @@
     <string name="ai_control_label">TV control</string>
     <string name="ai_control_on">Let the assistant control the TV: On</string>
     <string name="ai_control_off">Let the assistant control the TV: Off</string>
+    <string name="ai_control_card">Let the assistant control the TV</string>
     <string name="ai_control_hint">Say or type things like \"pause\", \"volume up 3\", \"mute\", \"next episode\", \"go home\", \"open YouTube\", \"search YouTube for lofi music\", \"Wi-Fi settings\", \"وقف\", \"علي الصوت\". Simple commands run at once without the model. Media keys go to the app that is playing; back, home, screenshot and the power menu need quick actions. Not possible for apps: power off, sleep, TV input, tapping inside other apps.</string>
 
     <!-- Assistant: action results -->

@@ -21,6 +21,7 @@ import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewParent;
 import android.view.ViewTreeObserver;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -71,6 +72,9 @@ public class MainActivity extends AppCompatActivity
     private static final long SHOWS_MAX_AGE_MS = 60L * 60L * 1000L;
     private static final long GEAR_DELAY_MS = 350L, GEAR_KEY_WINDOW_MS = 600L, GEAR_REOPEN_GUARD_MS = 900L;
     private static final String FILTER_ALL = "\u0000all", FILTER_TV = "\u0000tv", FILTER_WEB = "\u0000web";
+    /** Bridge targets for a DOWN key that a tile of the ribbon or a grid cannot resolve. */
+    private static final int[] NAV_TARGETS = {R.id.navHome, R.id.navShows, R.id.navApps,
+            R.id.navMovies, R.id.navQuick};
 
     private RecyclerView homeView, gridView, showsView;
     private AppRowAdapter homeAdapter, appsAdapter, streamingAdapter;
@@ -118,6 +122,21 @@ public class MainActivity extends AppCompatActivity
         }
     };
 
+    /**
+     * The Fire TV stays awake when the TV panel turns off, so the only reliable signal that
+     * nobody is watching is the screen-off broadcast. Hiding the preview here stops the public
+     * video WebView from pulling feed data and stream bytes while the room is dark; particles
+     * cost nothing but hide as well for consistency. Screens-on recomputes the panel.
+     */
+    private final BroadcastReceiver screenReceiver = new BroadcastReceiver() {
+        @Override public void onReceive(Context context, Intent intent) {
+            if (appPreview == null) return;
+            if (Intent.ACTION_SCREEN_OFF.equals(intent.getAction())) appPreview.hide();
+            else homeView.post(MainActivity.this::updateAppPreview);
+        }
+    };
+    private boolean screenReceiverRegistered;
+
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
         setContentView(R.layout.activity_main);
@@ -133,6 +152,7 @@ public class MainActivity extends AppCompatActivity
         SoundManager.init(this);
         initViews();
         registerPackageReceiver();
+        registerScreenReceiver();
         wallpapers = new WallpaperManager(this, preferences,
                 findViewById(R.id.imgWallpaperBack), findViewById(R.id.imgWallpaperFront));
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
@@ -304,6 +324,47 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
+    // ------------------------------------------------------------------ focus bridging
+
+    /**
+     * The ribbon and both grids run edge to edge, while the focusable nav items sit in a
+     * centred block. The D-pad's downward beam search only considers candidates that overlap
+     * the focused tile's horizontal span, so from a tile that extends left or right of the nav
+     * block DOWN finds nothing and the press is lost. When the standard search misses from a
+     * tile of either list, focus the nav item whose centre is horizontally closest.
+     */
+    private boolean bridgeFocusToNav() {
+        View focused = getCurrentFocus();
+        if (focused == null || !insideRecyclerView(focused)) return false;
+        if (focused.focusSearch(View.FOCUS_DOWN) != null) return false;
+        int[] location = new int[2];
+        focused.getLocationOnScreen(location);
+        int focusCenter = location[0] + focused.getWidth() / 2;
+        View best = null;
+        int bestDistance = Integer.MAX_VALUE;
+        for (int navId : NAV_TARGETS) {
+            View nav = findViewById(navId);
+            if (nav == null || !nav.isShown()) continue;
+            nav.getLocationOnScreen(location);
+            int distance = Math.abs(focusCenter - (location[0] + nav.getWidth() / 2));
+            if (distance < bestDistance) {
+                bestDistance = distance;
+                best = nav;
+            }
+        }
+        if (best == null) return false;
+        best.requestFocus(View.FOCUS_DOWN);
+        return true;
+    }
+
+    /** True when {@code view} sits inside one of the three tile lists (not the channel chips). */
+    private boolean insideRecyclerView(View view) {
+        for (ViewParent parent = view.getParent(); parent != null; parent = parent.getParent()) {
+            if (parent == homeView || parent == gridView || parent == showsView) return true;
+        }
+        return false;
+    }
+
     // ----------------------------------------------------------------- tabs
 
     private void selectTab(int tab) {
@@ -376,12 +437,25 @@ public class MainActivity extends AppCompatActivity
         packageReceiverRegistered = true;
     }
 
+    private void registerScreenReceiver() {
+        ContextCompat.registerReceiver(this, screenReceiver,
+                new IntentFilter(Intent.ACTION_SCREEN_OFF), ContextCompat.RECEIVER_NOT_EXPORTED);
+        screenReceiverRegistered = true;
+    }
+
     @Override protected void onDestroy() {
         if (appPreview != null) appPreview.destroy();
         homeView.getRootView().getViewTreeObserver().removeOnGlobalFocusChangeListener(previewFocusListener);
         if (packageReceiverRegistered) {
             try {
                 unregisterReceiver(packageReceiver);
+            } catch (IllegalArgumentException ignored) {
+                // Already unregistered.
+            }
+        }
+        if (screenReceiverRegistered) {
+            try {
+                unregisterReceiver(screenReceiver);
             } catch (IllegalArgumentException ignored) {
                 // Already unregistered.
             }
@@ -468,6 +542,10 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override public boolean dispatchKeyEvent(KeyEvent event) {
+        if (event.getAction() == KeyEvent.ACTION_DOWN
+                && event.getKeyCode() == KeyEvent.KEYCODE_DPAD_DOWN && movingPackage == null) {
+            if (bridgeFocusToNav()) return true;
+        }
         if (event.getAction() == KeyEvent.ACTION_DOWN) lastKeyDownAt = SystemClock.uptimeMillis();
         if (handleMenuHold(event)) return true;
         if (movingPackage == null) return super.dispatchKeyEvent(event);

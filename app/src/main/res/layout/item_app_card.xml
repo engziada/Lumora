@@ -43,11 +43,11 @@
             android:contentDescription="@null"
             android:scaleType="fitCenter" />
 
-        <!-- Plate + 4 dp on every side, so the glow sits around the plate edge. -->
+        <!-- Same bounds as the plate tile itself, so the ring hugs the tile edge exactly. -->
         <View
             android:id="@+id/focusRingView"
-            android:layout_width="80dp"
-            android:layout_height="80dp"
+            android:layout_width="78dp"
+            android:layout_height="78dp"
             android:layout_gravity="center"
             android:background="@drawable/bg_focus_ring"
             android:visibility="invisible" />

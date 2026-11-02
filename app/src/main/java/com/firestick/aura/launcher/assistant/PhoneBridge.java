@@ -29,7 +29,9 @@ import java.util.Map;
  * accepts text only with the current 6-digit code; 5 wrong codes rotate it. Text is never logged.
  */
 public final class PhoneBridge {
-    public static final int MODE_CHAT = 0, MODE_KEY = 1;
+    public static final int MODE_CHAT = 0, MODE_KEY = 1, MODE_OUT = 2;
+    /** How many pushed commands are kept for the phone to pick up. */
+    private static final int MAX_OUTBOX = 8;
     public static final int START_OK = 0, START_NO_NETWORK = 1, START_PORT_BUSY = 2;
 
     private static final String TAG = "LumoraPhone";
@@ -54,6 +56,7 @@ public final class PhoneBridge {
     private final Handler main = new Handler(Looper.getMainLooper());
     private final SecureRandom random = new SecureRandom();
     private final ArrayDeque<Long> recentSends = new ArrayDeque<>();
+    private final ArrayDeque<String> outbox = new ArrayDeque<>();
     private volatile ServerSocket server;
     private volatile boolean running;
     private volatile String code;
@@ -185,7 +188,7 @@ public final class PhoneBridge {
                 return;
             }
             lastUse = SystemClock.elapsedRealtime();
-            byte[] page = PhoneProtocol.page(mode == MODE_KEY).getBytes(StandardCharsets.UTF_8);
+            byte[] page = PhoneProtocol.page(mode).getBytes(StandardCharsets.UTF_8);
             out.write(PhoneProtocol.response(200, "text/html; charset=utf-8", page));
         } else if ("/send".equals(request.path)) {
             if (!"POST".equals(request.method)) {
@@ -193,6 +196,12 @@ public final class PhoneBridge {
                 return;
             }
             out.write(send(request.body));
+        } else if ("/outbox".equals(request.path)) {
+            if (!"GET".equals(request.method)) {
+                out.write(PhoneProtocol.json(405, false, "method"));
+                return;
+            }
+            out.write(drainOutbox(request.header("x-code")));
         } else if ("/favicon.ico".equals(request.path)) {
             out.write(PhoneProtocol.response(204, "text/plain", new byte[0]));
         } else {
@@ -235,6 +244,29 @@ public final class PhoneBridge {
             if (running) listener.onText(delivered);
         });
         return PhoneProtocol.json(200, true, null);
+    }
+
+    /** Queues text pushed from the TV; the polling page picks it up. False when not running. */
+    public synchronized boolean post(String text) {
+        if (!running) return false;
+        String clean = PhoneProtocol.cleanText(text);
+        if (clean.isEmpty() || clean.length() > PhoneProtocol.MAX_TEXT_CHARS) return false;
+        while (outbox.size() >= MAX_OUTBOX) outbox.pollFirst();
+        outbox.addLast(clean);
+        lastUse = SystemClock.elapsedRealtime();
+        return true;
+    }
+
+    /** Only the browser holding the pairing code may drain the outbox. */
+    private synchronized byte[] drainOutbox(String given) {
+        if (!PhoneProtocol.codeMatches(code, given)) return PhoneProtocol.json(401, false, "code");
+        lastUse = SystemClock.elapsedRealtime();
+        StringBuilder text = new StringBuilder();
+        while (!outbox.isEmpty()) {
+            if (text.length() > 0) text.append("\n\n");
+            text.append(outbox.pollFirst());
+        }
+        return PhoneProtocol.jsonWithText(200, text.toString());
     }
 
     // --------------------------------------------------------------- network

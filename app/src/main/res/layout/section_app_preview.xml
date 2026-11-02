@@ -1,8 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Floating preview window: no frame, padding or elevation, so its content reads as if it hangs
+  in space. The particles view sits on top and the WebView is kept GONE in particles mode (in
+  AppPreview), because an Android WebView paints an opaque black surface that would otherwise
+  cover the generator.
+-->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
  android:layout_width="match_parent" android:layout_height="match_parent"
- android:background="@drawable/bg_preview_frame" android:padding="3dp" android:elevation="6dp" android:descendantFocusability="blocksDescendants">
+ android:descendantFocusability="blocksDescendants">
+ <com.firestick.aura.launcher.ui.PreviewParticlesView
+     android:id="@+id/previewParticles" android:layout_width="match_parent" android:layout_height="match_parent"
+     android:visibility="gone" />
  <WebView android:id="@+id/previewPlayer" android:layout_width="match_parent" android:layout_height="match_parent" android:focusable="false" />
  <TextView android:id="@+id/previewService" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" />
- <TextView android:id="@+id/previewStatus" android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:padding="16dp" android:background="#DD140A06" android:textColor="@color/nova_text" android:textSize="12sp" />
+ <TextView android:id="@+id/previewStatus" android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:padding="16dp" android:background="#DD140A06" android:textColor="@color/nova_text" android:textSize="12sp" android:visibility="gone" />
 </FrameLayout>

@@ -2,6 +2,12 @@
 <resources>
     <string name="preview_toggle_on">Video previews: On</string>
     <string name="preview_toggle_off">Video previews: Off</string>
+    <string name="panel_content_title">Home panel</string>
+    <string name="panel_content_pick">Choose what fills the preview window</string>
+    <string name="panel_content_value">Home panel: %1$s</string>
+    <string name="panel_mode_off">Nothing</string>
+    <string name="panel_mode_particles">Particles · animated, offline</string>
+    <string name="panel_mode_videos">Videos · public feeds, network</string>
     <string name="preview_settings_hint">Recent public uploads from Netflix, Prime Video, and YouTube’s official channels. Trailers preferred when available. Global feeds, not regional rankings or availability. Player language follows TV listings country. No API keys.</string>
     <string name="preview_service">%1$s · PREVIEW DEMO</string>
     <string name="preview_position">%1$d / %2$d</string>

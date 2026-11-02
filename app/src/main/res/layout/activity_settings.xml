@@ -259,22 +259,31 @@
                         style="@style/Lumora.PanelEyebrow"
                         android:text="@string/icon_style_label" />
 
-                    <Button
-                        android:id="@+id/btnIconStyle"
-                        style="@style/Lumora.Option"
+                    <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_marginTop="8dp" />
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:orientation="horizontal">
+
+                        <com.firestick.aura.launcher.ui.OptionToggleView
+                            android:id="@+id/toggleIconStyle"
+                            android:layout_width="0dp"
+                            android:layout_height="44dp"
+                            android:layout_marginEnd="6dp"
+                            android:layout_weight="1"
+                            app:toggleLabel="@string/icon_style_hd_label" />
+
+                        <Button
+                            android:id="@+id/btnAppPreview"
+                            style="@style/Lumora.Option"
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:singleLine="true" />
+                    </LinearLayout>
 
                     <TextView
                         style="@style/Lumora.Hint"
                         android:text="@string/icon_style_hint" />
-
-                    <Button
-                        android:id="@+id/btnAppPreview"
-                        style="@style/Lumora.Option"
-                        android:layout_width="match_parent"
-                        android:layout_marginTop="12dp"
-                        android:text="@string/preview_toggle_off" />
 
                     <TextView
                         style="@style/Lumora.Hint"
@@ -367,11 +376,12 @@
                         android:layout_marginTop="0dp"
                         android:text="@string/sound_label" />
 
-                    <Button
-                        android:id="@+id/btnToggleSound"
-                        style="@style/Lumora.Option"
+                    <com.firestick.aura.launcher.ui.OptionToggleView
+                        android:id="@+id/toggleSound"
                         android:layout_width="match_parent"
-                        android:layout_marginTop="8dp" />
+                        android:layout_height="44dp"
+                        android:layout_marginTop="8dp"
+                        app:toggleLabel="@string/sound_toggle_label" />
 
                     <TextView
                         style="@style/Lumora.Hint"
@@ -391,17 +401,27 @@
                         android:layout_marginTop="0dp"
                         android:text="@string/shows_label" />
 
-                    <Button
-                        android:id="@+id/btnShowsToggle"
-                        style="@style/Lumora.Option"
+                    <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_marginTop="8dp" />
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:orientation="horizontal">
 
-                    <Button
-                        android:id="@+id/btnShowsCountry"
-                        style="@style/Lumora.Option"
-                        android:layout_width="match_parent"
-                        android:layout_marginTop="8dp" />
+                        <com.firestick.aura.launcher.ui.OptionToggleView
+                            android:id="@+id/toggleShows"
+                            android:layout_width="0dp"
+                            android:layout_height="44dp"
+                            android:layout_marginEnd="6dp"
+                            android:layout_weight="1"
+                            app:toggleLabel="@string/shows_toggle_label" />
+
+                        <Button
+                            android:id="@+id/btnShowsCountry"
+                            style="@style/Lumora.Option"
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:singleLine="true" />
+                    </LinearLayout>
 
                     <TextView
                         style="@style/Lumora.Hint"
@@ -427,17 +447,27 @@
                         android:layout_width="match_parent"
                         android:layout_marginTop="8dp" />
 
-                    <Button
-                        android:id="@+id/btnLockedApps"
-                        style="@style/Lumora.Option"
+                    <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_marginTop="8dp" />
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:orientation="horizontal">
 
-                    <Button
-                        android:id="@+id/btnLockSettings"
-                        style="@style/Lumora.Option"
-                        android:layout_width="match_parent"
-                        android:layout_marginTop="8dp" />
+                        <com.firestick.aura.launcher.ui.OptionToggleView
+                            android:id="@+id/toggleLockSettings"
+                            android:layout_width="0dp"
+                            android:layout_height="44dp"
+                            android:layout_marginEnd="6dp"
+                            android:layout_weight="1"
+                            app:toggleLabel="@string/lock_settings_card" />
+
+                        <Button
+                            android:id="@+id/btnLockedApps"
+                            style="@style/Lumora.Option"
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:singleLine="true" />
+                    </LinearLayout>
 
                     <TextView
                         style="@style/Lumora.Hint"
@@ -529,18 +559,20 @@
                             android:layout_marginTop="8dp"
                             android:orientation="horizontal">
 
-                            <Button
-                                android:id="@+id/btnAiFloating"
-                                style="@style/Lumora.Option"
+                            <com.firestick.aura.launcher.ui.OptionToggleView
+                                android:id="@+id/toggleAiFloating"
                                 android:layout_width="0dp"
+                                android:layout_height="44dp"
                                 android:layout_marginEnd="6dp"
-                                android:layout_weight="1" />
+                                android:layout_weight="1"
+                                app:toggleLabel="@string/ai_floating_card" />
 
-                            <Button
-                                android:id="@+id/btnAiRemote"
-                                style="@style/Lumora.Option"
+                            <com.firestick.aura.launcher.ui.OptionToggleView
+                                android:id="@+id/toggleAiRemote"
                                 android:layout_width="0dp"
-                                android:layout_weight="1" />
+                                android:layout_height="44dp"
+                                android:layout_weight="1"
+                                app:toggleLabel="@string/ai_remote_card" />
                         </LinearLayout>
 
                         <TextView
@@ -551,11 +583,12 @@
                             style="@style/Lumora.PanelEyebrow"
                             android:text="@string/ai_privacy_label" />
 
-                        <Button
-                            android:id="@+id/btnAiShareApps"
-                            style="@style/Lumora.Option"
+                        <com.firestick.aura.launcher.ui.OptionToggleView
+                            android:id="@+id/toggleAiShareApps"
                             android:layout_width="match_parent"
-                            android:layout_marginTop="8dp" />
+                            android:layout_height="44dp"
+                            android:layout_marginTop="8dp"
+                            app:toggleLabel="@string/ai_share_card" />
 
                         <TextView
                             style="@style/Lumora.Hint"
@@ -612,12 +645,13 @@
                             android:layout_marginTop="8dp"
                             android:orientation="horizontal">
 
-                            <Button
-                                android:id="@+id/btnHomeRedirect"
-                                style="@style/Lumora.Option"
+                            <com.firestick.aura.launcher.ui.OptionToggleView
+                                android:id="@+id/toggleHomeRedirect"
                                 android:layout_width="0dp"
+                                android:layout_height="44dp"
                                 android:layout_marginEnd="6dp"
-                                android:layout_weight="1" />
+                                android:layout_weight="1"
+                                app:toggleLabel="@string/home_redirect_card" />
 
                             <Button
                                 android:id="@+id/btnSetHome"
@@ -709,6 +743,7 @@
                     android:layout_height="match_parent"
                     android:background="@drawable/bg_code_block"
                     android:focusable="true"
+                    android:fillViewport="true"
                     android:padding="14dp"
                     android:visibility="gone">
 
