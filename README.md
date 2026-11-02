@@ -125,9 +125,11 @@ the next update download). With every feature off, Lumora makes no network reque
 ### Home video preview feasibility build
 
 The local debug app installs separately as **Lumora Preview Test** (`com.firestick.aura.launcher.localtest`).
-Enable Settings > Appearance > Video previews. Focus Netflix, YouTube, or Prime Video on Home
-for 600 ms. A passive video window appears in the middle-right above the app ribbon. Playback
-is muted and advances after 15 seconds of playing; leaving the tile unloads the player.
+Choose Settings > Appearance > Panel content: Particles, Videos, or Off. Particles is an offline,
+transparent 3D sphere that reacts to focus movement, forms the focused app name, then bursts back
+into a sphere. For Videos, focus Netflix, YouTube, or Prime Video on Home for 600 ms. A passive
+video window appears in the middle-right above the app ribbon. Playback is muted and advances
+after 15 seconds of playing; leaving the tile unloads the player.
 OK still opens the focused application. Locked apps do not show previews.
 
 The preview fetches recent public uploads from the official Netflix, Prime Video, and YouTube

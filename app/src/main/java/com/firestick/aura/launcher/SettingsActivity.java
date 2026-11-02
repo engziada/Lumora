@@ -123,6 +123,8 @@ public class SettingsActivity extends AppCompatActivity {
     /** MODE_OUT link used by the ADB screen to beam commands to the phone. */
     private PhoneBridge sharePhone;
     private PhonePairDialog shareDialog;
+    private Button firstAdbShare;
+    private Button lastAdbShare;
 
     private final Runnable deviceTick = new Runnable() {
         @Override public void run() {
@@ -254,7 +256,8 @@ public class SettingsActivity extends AppCompatActivity {
 
     private void showSection(int section) {
         setSection(section);
-        View focus = findViewById(FIRST_FOCUS[section]);
+        View focus = section == SECTION_ADB && firstAdbShare != null
+                ? firstAdbShare : findViewById(FIRST_FOCUS[section]);
         if (focus != null) focus.requestFocus();
     }
 
@@ -791,12 +794,9 @@ public class SettingsActivity extends AppCompatActivity {
     // -------------------------------------------------- d-pad scrolling for text panels
 
     /**
-     * Device info rows are plain text, so the Device panel has nothing focusable to move into;
-     * with focus nowhere the arrow keys are lost and the panel never scrolls. When no view holds
-     * focus these two sections scroll in steps here instead. When a real control has the focus —
-     * for example the "Send to phone" pills in the ADB panel — the default focus traversal and
-     * the ScrollView's own arrow handling (focus moves through the pills while the panel scrolls
-     * to keep them on screen) take over untouched.
+     * Device info rows are plain text, so its panel scrolls directly if no view holds focus.
+     * ADB instead enters its first real button; the explicitly chained buttons then scroll into
+     * view through normal Android focus handling rather than leaving focus on the ScrollView.
      */
     @Override public boolean dispatchKeyEvent(KeyEvent event) {
         if (event.getAction() == KeyEvent.ACTION_DOWN && getCurrentFocus() == null
@@ -804,7 +804,11 @@ public class SettingsActivity extends AppCompatActivity {
             int key = event.getKeyCode();
             if (key == KeyEvent.KEYCODE_DPAD_UP || key == KeyEvent.KEYCODE_DPAD_DOWN
                     || key == KeyEvent.KEYCODE_PAGE_UP || key == KeyEvent.KEYCODE_PAGE_DOWN) {
-                ScrollView scroller = findViewById(currentSection == SECTION_DEVICE ? R.id.panelDevice : R.id.scrollAdb);
+                if (currentSection == SECTION_ADB && firstAdbShare != null) {
+                    firstAdbShare.requestFocus();
+                    return true;
+                }
+                ScrollView scroller = findViewById(R.id.panelDevice);
                 scroller.requestFocus();
                 int current = scroller.getScrollY();
                 int max = Math.max(0, scroller.getChildAt(0).getHeight() - scroller.getHeight());
@@ -1031,6 +1035,8 @@ public class SettingsActivity extends AppCompatActivity {
     private void buildAdbGuidance() {
         LinearLayout list = findViewById(R.id.adbCommands);
         list.removeAllViews();
+        firstAdbShare = null;
+        lastAdbShare = null;
         TextView warning = new TextView(this);
         warning.setText(R.string.adb_warning);
         warning.setTextColor(color(R.color.state_error));
@@ -1056,6 +1062,11 @@ public class SettingsActivity extends AppCompatActivity {
         addCommand(list, getString(R.string.adb_disable_title), DebloatManager.disableStockLauncherCommands(), getString(R.string.adb_share));
         addCommand(list, getString(R.string.adb_enable_title), DebloatManager.enableStockLauncherCommands(), getString(R.string.adb_share));
         addCommand(list, getString(R.string.adb_telemetry_title), DebloatManager.telemetryCommands(), getString(R.string.adb_share));
+        if (firstAdbShare != null) {
+            findViewById(R.id.secAdb).setNextFocusRightId(firstAdbShare.getId());
+            firstAdbShare.setNextFocusUpId(R.id.secAdb);
+        }
+        if (lastAdbShare != null) lastAdbShare.setNextFocusDownId(lastAdbShare.getId());
     }
 
     /** Each command block ends with a small focused button that beams it to the paired phone. */
@@ -1074,15 +1085,26 @@ public class SettingsActivity extends AppCompatActivity {
         body.setTextColor(color(R.color.nova_text));
         body.setTextSize(9);
         body.setTextIsSelectable(true);
+        body.setFocusable(false); // Selectable command text must not trap TV D-pad navigation.
         list.addView(body);
         Button share = new Button(this);
+        share.setId(View.generateViewId());
+        share.setFocusable(true);
         share.setText(buttonLabel);
         share.setAllCaps(false);
         share.setTextColor(color(R.color.nova_accent));
         share.setTextSize(9);
         share.setMinHeight(0);
         share.setMinimumHeight(0);
-        share.setBackgroundResource(R.drawable.bg_glass_pill);
+        share.setBackgroundResource(R.drawable.bg_option_selector);
+        share.setNextFocusLeftId(R.id.secAdb);
+        if (lastAdbShare != null) {
+            lastAdbShare.setNextFocusDownId(share.getId());
+            share.setNextFocusUpId(lastAdbShare.getId());
+        } else {
+            firstAdbShare = share;
+        }
+        lastAdbShare = share;
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, dp(30));
         params.topMargin = dp(6);

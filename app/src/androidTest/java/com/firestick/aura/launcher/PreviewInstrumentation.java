@@ -27,7 +27,7 @@ public final class PreviewInstrumentation extends Instrumentation {
     private MainActivity activity;
     private RecyclerView home;
     private PreferenceManager preferences;
-    private boolean originalEnabled;
+    private int originalPanelContent;
     private boolean originalYouTubeLocked;
     private int assertions;
 
@@ -40,9 +40,9 @@ public final class PreviewInstrumentation extends Instrumentation {
         Bundle result = new Bundle();
         try {
             preferences = new PreferenceManager(getTargetContext());
-            originalEnabled = preferences.isAppPreviewEnabled();
+            originalPanelContent = preferences.getPanelContent();
             originalYouTubeLocked = preferences.isLocked("com.google.android.youtube.tv");
-            preferences.setAppPreviewEnabled(true);
+            preferences.setPanelContent(PreferenceManager.PANEL_CONTENT_VIDEOS);
             Intent intent = new Intent(getTargetContext(), MainActivity.class);
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
             activity = (MainActivity) startActivitySync(intent);
@@ -109,14 +109,14 @@ public final class PreviewInstrumentation extends Instrumentation {
             // Refreshing Home restores installed apps; inject the test strip again.
             onMain(() -> ((AppRowAdapter) home.getAdapter()).setApps(samples));
             waitForIdleSync();
-            preferences.setAppPreviewEnabled(false);
+            preferences.setPanelContent(PreferenceManager.PANEL_CONTENT_OFF);
             focus(2);
             SystemClock.sleep(850L);
             visible(false, "Opt-out prevents previews");
 
             // The TV emulator includes YouTube. Exercise the real OK launch and pause path.
             if (getTargetContext().getPackageManager().getLeanbackLaunchIntentForPackage("com.google.android.youtube.tv") != null) {
-                preferences.setAppPreviewEnabled(true);
+                preferences.setPanelContent(PreferenceManager.PANEL_CONTENT_VIDEOS);
                 focus(3);
                 focus(2);
                 SystemClock.sleep(850L);
@@ -137,7 +137,7 @@ public final class PreviewInstrumentation extends Instrumentation {
             finish(Activity.RESULT_CANCELED, result);
         } finally {
             if (preferences != null) {
-                preferences.setAppPreviewEnabled(originalEnabled);
+                preferences.setPanelContent(originalPanelContent);
                 preferences.setLocked("com.google.android.youtube.tv", originalYouTubeLocked);
             }
         }

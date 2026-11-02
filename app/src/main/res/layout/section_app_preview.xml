@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   Floating preview window: no frame, padding or elevation, so its content reads as if it hangs
-  in space. The particles view sits on top and the WebView is kept GONE in particles mode (in
-  AppPreview), because an Android WebView paints an opaque black surface that would otherwise
-  cover the generator.
+  in space. The transparent 3D particle sphere sits on top and the WebView is kept GONE in
+  particles mode (in AppPreview), because an Android WebView paints an opaque black surface that
+  would otherwise cover the generator.
 -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
  android:layout_width="match_parent" android:layout_height="match_parent"

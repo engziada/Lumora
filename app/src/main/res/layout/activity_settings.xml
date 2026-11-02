@@ -742,7 +742,8 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:background="@drawable/bg_code_block"
-                    android:focusable="true"
+                    android:descendantFocusability="afterDescendants"
+                    android:focusable="false"
                     android:fillViewport="true"
                     android:padding="14dp"
                     android:visibility="gone">

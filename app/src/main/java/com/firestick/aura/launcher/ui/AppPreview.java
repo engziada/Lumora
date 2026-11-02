@@ -23,8 +23,8 @@ import com.firestick.aura.launcher.model.AppPreviewSamples.Provider;
 
 /**
  * Home preview panel. What it shows follows {@link PreferenceManager#getPanelContent()}:
- * the generative particles/plasma ambient (offline), the public-video player from the provider
- * feeds, or nothing. The WebView keeps reading public feeds only; the generator never touches it.
+ * the transparent 3D particle sphere and app-name morph (offline), the public-video player from
+ * the provider feeds, or nothing. The WebView handles public feeds only; the generator never touches it.
  */
 public final class AppPreview {
     private final View panel;
@@ -37,6 +37,7 @@ public final class AppPreview {
     private Future<?> pending;
     private int generation;
     private String current;
+    private String currentLabel = "";
     private String country;
     private Provider provider;
     private final Runnable reveal = this::reveal;
@@ -85,20 +86,40 @@ public final class AppPreview {
             return;
         }
         Provider next = AppPreviewSamples.providerFor(packageName);
+        String nextLabel = label == null ? "" : label;
+        if (content == PreferenceManager.PANEL_CONTENT_PARTICLES) {
+            if (packageName.equals(current) && nextLabel.equals(currentLabel)) return;
+            // Keep an existing sphere alive between app tiles; only its target and energy change.
+            boolean continuous = panel.getVisibility() == View.VISIBLE && particles.getVisibility() == View.VISIBLE;
+            if (continuous) {
+                generation++;
+                if (pending != null) pending.cancel(true);
+                panel.removeCallbacks(reveal);
+            } else {
+                hide();
+            }
+            current = packageName;
+            currentLabel = nextLabel;
+            provider = null;
+            country = preferences.getShowsCountry();
+            player.setVisibility(View.GONE);
+            status.setVisibility(View.GONE);
+            panel.postDelayed(reveal, 150L);
+            return;
+        }
         if (next != null && packageName.equals(current) && preferences.getShowsCountry().equals(country)) return;
         hide();
         current = packageName;
+        currentLabel = nextLabel;
         provider = next;
         country = preferences.getShowsCountry();
-        if (content == PreferenceManager.PANEL_CONTENT_PARTICLES) {
-            // Offline generative ambient: no provider mapping and no network are involved.
-            panel.postDelayed(reveal, 150L);
-        } else if (next != null) {
+        if (next != null) {
             service.setText(label + " · Public video preview");
             panel.postDelayed(reveal, 600L);
         } else {
             // The package has no provider feed; leave the panel closed.
             current = null;
+            currentLabel = "";
             provider = null;
         }
     }
@@ -111,7 +132,7 @@ public final class AppPreview {
             status.setVisibility(View.GONE);
             particles.setVisibility(View.VISIBLE);
             panel.setVisibility(View.VISIBLE);
-            particles.start(current);
+            particles.start(current, currentLabel);
             return;
         }
         player.setVisibility(View.VISIBLE);
@@ -164,6 +185,7 @@ public final class AppPreview {
         player.onPause();
         panel.setVisibility(View.GONE);
         current = null;
+        currentLabel = "";
         provider = null;
     }
 
