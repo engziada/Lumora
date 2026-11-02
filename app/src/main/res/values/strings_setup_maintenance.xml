@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v5.5.0: guided setup & recovery, maintenance tools, phone link for URLs and files, update channels. -->
+<resources>
+    <!-- Section rail -->
+    <string name="sec_setup">Setup &amp; health</string>
+    <string name="sec_tools">Tools</string>
+
+    <!-- Setup: guided health check with one-tap fixes; ADB-only repairs stay in the ADB tools section -->
+    <string name="setup_intro">This is Lumora\'s guided setup. Every row shows one capability and its state; press Fix when something is not ready yet. Repairs that need a computer over ADB stay in the ADB tools section, so nothing here can break your device.</string>
+    <string name="setup_health_label">Health check</string>
+    <string name="setup_row_home">Default home</string>
+    <string name="setup_row_quick">Quick actions</string>
+    <string name="setup_row_redirect">Home button redirect</string>
+    <string name="setup_row_secure">Advanced control</string>
+    <string name="setup_row_install">Self-updates</string>
+    <string name="setup_row_assistant">AI key</string>
+    <string name="setup_row_updates">Update check</string>
+    <string name="setup_row_network">Network</string>
+    <string name="setup_fix">Fix</string>
+    <string name="setup_state_on">OK</string>
+    <string name="setup_state_off">Off</string>
+    <string name="setup_state_online">Online</string>
+    <string name="setup_state_offline">Offline</string>
+    <string name="setup_secure_off">Needs ADB grant</string>
+    <string name="setup_install_off">Not allowed yet</string>
+    <string name="setup_assistant_off">No API key</string>
+    <string name="setup_assistant_fix">Add key</string>
+    <string name="setup_auto_fix">Enable daily</string>
+    <string name="setup_doctor_fix">Doctor</string>
+    <string name="setup_open_advanced">Advanced</string>
+    <string name="setup_auto_fixed">Automatic update check switched to daily.</string>
+    <string name="setup_redirect_fixed">Home button redirect is on.</string>
+    <string name="setup_home_title">Restore the default home</string>
+    <string name="setup_home_needed">Fire OS is not opening Lumora as the home screen right now. Run this once from a computer connected over ADB:</string>
+    <string name="setup_secure_title">One-time ADB grant</string>
+    <string name="setup_secure_help">Lumora needs WRITE_SECURE_SETTINGS so quick actions and the Home button redirect work (Fire OS hides those switches for apps outside the Appstore). Run this once from a computer, then press Fix again:</string>
+    <string name="setup_install_title">Allow Lumora to install updates</string>
+    <string name="setup_install_help">Fire OS must allow Lumora to install apps. Turn on Lumora under Settings › My Fire TV › Developer options › Install unknown apps, or run this once from a computer:</string>
+    <string name="setup_adb_note">Everything here can also be repaired by hand: the ADB tools section lists the exact commands, including the ones that can only run from a computer.</string>
+
+    <!-- Tools: maintenance -->
+    <string name="tools_storage_label">Lumora storage</string>
+    <string name="tools_storage_scanning">Measuring…</string>
+    <string name="tools_storage_other">Other cache files:</string>
+    <string name="tools_storage_total">Total cache:</string>
+    <string name="tools_clean">Clean caches</string>
+    <string name="tools_clean_done">%1$s of cache freed. Everything is refetched to taste later.</string>
+    <string name="tools_network_label">Network doctor</string>
+    <string name="tools_doctor">Run checks</string>
+    <string name="tools_doctor_idle">Press Run checks to test every service the launcher talks to.</string>
+    <string name="tools_doctor_running">Running checks…</string>
+    <string name="tools_probe_ok">OK · %1$d ms</string>
+    <string name="tools_probe_fail">failed · %1$d ms · %2$s</string>
+    <string name="tools_updates_label">Updates</string>
+    <string name="tools_channel">Update channel</string>
+    <string name="tools_channel_value">Update channel: %1$s</string>
+    <string name="tools_channel_stable">Stable</string>
+    <string name="tools_channel_beta">Beta (pre-releases)</string>
+    <string name="tools_channel_title">Update channel</string>
+    <string name="tools_channel_sub">Beta offers pre-release builds as soon as CI publishes them; stable waits for the release marked latest. Both channels verify the same signature.</string>
+    <string name="tools_update_status">Installed build %1$d · last checked %2$s</string>
+
+    <!-- Tools: phone link for URLs and files -->
+    <string name="tools_phone_label">Phone link</string>
+    <string name="tools_phone_url">Send a link from the phone</string>
+    <string name="tools_phone_file">Send a file from the phone</string>
+    <string name="tools_phone_hint">Works while these settings are open. Scan the QR code, then paste a link or pick a file on the phone. Files up to 512 MB land in the TV\'s Downloads folder; APK files are saved, never installed.</string>
+    <string name="phone_title_url">Open links from your phone</string>
+    <string name="phone_message_url">Scan the code with the phone camera, paste an http or https link on the page and tap Open. The TV opens it in its browser; the link is not logged.</string>
+    <string name="phone_url_sent">Opening on the TV…</string>
+    <string name="phone_url_open_fail">No browser is available on this TV. Open the link on any device:</string>
+    <string name="phone_title_file">Send files to this TV</string>
+    <string name="phone_message_file">Scan the code with the phone camera, pick a file on the page and tap Send. The file is streamed straight into the TV\'s Downloads folder. APK files are saved, never installed.</string>
+    <string name="phone_file_title">File received</string>
+    <string name="phone_file_saved">Saved on this TV:\n%1$s</string>
+</resources>

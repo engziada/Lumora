@@ -153,10 +153,24 @@
                             app:drawableTint="@color/nova_accent" />
 
                         <TextView
+                            android:id="@+id/secSetup"
+                            style="@style/Lumora.SectionRow"
+                            android:text="@string/sec_setup"
+                            app:drawableStartCompat="@drawable/ic_sec_device"
+                            app:drawableTint="@color/nova_accent" />
+
+                        <TextView
                             android:id="@+id/secSystem"
                             style="@style/Lumora.SectionRow"
                             android:text="@string/sec_system"
                             app:drawableStartCompat="@drawable/ic_sec_system"
+                            app:drawableTint="@color/nova_accent" />
+
+                        <TextView
+                            android:id="@+id/secTools"
+                            style="@style/Lumora.SectionRow"
+                            android:text="@string/sec_tools"
+                            app:drawableStartCompat="@drawable/ic_sec_adb"
                             app:drawableTint="@color/nova_accent" />
 
                         <TextView
@@ -750,6 +764,36 @@
 
                     <LinearLayout
                         android:id="@+id/adbCommands"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical" />
+                </ScrollView>
+
+                <!-- Setup (guided health check) -->
+                <ScrollView
+                    android:id="@+id/panelSetup"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scrollbars="none"
+                    android:visibility="gone">
+
+                    <LinearLayout
+                        android:id="@+id/setupRows"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical" />
+                </ScrollView>
+
+                <!-- Tools (maintenance) -->
+                <ScrollView
+                    android:id="@+id/panelTools"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scrollbars="none"
+                    android:visibility="gone">
+
+                    <LinearLayout
+                        android:id="@+id/toolsRows"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical" />

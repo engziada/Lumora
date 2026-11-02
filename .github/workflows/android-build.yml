@@ -150,6 +150,11 @@ jobs:
           SIZE=$(stat -c%s "$APK")
           NOTES=$(git log -1 --pretty=%s)
           URL="https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/$APK"
+          # Beta/rc builds become pre-releases; the release channel follows only "--latest" ones.
+          case "$NAME" in
+            *-beta*|*-rc*) RELEASE_FLAGS="--pre-release" ;;
+            *)             RELEASE_FLAGS="--latest" ;;
+          esac
           CODE="$CODE" NAME="$NAME" URL="$URL" SHA="$SHA" SIZE="$SIZE" NOTES="$NOTES" COMMIT="$GITHUB_SHA" python3 -c '
           import json, os
           print(json.dumps({"versionCode": int(os.environ["CODE"]), "versionName": os.environ["NAME"],
@@ -159,7 +164,7 @@ jobs:
           cat update.json
           printf '%s\n\nCommit: %s\nSigning certificate SHA-256: %s\n' "$NOTES" "$GITHUB_SHA" "$CERT" > notes.md
           gh release create "$TAG" "$APK" update.json --title "Lumora $NAME (build $CODE)" \
-            --notes-file notes.md --target "$GITHUB_SHA" --latest
+            --notes-file notes.md --target "$GITHUB_SHA" $RELEASE_FLAGS
           # Keep the five newest builds.
           gh release list --limit 100 --json tagName,createdAt \
             --jq 'sort_by(.createdAt) | reverse | .[5:] | .[].tagName' | while read -r old; do

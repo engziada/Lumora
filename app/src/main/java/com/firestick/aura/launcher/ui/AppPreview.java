@@ -4,11 +4,14 @@ import android.annotation.SuppressLint;
 import android.graphics.Color;
 import android.util.Log;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.ViewParent;
 import android.webkit.ConsoleMessage;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.FrameLayout;
 import android.widget.TextView;
 import com.firestick.aura.launcher.R;
 import com.firestick.aura.launcher.manager.PreferenceManager;
@@ -24,11 +27,14 @@ import com.firestick.aura.launcher.model.AppPreviewSamples.Provider;
 /**
  * Home preview panel. What it shows follows {@link PreferenceManager#getPanelContent()}:
  * the transparent 3D particle sphere and app-name morph (offline), the public-video player from
- * the provider feeds, or nothing. The WebView handles public feeds only; the generator never touches it.
+ * the provider feeds, or nothing. The WebView exists only in videos mode: it is created on the
+ * first videos focus ({@link #player()}), configured there, and fully destroyed when the panel
+ * leaves videos mode ({@link #discardPlayer()}), so particles/off starts carry no WebView cost —
+ * it renders an opaque black surface and keeps heavy extra processes alive.
  */
 public final class AppPreview {
     private final View panel;
-    private final WebView player;
+    private final ViewGroup playerHost;
     private final PreviewParticlesView particles;
     private final TextView service, status;
     private final ExecutorService io = Executors.newSingleThreadExecutor();
@@ -41,42 +47,71 @@ public final class AppPreview {
     private String country;
     private Provider provider;
     private final Runnable reveal = this::reveal;
+    private WebView player;
 
-    @SuppressLint("SetJavaScriptEnabled")
     public AppPreview(View panel) {
         this.panel = panel;
         feeds = new PreviewFeedRepository(panel.getContext());
         preferences = new PreferenceManager(panel.getContext());
-        player = panel.findViewById(R.id.previewPlayer);
+        playerHost = panel.findViewById(R.id.previewPlayerHost);
         particles = panel.findViewById(R.id.previewParticles);
         service = panel.findViewById(R.id.previewService);
         status = panel.findViewById(R.id.previewStatus);
-        // Transparent surface: particles mode renders on views behind; video mode's HTML paints
-        // its own black frame. An opaque WebView would cover the generator with a black box.
-        player.setBackgroundColor(Color.TRANSPARENT);
-        player.getSettings().setJavaScriptEnabled(true);
-        player.getSettings().setDomStorageEnabled(true);
-        player.getSettings().setMediaPlaybackRequiresUserGesture(false);
-        player.getSettings().setAllowFileAccess(false);
-        player.getSettings().setAllowContentAccess(false);
-        player.setWebViewClient(new WebViewClient() {
-            @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                return true; // Playback stays embedded; navigation never takes focus from the ribbon.
-            }
-        });
-        player.setWebChromeClient(new WebChromeClient() {
-            @Override public boolean onConsoleMessage(ConsoleMessage message) {
-                String text = message.message();
-                if (text.startsWith("PREVIEW:")) {
-                    Log.i("LumoraPreview", text);
-                    if (text.startsWith("PREVIEW:error") || text.contains("blocked"))
-                        { status.setVisibility(View.VISIBLE); status.setText("Video unavailable or autoplay blocked"); }
-                    else if (text.startsWith("PREVIEW:playing"))
-                        status.setVisibility(View.GONE);
+    }
+
+    /**
+     * The player view is built on first videos use only: transparent surface (particles mode
+     * renders on views behind; video mode's HTML paints its own black frame, and an opaque
+     * WebView would cover the generator), public feeds only, no file or content access, and
+     * playback stays embedded — navigation never takes focus from the ribbon.
+     */
+    @SuppressLint("SetJavaScriptEnabled")
+    private WebView player() {
+        if (player == null) {
+            WebView created = new WebView(panel.getContext());
+            created.setLayoutParams(new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            created.setFocusable(false);
+            created.setBackgroundColor(Color.TRANSPARENT);
+            created.getSettings().setJavaScriptEnabled(true);
+            created.getSettings().setDomStorageEnabled(true);
+            created.getSettings().setMediaPlaybackRequiresUserGesture(false);
+            created.getSettings().setAllowFileAccess(false);
+            created.getSettings().setAllowContentAccess(false);
+            created.setWebViewClient(new WebViewClient() {
+                @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                    return true;
                 }
-                return true;
-            }
-        });
+            });
+            created.setWebChromeClient(new WebChromeClient() {
+                @Override public boolean onConsoleMessage(ConsoleMessage message) {
+                    String text = message.message();
+                    if (text.startsWith("PREVIEW:")) {
+                        Log.i("LumoraPreview", text);
+                        if (text.startsWith("PREVIEW:error") || text.contains("blocked"))
+                            { status.setVisibility(View.VISIBLE); status.setText("Video unavailable or autoplay blocked"); }
+                        else if (text.startsWith("PREVIEW:playing"))
+                            status.setVisibility(View.GONE);
+                    }
+                    return true;
+                }
+            });
+            player = created;
+            playerHost.addView(created);
+        }
+        return player;
+    }
+
+    /** Removes and destroys the WebView completely; called as soon as videos mode ends. */
+    private void discardPlayer() {
+        if (player == null) return;
+        WebView spent = player;
+        player = null;
+        spent.stopLoading();
+        spent.onPause();
+        ViewParent holder = spent.getParent();
+        if (holder instanceof ViewGroup) ((ViewGroup) holder).removeView(spent);
+        spent.destroy();
     }
 
     public void focus(String packageName, String label) {
@@ -98,11 +133,11 @@ public final class AppPreview {
             } else {
                 hide();
             }
+            discardPlayer();
             current = packageName;
             currentLabel = nextLabel;
             provider = null;
             country = preferences.getShowsCountry();
-            player.setVisibility(View.GONE);
             status.setVisibility(View.GONE);
             panel.postDelayed(reveal, 150L);
             return;
@@ -128,14 +163,13 @@ public final class AppPreview {
         if (provider == null && preferences.getPanelContent() != PreferenceManager.PANEL_CONTENT_PARTICLES) return;
         if (preferences.getPanelContent() == PreferenceManager.PANEL_CONTENT_PARTICLES) {
             // Offline generative ambient: never let the WebView paint over the generator.
-            player.setVisibility(View.GONE);
+            discardPlayer();
             status.setVisibility(View.GONE);
             particles.setVisibility(View.VISIBLE);
             panel.setVisibility(View.VISIBLE);
             particles.start(current, currentLabel);
             return;
         }
-        player.setVisibility(View.VISIBLE);
         status.setVisibility(View.VISIBLE);
         status.setText("Loading public videos…");
         panel.setVisibility(View.VISIBLE);
@@ -171,8 +205,9 @@ public final class AppPreview {
                 + "onStateChange:function(e){if(e.data===1){failures=0;log('playing '+ids[n]);clearTimeout(timer);timer=setTimeout(next,15000)}else if(e.data===0)next()}"
                 + "}})}setInterval(function(){if(p&&p.getCurrentTime)log('time '+p.getCurrentTime()+' muted '+p.isMuted())},5000);"
                 + "</script><script src='https://www.youtube.com/iframe_api'></script>";
-        player.onResume();
-        player.loadDataWithBaseURL("https://" + panel.getContext().getPackageName() + "/", html, "text/html", "UTF-8", null);
+        WebView web = player();
+        web.onResume();
+        web.loadDataWithBaseURL("https://" + panel.getContext().getPackageName() + "/", html, "text/html", "UTF-8", null);
     }
 
     public void hide() {
@@ -181,8 +216,10 @@ public final class AppPreview {
         generation++;
         if (pending != null) pending.cancel(true);
         panel.removeCallbacks(reveal);
-        player.loadUrl("about:blank");
-        player.onPause();
+        if (player != null) {
+            player.loadUrl("about:blank");
+            player.onPause();
+        }
         panel.setVisibility(View.GONE);
         current = null;
         currentLabel = "";
@@ -192,6 +229,6 @@ public final class AppPreview {
     public void destroy() {
         hide();
         io.shutdownNow();
-        player.destroy();
+        discardPlayer();
     }
 }

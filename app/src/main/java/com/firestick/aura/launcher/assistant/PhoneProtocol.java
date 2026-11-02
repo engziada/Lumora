@@ -21,6 +21,10 @@ public final class PhoneProtocol {
     public static final int MAX_HEADER_BYTES = 8 * 1024;
     public static final int MAX_BODY_BYTES = 8 * 1024;
     public static final int MAX_TEXT_CHARS = 2000;
+    public static final int MAX_URL_CHARS = 2000;
+    public static final int MAX_FILENAME_CHARS = 120;
+    /** Bounded file transfer: an upload larger than this fails with 413 and is deleted. */
+    public static final long MAX_FILE_BYTES = 512L * 1024L * 1024L;
     public static final int CODE_DIGITS = 6;
 
     private PhoneProtocol() {
@@ -59,8 +63,13 @@ public final class PhoneProtocol {
 
     // --------------------------------------------------------------- parsing
 
-    public static Request read(InputStream in) throws IOException {
-        byte[] head = readHead(in);
+    /**
+     * Reads the request head only; {@code body} is left null and read later with
+     * {@link #finish(Request, InputStream)}. File uploads call this first so the raw stream can
+     * be streamed to disk without ever holding the bytes in memory.
+     */
+    public static Request readHead(InputStream in) throws IOException {
+        byte[] head = parseHead(in);
         String[] lines = new String(head, StandardCharsets.ISO_8859_1).split("\r\n");
         String[] start = lines[0].split(" ");
         if (start.length != 3 || !start[2].startsWith("HTTP/1.")) throw new BadRequest(400, "request");
@@ -74,8 +83,15 @@ public final class PhoneProtocol {
             if (colon <= 0) continue;
             headers.put(lines[i].substring(0, colon).trim().toLowerCase(Locale.ROOT), lines[i].substring(colon + 1).trim());
         }
+        return new Request(method, path, headers, null);
+    }
+
+    /** Reads the body promised by the head, per {@code Content-Length}, with the size cap. */
+    public static Request finish(Request head, InputStream in) throws IOException {
+        if (head.body != null) throw new AssertionError("body already read");
         String body = "";
-        String length = headers.get("content-length");
+        // Header(String) never returns null — look the raw value up so a missing header stays null.
+        String length = head.headers.get("content-length");
         if (length != null) {
             int bytes;
             try {
@@ -86,13 +102,17 @@ public final class PhoneProtocol {
             if (bytes < 0) throw new BadRequest(400, "length");
             if (bytes > MAX_BODY_BYTES) throw new BadRequest(413, "too_long");
             body = new String(readExactly(in, bytes), StandardCharsets.UTF_8);
-        } else if (headers.containsKey("transfer-encoding")) {
+        } else if (head.headers.containsKey("transfer-encoding")) {
             throw new BadRequest(411, "length");
         }
-        return new Request(method, path, headers, body);
+        return new Request(head.method, head.path, head.headers, body);
     }
 
-    private static byte[] readHead(InputStream in) throws IOException {
+    public static Request read(InputStream in) throws IOException {
+        return finish(readHead(in), in);
+    }
+
+    private static byte[] parseHead(InputStream in) throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         int last4 = 0;
         while (true) {
@@ -174,6 +194,43 @@ public final class PhoneProtocol {
         return out.toString().trim();
     }
 
+    /** Accepts only http(s) web links — the only kind a TV browser intent can open. */
+    public static boolean isHttpUrl(String url) {
+        if (url == null) return false;
+        String value = url.trim();
+        String lower = value.toLowerCase(Locale.ROOT);
+        if (lower.startsWith("http://")) {
+            value = value.substring(7);
+        } else if (lower.startsWith("https://")) {
+            value = value.substring(8);
+        } else {
+            return false;
+        }
+        // A bare scheme like "https://" with no host is not a link.
+        return !value.isEmpty() && !value.startsWith("/") && Character.isLetterOrDigit(value.charAt(0));
+    }
+
+    /**
+     * Filename as received from the phone: trimmed, path separators and control characters
+     * stripped silently, never silent or system. A name like ".." cannot traverse anywhere.
+     */
+    public static String sanitizeFilename(String name) {
+        if (name == null) return "";
+        String clean = name.replace('\\', ' ').replace('/', ' ');
+        StringBuilder out = new StringBuilder(Math.min(clean.length(), MAX_FILENAME_CHARS));
+        for (int i = 0; out.length() < MAX_FILENAME_CHARS && i < clean.length(); i++) {
+            char c = clean.charAt(i);
+            if (c == '\0' || Character.isISOControl(c)) continue;
+            out.append(c);
+        }
+        String trimmed = out.toString().trim();
+        while (trimmed.startsWith(".")) {
+            // A leading dot is never a safe name: "." and ".." are traversal, ".x" is hidden-file soup.
+            trimmed = trimmed.substring(1).trim();
+        }
+        return trimmed;
+    }
+
     // ------------------------------------------------------------- responses
 
     public static byte[] response(int status, String contentType, byte[] body) {
@@ -245,6 +302,8 @@ public final class PhoneProtocol {
     /** Mobile page for a PhoneBridge mode. Outbox mode serves the command-outbox page instead. */
     public static String page(int mode) {
         if (mode == PhoneBridge.MODE_OUT) return OUT_PAGE;
+        if (mode == PhoneBridge.MODE_URL) return URL_PAGE;
+        if (mode == PhoneBridge.MODE_FILES) return FILE_PAGE;
         return page(mode == PhoneBridge.MODE_KEY);
     }
 
@@ -389,5 +448,143 @@ public final class PhoneProtocol {
             + "document.body.removeChild(t);}};li.appendChild(btn);cmds.insertBefore(li,cmds.firstChild);});}\n"
             + "show();setInterval(poll,2000);poll();\n"
             + "})();\n"
+            + "</script></body></html>\n";
+
+    /**
+     * URL page for MODE_URL: the phone sends a web link and the TV opens it in its browser.
+     * Nothing is logged; the link is validated again when the TV acts on it.
+     */
+    private static final String URL_PAGE = "<!doctype html>\n"
+            + "<html lang=\"en\"><head><meta charset=\"utf-8\">\n"
+            + "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n"
+            + "<meta name=\"color-scheme\" content=\"dark\"><title>Lumora</title>\n"
+            + "<style>\n"
+            + ":root{--bg:#1c1511;--panel:#2a201a;--line:#4a3a2e;--text:#f6ece0;--muted:#c4b2a0;--accent:#e3a15a;--ink:#24170c}\n"
+            + "*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);"
+            + "font:clamp(1rem,0.95rem + 0.4vw,1.125rem)/1.5 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}\n"
+            + "main{max-width:34rem;margin:0 auto;padding:1.5rem 1.25rem 3rem}\n"
+            + "h1{margin:0;font-size:1.75rem;letter-spacing:.02em;color:var(--accent)}\n"
+            + ".sub{margin:.25rem 0 1.5rem;color:var(--muted)}\n"
+            + "label{display:block;margin-bottom:.5rem;font-weight:600}\n"
+            + "input{width:100%;padding:.85rem 1rem;border:1px solid var(--line);border-radius:.9rem;"
+            + "background:var(--panel);color:var(--text);font:inherit}\n"
+            + "input:focus{outline:2px solid var(--accent);outline-offset:1px}\n"
+            + "button{margin-top:1rem;width:100%;min-height:3rem;border:0;border-radius:.9rem;background:var(--accent);"
+            + "color:var(--ink);font:inherit;font-weight:700}\n"
+            + "button:focus-visible{outline:3px solid var(--text);outline-offset:2px}\n"
+            + "button:disabled{opacity:.55}\n"
+            + ".hint{margin:.5rem 0 0;color:var(--muted);font-size:.9em}\n"
+            + "#status{min-height:1.5em;margin:1rem 0 0}\n"
+            + "ol{list-style:none;margin:1rem 0 0;padding:0}li{padding:.6rem .9rem;margin-top:.5rem;border-radius:.9rem;"
+            + "background:var(--panel);border:1px solid var(--line);word-break:break-all}\n"
+            + "[hidden]{display:none!important}\n"
+            + "</style></head><body><main>\n"
+            + "<h1>Lumora</h1><p class=\"sub\">Paste a link to open it on the TV</p>\n"
+            + "<section id=\"pair\" hidden><label for=\"code\">Pairing code shown on the TV</label>\n"
+            + "<input id=\"code\" inputmode=\"numeric\" autocomplete=\"one-time-code\" maxlength=\"6\">\n"
+            + "<button id=\"pairBtn\" type=\"button\">Connect</button></section>\n"
+            + "<form id=\"form\" hidden><label for=\"text\">Web address</label>\n"
+            + "<input id=\"text\" type=\"url\" inputmode=\"url\" autocapitalize=\"off\" spellcheck=\"false\" dir=\"ltr\" "
+            + "maxlength=\"" + MAX_URL_CHARS + "\" placeholder=\"https://\u2026\">\n"
+            + "<p class=\"hint\">http and https links only; the TV opens them in its browser.</p>\n"
+            + "<button type=\"submit\">Open on the TV</button></form>\n"
+            + "<p id=\"status\" role=\"status\" aria-live=\"polite\"></p><ol id=\"sent\"></ol>\n"
+            + "</main><script>\n"
+            + "(function(){\n"
+            + "var code=sessionStorage.getItem('c')||'';\n"
+            + "var m=location.hash.match(/c=(\\d{6})/);\n"
+            + "if(m){code=m[1];sessionStorage.setItem('c',code);history.replaceState(null,'',location.pathname);}\n"
+            + "var pair=document.getElementById('pair'),form=document.getElementById('form'),text=document.getElementById('text'),"
+            + "codeInput=document.getElementById('code'),status=document.getElementById('status'),sent=document.getElementById('sent');\n"
+            + "function show(){pair.hidden=!!code;form.hidden=!code;(code?text:codeInput).focus();}\n"
+            + "document.getElementById('pairBtn').onclick=function(){var v=codeInput.value.trim();"
+            + "if(/^\\d{6}$/.test(v)){code=v;sessionStorage.setItem('c',v);status.textContent='';show();}"
+            + "else{status.textContent='Enter the 6 digits shown on the TV.';}};\n"
+            + "form.onsubmit=function(e){e.preventDefault();var t=text.value.trim();if(!t)return;"
+            + "var btn=form.querySelector('button');btn.disabled=true;status.textContent='Sending\\u2026';\n"
+            + "fetch('/send',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},"
+            + "body:'c='+encodeURIComponent(code)+'&u='+encodeURIComponent(t)})\n"
+            + ".then(function(r){return r.json();}).then(function(j){\n"
+            + "if(j.ok){status.textContent='Sent. The TV is opening it.';\n"
+            + "var li=document.createElement('li');li.dir='ltr';li.textContent=t;sent.insertBefore(li,sent.firstChild);text.value='';}\n"
+            + "else if(j.error==='code'){code='';sessionStorage.removeItem('c');"
+            + "status.textContent='The code is wrong or has changed. Enter the code shown on the TV.';show();}\n"
+            + "else if(j.error==='rate'){status.textContent='Too many messages. Wait a moment.';}\n"
+            + "else{status.textContent='Not sent ('+j.error+').';}\n"
+            + "}).catch(function(){status.textContent='The TV did not answer. Is the phone link still open on the TV?';})\n"
+            + ".then(function(){btn.disabled=false;});};\n"
+            + "show();})();\n"
+            + "</script></body></html>\n";
+
+    /**
+     * File page for MODE_FILES. The chosen file is posted as one raw PUT of octet-stream bytes
+     * to /file with the pairing code and the file name in headers, so the TV streams it to disk
+     * without buffering it in memory. Large files are possible (up to 512 MB); a .apk is saved,
+     * never installed.
+     */
+    private static final String FILE_PAGE = "<!doctype html>\n"
+            + "<html lang=\"en\"><head><meta charset=\"utf-8\">\n"
+            + "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n"
+            + "<meta name=\"color-scheme\" content=\"dark\"><title>Lumora</title>\n"
+            + "<style>\n"
+            + ":root{--bg:#1c1511;--panel:#2a201a;--line:#4a3a2e;--text:#f6ece0;--muted:#c4b2a0;--accent:#e3a15a;--ink:#24170c}\n"
+            + "*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);"
+            + "font:clamp(1rem,0.95rem + 0.4vw,1.125rem)/1.5 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}\n"
+            + "main{max-width:34rem;margin:0 auto;padding:1.5rem 1.25rem 3rem}\n"
+            + "h1{margin:0;font-size:1.75rem;letter-spacing:.02em;color:var(--accent)}\n"
+            + ".sub{margin:.25rem 0 1.5rem;color:var(--muted)}\n"
+            + "label{display:block;margin-bottom:.5rem;font-weight:600}\n"
+            + "input{width:100%;padding:.85rem 1rem;border:1px solid var(--line);border-radius:.9rem;"
+            + "background:var(--panel);color:var(--text);font:inherit}\n"
+            + "input:focus{outline:2px solid var(--accent);outline-offset:1px}\n"
+            + "button{margin-top:1rem;width:100%;min-height:3rem;border:0;border-radius:.9rem;background:var(--accent);"
+            + "color:var(--ink);font:inherit;font-weight:700}\n"
+            + "button:focus-visible{outline:3px solid var(--text);outline-offset:2px}\n"
+            + "button:disabled{opacity:.55}\n"
+            + ".hint{margin:.5rem 0 0;color:var(--muted);font-size:.9em}\n"
+            + "#status{min-height:2.5em;margin:1rem 0 0}\n"
+            + "ol{list-style:none;margin:1rem 0 0;padding:0}li{padding:.6rem .9rem;margin-top:.5rem;border-radius:.9rem;"
+            + "background:var(--panel);border:1px solid var(--line);word-break:break-all}\n"
+            + "[hidden]{display:none!important}\n"
+            + "</style></head><body><main>\n"
+            + "<h1>Lumora</h1><p class=\"sub\">Send a file from the phone to the TV</p>\n"
+            + "<section id=\"pair\" hidden><label for=\"code\">Pairing code shown on the TV</label>\n"
+            + "<input id=\"code\" inputmode=\"numeric\" autocomplete=\"one-time-code\" maxlength=\"6\">\n"
+            + "<button id=\"pairBtn\" type=\"button\">Connect</button></section>\n"
+            + "<form id=\"form\" hidden><label for=\"text\">Choose a file (up to 512 MB)</label>\n"
+            + "<input id=\"text\" type=\"file\" style=\"padding:.6rem\">\n"
+            + "<p class=\"hint\">The file lands in the TV's Downloads folder. APKs are saved, never installed.</p>\n"
+            + "<button type=\"submit\">Send to the TV</button></form>\n"
+            + "<p id=\"status\" role=\"status\" aria-live=\"polite\"></p><ol id=\"sent\"></ol>\n"
+            + "</main><script>\n"
+            + "(function(){\n"
+            + "var code=sessionStorage.getItem('c')||'';\n"
+            + "var m=location.hash.match(/c=(\\d{6})/);\n"
+            + "if(m){code=m[1];sessionStorage.setItem('c',code);history.replaceState(null,'',location.pathname);}\n"
+            + "var pair=document.getElementById('pair'),form=document.getElementById('form'),text=document.getElementById('text'),"
+            + "codeInput=document.getElementById('code'),status=document.getElementById('status'),sent=document.getElementById('sent');\n"
+            + "function show(){pair.hidden=!!code;form.hidden=!code;}\n"
+            + "document.getElementById('pairBtn').onclick=function(){var v=codeInput.value.trim();"
+            + "if(/^\\d{6}$/.test(v)){code=v;sessionStorage.setItem('c',v);status.textContent='';show();}"
+            + "else{status.textContent='Enter the 6 digits shown on the TV.';}};\n"
+            + "form.onsubmit=function(e){e.preventDefault();\n"
+            + "var f=text.files&&text.files[0];\n"
+            + "if(!f){status.textContent='Choose a file first.';return;}\n"
+            + "if(f.size>512*1024*1024){status.textContent='This file is larger than 512 MB.';return;}\n"
+            + "var btn=form.querySelector('button');btn.disabled=true;\n"
+            + "status.textContent='Sending '+f.name+' ('+Math.round(f.size/1048576)+' MB)\u2026';\n"
+            + "fetch('/file',{method:'POST',headers:{'Content-Type':'application/octet-stream',"
+            + "'X-Code':code,'X-Filename':f.name},body:f})\n"
+            + ".then(function(r){return r.json();}).then(function(j){\n"
+            + "if(j.ok){status.textContent='Sent. Look in the TV\\u2019s Downloads folder.';\n"
+            + "var li=document.createElement('li');li.dir='ltr';li.textContent=f.name;sent.insertBefore(li,sent.firstChild);\n"
+            + "text.value='';}\n"
+            + "else if(j.error==='code'){code='';sessionStorage.removeItem('c');"
+            + "status.textContent='The code is wrong or has changed. Enter the code shown on the TV.';show();}\n"
+            + "else if(j.error==='rate'){status.textContent='Another file is still transferring. Wait a moment.';}\n"
+            + "else{status.textContent='Not sent ('+(j.error||'failed')+').';}\n"
+            + "}).catch(function(){status.textContent='Transfer failed. Keep the phone near the TV and retry.';})\n"
+            + ".then(function(){btn.disabled=false;});};\n"
+            + "show();})();\n"
             + "</script></body></html>\n";
 }

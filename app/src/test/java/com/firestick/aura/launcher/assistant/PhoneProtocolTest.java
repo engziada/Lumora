@@ -3,6 +3,7 @@ package com.firestick.aura.launcher.assistant;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
@@ -138,5 +139,68 @@ public class PhoneProtocolTest {
         assertTrue(body.endsWith("\"}"));
         assertTrue(body.contains("a \\\"quoted\\\"\\n\\\\path"));
         assertFalse(body.contains("\n"));
+    }
+
+    // ---------------------------------------------------- urls and files (v5.5)
+
+    @Test
+    public void onlyHttpAndHttpsLinksAreAccepted() {
+        assertTrue(PhoneProtocol.isHttpUrl("https://zakaa-ai.net/blog"));
+        assertTrue(PhoneProtocol.isHttpUrl("http://192.168.100.111/watch?v=x"));
+        assertFalse(PhoneProtocol.isHttpUrl(null));
+        assertFalse(PhoneProtocol.isHttpUrl(""));
+        assertFalse(PhoneProtocol.isHttpUrl("javascript:alert(1)"));
+        assertFalse(PhoneProtocol.isHttpUrl("ftp://host/file"));
+        assertFalse(PhoneProtocol.isHttpUrl("https://"));
+        assertFalse(PhoneProtocol.isHttpUrl("https:/not-a-link"));
+    }
+
+    @Test
+    public void filenamesAreCleanedAndCapped() {
+        assertEquals("holiday photo.jpg", PhoneProtocol.sanitizeFilename(" holiday photo.jpg "));
+        // Path separators and traversal never survive.
+        assertEquals("etc passwd", PhoneProtocol.sanitizeFilename("../../etc/passwd"));
+        assertEquals("a b", PhoneProtocol.sanitizeFilename("a\\b"));
+        assertEquals("a b", PhoneProtocol.sanitizeFilename("a/b"));
+        assertEquals("nul", PhoneProtocol.sanitizeFilename("nu\u0000l"));
+        assertEquals("", PhoneProtocol.sanitizeFilename(null));
+        assertEquals("", PhoneProtocol.sanitizeFilename("   "));
+        assertEquals("", PhoneProtocol.sanitizeFilename(".."));
+        String longName = PhoneProtocol.sanitizeFilename(new String(new char[500]).replace('\0', 'x'));
+        assertEquals(PhoneProtocol.MAX_FILENAME_CHARS, longName.length());
+    }
+
+    @Test
+    public void headAndBodyReadIsSplitForFileUploads() throws IOException {
+        String raw = "POST /send HTTP/1.1\r\nContent-Length: 5\r\nHost: a\r\n\r\nhello";
+        PhoneProtocol.Request head = PhoneProtocol.readHead(new ByteArrayInputStream(raw.getBytes(StandardCharsets.UTF_8)));
+        assertEquals("POST", head.method);
+        assertNull(head.body);
+        PhoneProtocol.Request full = PhoneProtocol.finish(head,
+                new ByteArrayInputStream("hello".getBytes(StandardCharsets.UTF_8)));
+        assertEquals("hello", full.body);
+        assertEquals(2, full.headers.size());
+    }
+
+    @Test
+    public void finishedHeadCannotBeFinishedTwice() {
+        PhoneProtocol.Request head = new PhoneProtocol.Request("POST", "/send", java.util.Collections.emptyMap(), "");
+        assertThrows(AssertionError.class, () -> PhoneProtocol.finish(head, new ByteArrayInputStream(new byte[0])));
+    }
+
+    @Test
+    public void urlAndFilePagesMateWithTheirModes() {
+        String url = PhoneProtocol.page(PhoneBridge.MODE_URL);
+        String file = PhoneProtocol.page(PhoneBridge.MODE_FILES);
+        assertFalse(url.contains("{{"));
+        assertFalse(file.contains("{{"));
+        assertTrue(url.contains("type=\"url\""));
+        assertTrue(url.contains("'/send'"));
+        assertTrue(file.contains("type=\"file\""));
+        assertTrue(file.contains("fetch('/file'"));
+        assertTrue(file.contains("X-Filename"));
+        assertTrue(file.contains("'X-Code':code"));
+        // The streaming limit is stated on the page so big transfers are not a surprise.
+        assertTrue(file.contains("512"));
     }
 }

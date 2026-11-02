@@ -2,6 +2,10 @@ package com.firestick.aura.launcher;
 
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.media.MediaScannerConnection;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.os.Environment;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
@@ -19,6 +23,7 @@ import android.provider.Settings;
 import android.text.format.DateUtils;
 import android.util.DisplayMetrics;
 import android.view.Display;
+import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -40,6 +45,7 @@ import com.firestick.aura.launcher.manager.AppLock;
 import com.firestick.aura.launcher.manager.DebloatManager;
 import com.firestick.aura.launcher.manager.DeviceMonitor;
 import com.firestick.aura.launcher.manager.DeviceStats;
+import com.firestick.aura.launcher.manager.MaintenanceTools;
 import com.firestick.aura.launcher.manager.PreferenceManager;
 import com.firestick.aura.launcher.manager.QuickAccess;
 import com.firestick.aura.launcher.manager.SoundManager;
@@ -65,20 +71,26 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import java.io.File;
+
 public class SettingsActivity extends AppCompatActivity {
     /** Optional int extra: index of the section to open. */
     public static final String EXTRA_SECTION = "com.firestick.aura.launcher.extra.SETTINGS_SECTION";
     public static final int SECTION_ASSISTANT = 5;
-    private static final int SECTION_DEVICE = 7;
-    private static final int SECTION_ADB = 8;
+    private static final int SECTION_HOME = 6;
+    private static final int SECTION_TOOLS = 8;
+    private static final int SECTION_DEVICE = 9;
+    private static final int SECTION_ADB = 10;
 
     private static final int[] SECTIONS = {R.id.secAppearance, R.id.secWallpaper, R.id.secAudio, R.id.secShows,
-            R.id.secLock, R.id.secAssistant, R.id.secSystem, R.id.secDevice, R.id.secAdb, R.id.secAbout};
+            R.id.secLock, R.id.secAssistant, R.id.secSetup, R.id.secSystem, R.id.secTools, R.id.secDevice,
+            R.id.secAdb, R.id.secAbout};
     private static final int[] PANELS = {R.id.panelAppearance, R.id.panelWallpaper, R.id.panelAudio, R.id.panelShows,
-            R.id.panelLock, R.id.panelAssistant, R.id.panelSystem, R.id.panelDevice, R.id.scrollAdb, R.id.panelAbout};
+            R.id.panelLock, R.id.panelAssistant, R.id.panelSetup, R.id.panelSystem, R.id.panelTools, R.id.panelDevice,
+            R.id.scrollAdb, R.id.panelAbout};
     private static final int[] FIRST_FOCUS = {R.id.btnThemeAmber, R.id.btnWallpaperSource, R.id.toggleSound,
-            R.id.toggleShows, R.id.btnLockCode, R.id.btnAiKey, R.id.btnQuickPermission, R.id.panelDevice,
-            R.id.scrollAdb, R.id.btnAboutEmail};
+            R.id.toggleShows, R.id.btnLockCode, R.id.btnAiKey, R.id.setupRows, R.id.btnQuickPermission, R.id.toolsRows,
+            R.id.panelDevice, R.id.scrollAdb, R.id.btnAboutEmail};
 
     private static final int[] THEME_BUTTONS = {R.id.btnThemeAmber, R.id.btnThemeCopper, R.id.btnThemeRose, R.id.btnThemeMoon};
     private static final int[] THEME_COLORS = {R.color.accent_amber, R.color.accent_copper, R.color.accent_rose, R.color.accent_moonlight};
@@ -125,6 +137,18 @@ public class SettingsActivity extends AppCompatActivity {
     private PhonePairDialog shareDialog;
     private Button firstAdbShare;
     private Button lastAdbShare;
+    /** MODE_URL / MODE_FILES links used by the Tools screen to receive links and files. */
+    private PhoneBridge urlPhone, filePhone;
+    private PhonePairDialog urlDialog, fileDialog;
+    /** Setup (guided health check) rows. */
+    private TextView setupHome, setupQuick, setupRedirect, setupSecure, setupInstall, setupAssistant, setupAuto, setupNetwork;
+    private Button setupNetworkFix;
+    private View firstSetup;
+    /** Tools (maintenance) rows. */
+    private TextView txtCacheBreakdown, txtDoctor, txtToolUpdate;
+    private Button toolChannel, toolClean, toolDoctor, toolCheck;
+    private UpdateManager toolUpdates;
+    private View firstTools;
 
     private final Runnable deviceTick = new Runnable() {
         @Override public void run() {
@@ -169,6 +193,8 @@ public class SettingsActivity extends AppCompatActivity {
         bindSystem();
         buildDevicePanel();
         buildAdbGuidance();
+        buildSetupPanel();
+        buildToolsPanel();
         bindAbout();
         findViewById(R.id.btnDone).setOnClickListener(v -> finish());
         int requested = getIntent().getIntExtra(EXTRA_SECTION, 0);
@@ -193,6 +219,8 @@ public class SettingsActivity extends AppCompatActivity {
     @Override protected void onStop() {
         stopKeyPhone();
         stopSharePhone();
+        stopUrlPhone();
+        stopFilePhone();
         super.onStop();
     }
 
@@ -200,6 +228,8 @@ public class SettingsActivity extends AppCompatActivity {
         stopDeviceUpdates();
         stopKeyPhone();
         stopSharePhone();
+        stopUrlPhone();
+        stopFilePhone();
         worker.shutdownNow();
         wallpapers.shutdown();
         super.onDestroy();
@@ -226,6 +256,8 @@ public class SettingsActivity extends AppCompatActivity {
         updateAssistantButtons();
         updateSystemButtons();
         updateUpdateButtons();
+        refreshSetup();
+        refreshTools();
     }
 
     private void bindSections() {
@@ -256,8 +288,10 @@ public class SettingsActivity extends AppCompatActivity {
 
     private void showSection(int section) {
         setSection(section);
-        View focus = section == SECTION_ADB && firstAdbShare != null
-                ? firstAdbShare : findViewById(FIRST_FOCUS[section]);
+        View focus = section == SECTION_ADB && firstAdbShare != null ? firstAdbShare
+                : section == SECTION_HOME && firstSetup != null ? firstSetup
+                : section == SECTION_TOOLS && firstTools != null ? firstTools
+                : findViewById(FIRST_FOCUS[section]);
         if (focus != null) focus.requestFocus();
     }
 
@@ -270,6 +304,9 @@ public class SettingsActivity extends AppCompatActivity {
         }
         if (section == SECTION_DEVICE) startDeviceUpdates();
         else stopDeviceUpdates();
+        // Setup rows rebuild cheaply; the Tools cache scan is disk I/O, run only when opened.
+        if (section == SECTION_HOME) refreshSetup();
+        if (section == SECTION_TOOLS) scanCaches();
     }
 
     private int color(int res) {
@@ -1230,5 +1267,483 @@ public class SettingsActivity extends AppCompatActivity {
         } catch (ActivityNotFoundException exception) {
             Glass.info(this, title, getString(R.string.about_no_handler), value, null, null);
         }
+    }
+
+    // --------------------------------------------------------------- setup
+
+    /** One guided-setup row: capability label, current status and an optional Fix button. */
+    private static final class Row {
+        final TextView value;
+        final Button fix;
+
+        Row(TextView value, Button fix) {
+            this.value = value;
+            this.fix = fix;
+        }
+    }
+
+    private Row setupHomeRow, setupQuickRow, setupRedirectRow, setupSecureRow,
+            setupInstallRow, setupAssistantRow, setupAutoRow, setupNetworkRow;
+
+    /** Guided setup & recovery: what is healthy, and the one-tap fix for what is not. */
+    private void buildSetupPanel() {
+        LinearLayout list = findViewById(R.id.setupRows);
+        list.removeAllViews();
+        firstSetup = null;
+        TextView intro = new TextView(this);
+        intro.setText(R.string.setup_intro);
+        intro.setTextColor(color(R.color.nova_text_dim));
+        intro.setTextSize(10);
+        intro.setLineSpacing(0f, 1.25f);
+        list.addView(intro);
+        addEyebrow(list, R.string.setup_health_label);
+        setupHomeRow = addStatusRow(list, R.string.setup_row_home, R.string.setup_fix, v -> {
+            SoundManager.playClick(v, preferences);
+            Glass.info(this, getString(R.string.setup_home_title), getString(R.string.setup_home_needed),
+                    "adb shell cmd package set-home-activity " + getPackageName() + "/.MainActivity", null, null);
+        });
+        setupQuickRow = addStatusRow(list, R.string.setup_row_quick, R.string.setup_fix, v -> {
+            SoundManager.playClick(v, preferences);
+            if (QuickActionService.isRunning()) toast(getString(R.string.quick_enabled));
+            else if (QuickAccess.ensureServiceEnabled(this)) toast(getString(R.string.quick_enabling));
+            else QuickAccess.showSetup(this);
+            refreshSetup();
+        });
+        setupRedirectRow = addStatusRow(list, R.string.setup_row_redirect, R.string.setup_fix, v -> {
+            SoundManager.playClick(v, preferences);
+            preferences.setHomeRedirectEnabled(true);
+            updateSystemButtons();
+            refreshSetup();
+            toast(getString(R.string.setup_redirect_fixed));
+        });
+        setupSecureRow = addStatusRow(list, R.string.setup_row_secure, R.string.setup_fix, v -> {
+            SoundManager.playClick(v, preferences);
+            Glass.info(this, getString(R.string.setup_secure_title), getString(R.string.setup_secure_help),
+                    getString(R.string.adb_key_command), getString(R.string.setup_open_advanced),
+                    () -> showSection(SECTION_ADB));
+        });
+        setupInstallRow = addStatusRow(list, R.string.setup_row_install, R.string.setup_fix, v -> {
+            SoundManager.playClick(v, preferences);
+            QuickActionService.suppressRedirect(60_000L);
+            Intent intent = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                    Uri.parse("package:" + getPackageName())).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            try {
+                startActivity(intent);
+            } catch (ActivityNotFoundException exception) {
+                Glass.info(this, getString(R.string.setup_install_title), getString(R.string.setup_install_help),
+                        new UpdateManager(this).grantInstallCommand(), getString(R.string.setup_open_advanced),
+                        () -> showSection(SECTION_ADB));
+            }
+        });
+        setupAssistantRow = addStatusRow(list, R.string.setup_row_assistant, R.string.setup_assistant_fix,
+                v -> showSection(SECTION_ASSISTANT));
+        setupAutoRow = addStatusRow(list, R.string.setup_row_updates, R.string.setup_auto_fix, v -> {
+            SoundManager.playClick(v, preferences);
+            toolUpdates.setIntervalHours(24L);
+            refreshSetup();
+            updateUpdateButtons();
+            toast(getString(R.string.setup_auto_fixed));
+        });
+        setupNetworkRow = addStatusRow(list, R.string.setup_row_network, R.string.setup_doctor_fix,
+                v -> showSection(SECTION_TOOLS));
+        TextView note = new TextView(this);
+        note.setText(R.string.setup_adb_note);
+        note.setTextColor(color(R.color.nova_text_muted));
+        note.setTextSize(9);
+        note.setLineSpacing(0f, 1.25f);
+        note.setPadding(0, dp(14), 0, 0);
+        list.addView(note);
+        firstSetup = intro;
+    }
+
+    /** One labelled row with a status TextView and a Fix button (hidden until it is needed). */
+    private Row addStatusRow(LinearLayout list, int labelRes, int fixLabel, View.OnClickListener fixAction) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(0, dp(7), 0, dp(3));
+        TextView label = new TextView(this);
+        label.setText(labelRes);
+        label.setAllCaps(true);
+        label.setLetterSpacing(.14f);
+        label.setTextColor(color(R.color.nova_text_muted));
+        label.setTextSize(8);
+        row.addView(label, new LinearLayout.LayoutParams(dp(130), LinearLayout.LayoutParams.WRAP_CONTENT));
+        TextView value = new TextView(this);
+        value.setTextColor(color(R.color.nova_text));
+        value.setTextSize(11);
+        row.addView(value, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        Button fix = new Button(this);
+        fix.setId(View.generateViewId());
+        fix.setFocusable(true);
+        fix.setText(fixLabel);
+        fix.setAllCaps(false);
+        fix.setTextColor(color(R.color.nova_accent));
+        fix.setTextSize(9);
+        fix.setMinHeight(0);
+        fix.setMinimumHeight(0);
+        fix.setBackgroundResource(R.drawable.bg_option_selector);
+        fix.setVisibility(View.GONE);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, dp(30));
+        params.leftMargin = dp(6);
+        fix.setLayoutParams(params);
+        fix.setOnClickListener(fixAction);
+        fix.setOnFocusChangeListener((v, focused) -> SoundManager.playFocus(v, preferences));
+        row.addView(fix);
+        list.addView(row);
+        return new Row(value, fix);
+    }
+
+    /** Recomputes every setup row's status; cheap reads only, safe from onResume. */
+    private void refreshSetup() {
+        if (setupHomeRow == null) return;
+        setupHomeRow.value.setText(homeSummary());
+        setupHomeRow.fix.setVisibility(isDefaultHome() ? View.GONE : View.VISIBLE);
+
+        int quick = QuickActionService.isRunning() ? R.string.quick_permission_on
+                : QuickAccess.isServiceEnabled(this) ? R.string.quick_permission_starting : R.string.quick_permission_off;
+        setupQuickRow.value.setText(quick);
+        setupQuickRow.fix.setVisibility(quick == R.string.quick_permission_on ? View.GONE : View.VISIBLE);
+
+        boolean redirect = preferences.isHomeRedirectEnabled();
+        setupRedirectRow.value.setText(redirect ? R.string.setup_state_on : R.string.setup_state_off);
+        setupRedirectRow.fix.setVisibility(redirect ? View.GONE : View.VISIBLE);
+
+        boolean secure = secureWriteGranted();
+        setupSecureRow.value.setText(secure ? R.string.setup_state_on : R.string.setup_secure_off);
+        setupSecureRow.fix.setVisibility(secure ? View.GONE : View.VISIBLE);
+
+        boolean install = new UpdateManager(this).canInstall();
+        setupInstallRow.value.setText(install ? R.string.setup_state_on : R.string.setup_install_off);
+        setupInstallRow.fix.setVisibility(install ? View.GONE : View.VISIBLE);
+
+        boolean assistantKey = assistant.hasApiKey();
+        setupAssistantRow.value.setText(assistantKey ? R.string.setup_state_on : R.string.setup_assistant_off);
+        setupAssistantRow.fix.setVisibility(assistantKey ? View.GONE : View.VISIBLE);
+
+        long interval = toolUpdates == null || toolUpdates.getIntervalHours() <= 0 ? 0L : toolUpdates.getIntervalHours();
+        setupAutoRow.value.setText(interval == 0 ? R.string.update_auto_off
+                : interval <= 24 ? R.string.update_auto_daily : R.string.update_auto_weekly);
+        setupAutoRow.fix.setVisibility(interval == 0 ? View.VISIBLE : View.GONE);
+
+        boolean online = deviceOnline();
+        setupNetworkRow.value.setText(online ? R.string.setup_state_online : R.string.setup_state_offline);
+        setupNetworkRow.fix.setVisibility(online ? View.GONE : View.VISIBLE);
+    }
+
+    /**
+     * WRITE_SECURE_SETTINGS is granted over ADB; probing it with a throwaway setting is the only
+     * in-app read-out. The probe value is removed again right away.
+     */
+    private boolean secureWriteGranted() {
+        try {
+            boolean wrote = Settings.Secure.putString(getContentResolver(), "lumora_setup_probe", "1");
+            if (!wrote) return false;
+            Settings.Secure.putString(getContentResolver(), "lumora_setup_probe", null);
+            return true;
+        } catch (RuntimeException denied) {
+            return false;
+        }
+    }
+
+    /** Connectivity state only — no network traffic on the main thread. */
+    private boolean deviceOnline() {
+        NetworkInfo network = ((ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE)).getActiveNetworkInfo();
+        return network != null && network.isConnected();
+    }
+
+    // --------------------------------------------------------------- tools
+
+    private Button toolUrlPhone, toolFilePhone;
+
+    /** Maintenance tools: Lumora's own cache dashboard, a network doctor and update diagnostics. */
+    private void buildToolsPanel() {
+        toolUpdates = new UpdateManager(this);
+        LinearLayout list = findViewById(R.id.toolsRows);
+        list.removeAllViews();
+        firstTools = null;
+
+        addEyebrow(list, R.string.tools_storage_label);
+        txtCacheBreakdown = new TextView(this);
+        txtCacheBreakdown.setText(R.string.tools_storage_scanning);
+        txtCacheBreakdown.setTypeface(Typeface.MONOSPACE);
+        txtCacheBreakdown.setTextColor(color(R.color.nova_text));
+        txtCacheBreakdown.setTextSize(9);
+        txtCacheBreakdown.setLineSpacing(0f, 1.35f);
+        txtCacheBreakdown.setPadding(0, dp(4), 0, dp(2));
+        list.addView(txtCacheBreakdown);
+        toolClean = toolButton(list, R.string.tools_clean);
+        toolClean.setOnClickListener(v -> {
+            SoundManager.playClick(v, preferences);
+            cleanCaches();
+        });
+        firstTools = toolClean;
+
+        addEyebrow(list, R.string.tools_network_label);
+        toolDoctor = toolButton(list, R.string.tools_doctor);
+        toolDoctor.setOnClickListener(v -> {
+            SoundManager.playClick(v, preferences);
+            runNetworkDoctor();
+        });
+        txtDoctor = new TextView(this);
+        txtDoctor.setText(R.string.tools_doctor_idle);
+        txtDoctor.setTextColor(color(R.color.nova_text));
+        txtDoctor.setTextSize(9);
+        txtDoctor.setTypeface(Typeface.MONOSPACE);
+        txtDoctor.setLineSpacing(0f, 1.35f);
+        txtDoctor.setPadding(0, dp(4), 0, dp(2));
+        list.addView(txtDoctor);
+
+        addEyebrow(list, R.string.tools_updates_label);
+        toolChannel = toolButton(list, R.string.tools_channel);
+        toolChannel.setOnClickListener(v -> pickChannel());
+        toolCheck = toolButton(list, R.string.update_check);
+        toolCheck.setOnClickListener(v -> {
+            SoundManager.playClick(v, preferences);
+            UpdateFlow.checkNow(this, this::refreshTools);
+        });
+        txtToolUpdate = new TextView(this);
+        txtToolUpdate.setTextColor(color(R.color.nova_text));
+        txtToolUpdate.setTextSize(9);
+        txtToolUpdate.setLineSpacing(0f, 1.35f);
+        txtToolUpdate.setPadding(0, dp(4), 0, dp(2));
+        list.addView(txtToolUpdate);
+
+        addEyebrow(list, R.string.tools_phone_label);
+        toolUrlPhone = toolButton(list, R.string.tools_phone_url);
+        toolUrlPhone.setOnClickListener(v -> {
+            SoundManager.playClick(v, preferences);
+            startUrlPhone();
+        });
+        toolFilePhone = toolButton(list, R.string.tools_phone_file);
+        toolFilePhone.setOnClickListener(v -> {
+            SoundManager.playClick(v, preferences);
+            startFilePhone();
+        });
+        TextView hint = new TextView(this);
+        hint.setText(R.string.tools_phone_hint);
+        hint.setTextColor(color(R.color.nova_text_muted));
+        hint.setTextSize(9);
+        hint.setLineSpacing(0f, 1.25f);
+        hint.setPadding(0, dp(2), 0, 0);
+        list.addView(hint);
+    }
+
+    private Button toolButton(LinearLayout list, int label) {
+        Button button = new Button(this);
+        button.setId(View.generateViewId());
+        button.setFocusable(true);
+        button.setText(label);
+        button.setAllCaps(false);
+        button.setTextColor(color(R.color.nova_accent));
+        button.setTextSize(9);
+        button.setMinHeight(0);
+        button.setMinimumHeight(0);
+        button.setBackgroundResource(R.drawable.bg_option_selector);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(30));
+        params.topMargin = dp(6);
+        button.setLayoutParams(params);
+        button.setOnFocusChangeListener((v, focused) -> SoundManager.playFocus(v, preferences));
+        list.addView(button);
+        return button;
+    }
+
+    /** Disk scan of every cache folder Lumora owns; runs on the settings worker thread. */
+    private void scanCaches() {
+        if (txtCacheBreakdown == null) return;
+        worker.execute(() -> {
+            List<MaintenanceTools.Dir> dirs = MaintenanceTools.cacheDirs(this);
+            long known = 0L;
+            for (MaintenanceTools.Dir entry : dirs) known += MaintenanceTools.size(entry.dir);
+            long whole = MaintenanceTools.size(getCacheDir());
+            StringBuilder report = new StringBuilder();
+            for (MaintenanceTools.Dir entry : dirs) {
+                report.append(entry.label).append(':').append(' ')
+                        .append(DeviceStats.formatBytes(MaintenanceTools.size(entry.dir))).append('\n');
+            }
+            report.append(getString(R.string.tools_storage_other))
+                    .append(' ').append(DeviceStats.formatBytes(Math.max(0L, whole - known))).append('\n');
+            report.append(getString(R.string.tools_storage_total))
+                    .append(' ').append(DeviceStats.formatBytes(whole));
+            String text = report.toString();
+            handler.post(() -> {
+                if (txtCacheBreakdown != null && !isDestroyed()) txtCacheBreakdown.setText(text);
+            });
+        });
+    }
+
+    private void cleanCaches() {
+        if (txtCacheBreakdown == null) return;
+        toolClean.setEnabled(false);
+        toolClean.setAlpha(.5f);
+        worker.execute(() -> {
+            long freed = 0L;
+            for (MaintenanceTools.Dir entry : MaintenanceTools.cacheDirs(this)) {
+                freed += MaintenanceTools.deleteContents(entry.dir);
+            }
+            long released = freed;
+            handler.post(() -> {
+                if (isDestroyed()) return;
+                toolClean.setEnabled(true);
+                toolClean.setAlpha(1f);
+                toast(getString(R.string.tools_clean_done, DeviceStats.formatBytes(released)));
+                scanCaches();
+            });
+        });
+    }
+
+    private void runNetworkDoctor() {
+        if (txtDoctor == null) return;
+        toolDoctor.setEnabled(false);
+        toolDoctor.setAlpha(.5f);
+        txtDoctor.setText(R.string.tools_doctor_running);
+        worker.execute(() -> {
+            StringBuilder report = new StringBuilder();
+            for (MaintenanceTools.Probe target : MaintenanceTools.probes()) {
+                MaintenanceTools.Result result = MaintenanceTools.probe(target);
+                report.append(target.label).append(": ")
+                        .append(result.ok ? getString(R.string.tools_probe_ok, result.ms)
+                                : getString(R.string.tools_probe_fail, result.ms, result.detail))
+                        .append('\n');
+            }
+            String text = report.toString();
+            handler.post(() -> {
+                if (isDestroyed()) return;
+                toolDoctor.setEnabled(true);
+                toolDoctor.setAlpha(1f);
+                txtDoctor.setText(text);
+            });
+        });
+    }
+
+    private void refreshTools() {
+        if (txtToolUpdate == null) return;
+        boolean beta = toolUpdates.getChannel() == UpdateManager.CHANNEL_BETA;
+        toolChannel.setText(getString(R.string.tools_channel_value, getString(beta
+                ? R.string.tools_channel_beta : R.string.tools_channel_stable)));
+        long last = toolUpdates.getLastCheck();
+        CharSequence when = last <= 0 ? getString(R.string.update_never)
+                : DateUtils.getRelativeTimeSpanString(last, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS);
+        String result = toolUpdates.lastResult();
+        txtToolUpdate.setText(getString(R.string.tools_update_status, toolUpdates.installedVersionCode(), when)
+                + (result.isEmpty() ? "" : "\n" + result));
+    }
+
+    private void pickChannel() {
+        SoundManager.playClick(toolChannel, preferences);
+        boolean beta = toolUpdates.getChannel() == UpdateManager.CHANNEL_BETA;
+        List<GlassMenu.Item> items = new ArrayList<>();
+        items.add(new GlassMenu.Item(R.drawable.ic_sec_device, getString(R.string.tools_channel_stable)).checked(!beta));
+        items.add(new GlassMenu.Item(R.drawable.ic_web, getString(R.string.tools_channel_beta)).checked(beta));
+        GlassMenu.show(this, getString(R.string.tools_channel_title), getString(R.string.tools_channel_sub), null,
+                items, false, (index, item) -> {
+                    toolUpdates.setChannel(index == 1 ? UpdateManager.CHANNEL_BETA : UpdateManager.CHANNEL_STABLE);
+                    refreshTools();
+                });
+    }
+
+    // -------------------------------------------------- phone link: urls and files
+
+    /** Download folder for phone transfers; falls back to app-visible external storage. */
+    private File receiveDir() {
+        File downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+        if ((downloads.isDirectory() || downloads.mkdirs()) && downloads.canWrite()) return downloads;
+        File own = getExternalFilesDir(null);
+        File fallback = own == null ? new File(getCacheDir(), "From Phone")
+                : new File(own, "From Phone");
+        return fallback.isDirectory() || fallback.mkdirs() ? fallback : getCacheDir();
+    }
+
+    /** Opens the MODE_URL phone link; each link received is opened in the TV's browser. */
+    private void startUrlPhone() {
+        stopUrlPhone();
+        PhoneBridge bridge = new PhoneBridge(PhoneBridge.MODE_URL, new PhoneBridge.Listener() {
+            @Override public void onText(String text) {
+                // Links travel phone → TV only on this link.
+            }
+
+            @Override public void onCodeChanged(String code) {
+                if (urlDialog != null && urlDialog.isShowing()) urlDialog.refresh();
+            }
+
+            @Override public void onStopped(boolean idle) {
+                stopUrlPhone();
+            }
+
+            @Override public void onUrl(String url) {
+                openOnTv(url);
+            }
+        });
+        int result = bridge.start();
+        if (result != PhoneBridge.START_OK) {
+            Glass.info(this, getString(R.string.phone_title_url), getString(result == PhoneBridge.START_NO_NETWORK
+                    ? R.string.phone_no_network : R.string.phone_start_failed), null, null, null);
+            return;
+        }
+        urlPhone = bridge;
+        urlDialog = PhonePairDialog.show(this, bridge, getString(R.string.phone_title_url),
+                getString(R.string.phone_message_url), this::stopUrlPhone);
+    }
+
+    private void openOnTv(String url) {
+        // URLs and files land on the TV (never the other way around); links open in the browser.
+        QuickActionService.suppressRedirect(15_000L);
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+            toast(getString(R.string.phone_url_sent));
+        } catch (ActivityNotFoundException exception) {
+            Glass.info(this, getString(R.string.phone_title_url),
+                    getString(R.string.phone_url_open_fail), url, null, null);
+        }
+    }
+
+    private void stopUrlPhone() {
+        if (urlDialog != null) urlDialog.dismiss();
+        urlDialog = null;
+        if (urlPhone != null) urlPhone.stop();
+        urlPhone = null;
+    }
+
+    /** Opens the MODE_FILES phone link; files stream into Downloads and are indexed there. */
+    private void startFilePhone() {
+        stopFilePhone();
+        PhoneBridge bridge = new PhoneBridge(PhoneBridge.MODE_FILES, new PhoneBridge.Listener() {
+            @Override public void onText(String text) {
+                // Files travel phone → TV only on this link.
+            }
+
+            @Override public void onCodeChanged(String code) {
+                if (fileDialog != null && fileDialog.isShowing()) fileDialog.refresh();
+            }
+
+            @Override public void onStopped(boolean idle) {
+                stopFilePhone();
+            }
+
+            @Override public void onFileSaved(File file) {
+                MediaScannerConnection.scanFile(SettingsActivity.this,
+                        new String[]{file.getAbsolutePath()}, null, null);
+                Glass.info(SettingsActivity.this, getString(R.string.phone_file_title),
+                        getString(R.string.phone_file_saved, file.getAbsolutePath()), null, null, null);
+            }
+        }, receiveDir());
+        int result = bridge.start();
+        if (result != PhoneBridge.START_OK) {
+            Glass.info(this, getString(R.string.phone_title_file), getString(result == PhoneBridge.START_NO_NETWORK
+                    ? R.string.phone_no_network : R.string.phone_start_failed), null, null, null);
+            return;
+        }
+        filePhone = bridge;
+        fileDialog = PhonePairDialog.show(this, bridge, getString(R.string.phone_title_file),
+                getString(R.string.phone_message_file), this::stopFilePhone);
+    }
+
+    private void stopFilePhone() {
+        if (fileDialog != null) fileDialog.dismiss();
+        fileDialog = null;
+        if (filePhone != null) filePhone.stop();
+        filePhone = null;
     }
 }

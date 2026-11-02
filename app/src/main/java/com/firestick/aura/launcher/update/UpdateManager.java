@@ -29,22 +29,34 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 /**
- * Self-update from this repository's GitHub releases. CI publishes {@code update.json} and a signed
- * APK for every build of {@code main}; Lumora downloads the APK, checks size, SHA-256, package name,
- * version and signing certificate, then hands it to the system installer (the user confirms).
- * Blocking methods must run off the main thread.
+ * Self-update from this repository's GitHub releases, with two channels: stable follows the
+ * release marked "latest"; beta also accepts pre-release builds (published when the version
+ * name is a beta/rc). CI publishes {@code update.json} and a signed APK for every build of
+ * {@code main}; Lumora downloads the APK, checks size, SHA-256, package name, version and
+ * signing certificate, then hands it to the system installer (the user confirms). The result of
+ * the last check — including the real reason when it failed — is kept as a diagnostic for the
+ * Tools screen. Blocking methods must run off the main thread.
  */
 public final class UpdateManager {
     public static final String UPDATE_URL = "https://github.com/engziada/Lumora/releases/latest/download/update.json";
+    /** Release list used by the beta channel; pre-release builds appear first. */
+    public static final String RELEASES_API = "https://api.github.com/repos/engziada/Lumora/releases?per_page=10";
+    public static final int CHANNEL_STABLE = 0, CHANNEL_BETA = 1;
     public static final int UP_TO_DATE = 0, AVAILABLE = 1, ERR_NETWORK = 2, ERR_FORMAT = 3, ERR_NO_RELEASE = 4;
     public static final int VERIFIED = 0, ERR_HASH = 10, ERR_PACKAGE = 11, ERR_NOT_NEWER = 12, ERR_SIGNATURE = 13,
             ERR_DOWNLOAD = 14, ERR_CANCELLED = 15, ERR_STORAGE = 16;
 
     private static final String TAG = "LumoraUpdate";
-    private static final String PREFS = "lumora_update", KEY_INTERVAL = "interval_hours", KEY_LAST_CHECK = "last_check";
+    private static final String PREFS = "lumora_update", KEY_INTERVAL = "interval_hours", KEY_LAST_CHECK = "last_check",
+            KEY_CHANNEL = "channel", KEY_LAST_RESULT = "last_result";
     private static final String DIR = "updates", APK_NAME = "lumora-update.apk";
-    private static final int CONNECT_TIMEOUT_MS = 15_000, READ_TIMEOUT_MS = 30_000, MAX_JSON_BYTES = 16 * 1024;
+    private static final int CONNECT_TIMEOUT_MS = 15_000, READ_TIMEOUT_MS = 30_000, MAX_JSON_BYTES = 16 * 1024,
+            MAX_RELEASES_BYTES = 128 * 1024;
 
     public interface Progress {
         /** Called on the download thread. */
@@ -54,10 +66,13 @@ public final class UpdateManager {
     public static final class Check {
         public final int status;
         public final UpdateInfo info;
+        /** Why the check ended this way; shown as a diagnostic on the Tools screen. */
+        public final String detail;
 
-        Check(int status, UpdateInfo info) {
+        Check(int status, UpdateInfo info, String detail) {
             this.status = status;
             this.info = info;
+            this.detail = detail == null ? "" : detail;
         }
     }
 
@@ -79,6 +94,20 @@ public final class UpdateManager {
     }
 
     // -------------------------------------------------------------- settings
+
+    public void setChannel(int channel) {
+        prefs.edit().putInt(KEY_CHANNEL, channel == CHANNEL_BETA ? CHANNEL_BETA : CHANNEL_STABLE).apply();
+    }
+
+    /** The channel new version offers come from: latest stable release, or beta pre-releases. */
+    public int getChannel() {
+        return prefs.getInt(KEY_CHANNEL, CHANNEL_STABLE);
+    }
+
+    /** Diagnostic text from the last check, shown on the Tools screen. */
+    public String lastResult() {
+        return prefs.getString(KEY_LAST_RESULT, "");
+    }
 
     public long getIntervalHours() {
         return prefs.getLong(KEY_INTERVAL, UpdateSchedule.DEFAULT_HOURS);
@@ -109,24 +138,91 @@ public final class UpdateManager {
 
     public Check check() {
         prefs.edit().putLong(KEY_LAST_CHECK, System.currentTimeMillis()).apply();
+        Check result = getChannel() == CHANNEL_BETA ? checkBeta() : checkStable();
+        prefs.edit().putString(KEY_LAST_RESULT, result.detail).apply();
+        return result;
+    }
+
+    /** Stable: the update.json of the release marked "latest". */
+    private Check checkStable() {
+        return fetchUpdateJson(UPDATE_URL);
+    }
+
+    /** Beta: the newest non-draft release — pre-release builds included. */
+    private Check checkBeta() {
         HttpURLConnection connection = null;
         try {
-            connection = open(UPDATE_URL);
+            connection = open(RELEASES_API);
+            connection.setRequestProperty("Accept", "application/vnd.github+json");
             int status = connection.getResponseCode();
-            if (status == HttpURLConnection.HTTP_NOT_FOUND) return new Check(ERR_NO_RELEASE, null);
-            if (status != HttpURLConnection.HTTP_OK) return new Check(ERR_NETWORK, null);
+            if (status != HttpURLConnection.HTTP_OK) return new Check(ERR_NETWORK, null, "releases list HTTP " + status);
+            String json;
+            try (InputStream in = connection.getInputStream()) {
+                json = readLimited(in, MAX_RELEASES_BYTES);
+            }
+            return fetchUpdateJson(pickReleasesUpdateUrl(json));
+        } catch (IOException exception) {
+            Log.w(TAG, "Beta releases list failed: " + exception.getClass().getSimpleName());
+            return new Check(ERR_NETWORK, null, "releases list failed");
+        } finally {
+            if (connection != null) connection.disconnect();
+        }
+    }
+
+    /** The update.json URL of the newest non-draft release; {@code null} when nothing carries one. */
+    static String pickReleasesUpdateUrl(String releasesJson) {
+        String best = null;
+        try {
+            JSONArray releases = new JSONArray(releasesJson);
+            for (int i = 0; i < releases.length(); i++) {
+                JSONObject release = releases.getJSONObject(i);
+                if (release.optBoolean("draft")) continue;
+                JSONArray assets = release.optJSONArray("assets");
+                if (assets == null) continue;
+                for (int a = 0; a < assets.length(); a++) {
+                    JSONObject asset = assets.getJSONObject(a);
+                    if (!"update.json".equalsIgnoreCase(asset.optString("name"))) continue;
+                    String url = asset.optString("browser_download_url", "").trim();
+                    // Only documents shipped by this repository's own releases are accepted.
+                    if (url.startsWith("https://github.com/engziada/Lumora/releases/download/")) {
+                        best = url;
+                        break;
+                    }
+                }
+                if (best != null) break;
+            }
+        } catch (JSONException exception) {
+            return null;
+        }
+        return best;
+    }
+
+    /** Downloads one update.json document and turns it into a Check with a diagnostic detail. */
+    private Check fetchUpdateJson(String jsonUrl) {
+        HttpURLConnection connection = null;
+        try {
+            connection = open(jsonUrl);
+            int status = connection.getResponseCode();
+            if (status == HttpURLConnection.HTTP_NOT_FOUND) {
+                return new Check(ERR_NO_RELEASE, null, jsonUrl + " → HTTP 404");
+            }
+            if (status != HttpURLConnection.HTTP_OK) return new Check(ERR_NETWORK, null, "update.json HTTP " + status);
             String json;
             try (InputStream in = connection.getInputStream()) {
                 json = readLimited(in, MAX_JSON_BYTES);
             }
             UpdateInfo info = UpdateInfo.parse(json);
-            return new Check(info.isNewerThan(installedVersionCode()) ? AVAILABLE : UP_TO_DATE, info);
+            long installed = installedVersionCode();
+            if (info.isNewerThan(installed)) {
+                return new Check(AVAILABLE, info, "v" + info.versionName + " (build " + info.versionCode + ") offered");
+            }
+            return new Check(UP_TO_DATE, info, "already on build " + installed);
         } catch (IllegalArgumentException exception) {
             Log.w(TAG, "update.json rejected: " + exception.getMessage());
-            return new Check(ERR_FORMAT, null);
+            return new Check(ERR_FORMAT, null, "update.json malformed: " + exception.getMessage());
         } catch (IOException | RuntimeException exception) {
             Log.w(TAG, "Update check failed: " + exception.getClass().getSimpleName());
-            return new Check(ERR_NETWORK, null);
+            return new Check(ERR_NETWORK, null, exception.getClass().getSimpleName());
         } finally {
             if (connection != null) connection.disconnect();
         }

@@ -116,7 +116,24 @@ Lumora sends no analytics or telemetry. It contacts these hosts only for the lis
 
 Incoming: while the assistant's phone link (or *Enter key from phone*) is open, Lumora listens on
 the TV's home-network address, port 8765–8775, for the paired phone only. It closes when that
-screen is left or after 10 idle minutes.
+screen is left or after 10 idle minutes. Settings › Tools adds two link modes that work the same
+way: *Send a link from the phone* opens an http(s) URL the phone pastes in the TV's browser, and
+*Send a file from the phone* streams a file (up to 512 MB) straight into the TV's Downloads
+folder; APK files are saved there, never installed.
+
+## Setup & health, Tools
+
+Settings › **Setup & health** is a guided status screen: default home, quick actions, Home button
+redirect, WRITE_SECURE_SETTINGS, update-install permission, AI key, automatic update check and
+network connectivity each show a live status with a Fix action where one is possible in-app.
+Repairs that require a computer stay referenced in Settings › ADB tools.
+
+Settings › **Tools** holds the maintenance suite: a storage dashboard over the launcher's own
+cache folders with a one-button cleanup, a network doctor that probes every service the launcher
+talks to (updates, video previews, TV schedules, wallpapers, posters, the assistant), update
+diagnostics (installed build, last check and the exact reason the last check failed), a stable/
+beta update channel, and the phone link modes above. Pre-releases are published by CI whenever
+the version name carries a beta/rc suffix.
 
 Downloads are cached on the device (icons indefinitely, schedules 3 hours, posters 14 days,
 wallpapers until the cache is cleared; only the last downloaded update APK is kept, replaced by
@@ -149,6 +166,9 @@ youtube.com, ytimg.com, and googlevideo.com; provider playback data collection p
 No API keys or streaming-account logins are required. Video fills the window without a launcher
 header/footer. Loading and failure messages appear only when necessary. Player branding and
 provider UI are controlled by YouTube. Debug builds remain separate from signed release installs.
+The WebView player exists only in the Videos mode: it is created on the first videos focus and
+fully destroyed when the panel leaves videos mode, so Particles and Off runs carry no WebView
+memory cost.
 
 Previews have a thin amber frame. Public video-dimension metadata is checked before playback:
 only aspect ratios between 1.65 and 1.90 are accepted. Portrait, square, ultrawide, and unknown
@@ -194,6 +214,8 @@ Debug output: `build-out/app/outputs/apk/debug/app-debug.apk`
 
 Protected Amazon packages can only be removed over ADB, Device Owner or root. Settings › ADB tools
 lists the commands; Lumora never runs privileged package-manager commands itself.
+
+Distribution options and publishing costs are tracked in [`distribute.md`](distribute.md).
 
 ## Project layout
 
