@@ -447,7 +447,13 @@ public class MainActivity extends AppCompatActivity
         screenReceiverRegistered = true;
     }
 
+    @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == QuickMenu.WIFI_PERMISSION_REQUEST && quickMenu != null) quickMenu.wifiPermissionResult();
+    }
+
     @Override protected void onDestroy() {
+        if (quickMenu != null) quickMenu.dismiss();
         if (appPreview != null) appPreview.destroy();
         homeView.getRootView().getViewTreeObserver().removeOnGlobalFocusChangeListener(previewFocusListener);
         if (packageReceiverRegistered) {

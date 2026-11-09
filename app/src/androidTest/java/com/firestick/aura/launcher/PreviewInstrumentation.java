@@ -24,7 +24,7 @@ import java.util.List;
 
 /** Focus/lifecycle smoke test; actual video advancement is verified separately from player telemetry. Injected tiles exist only in this test process; no provider apps or accounts required. */
 public final class PreviewInstrumentation extends Instrumentation {
-    private boolean lockQuickSuite;
+    private boolean lockQuickSuite, navigationSuite;
     private MainActivity activity;
     private RecyclerView home;
     private PreferenceManager preferences;
@@ -35,10 +35,12 @@ public final class PreviewInstrumentation extends Instrumentation {
     @Override public void onCreate(Bundle arguments) {
         super.onCreate(arguments);
         lockQuickSuite = arguments != null && "true".equals(arguments.getString("lockQuick"));
+        navigationSuite = arguments != null && "true".equals(arguments.getString("navigation"));
         start();
     }
 
     @Override public void onStart() {
+        if (navigationSuite) { new NavigationRegression(this).run(); return; }
         if (lockQuickSuite) {
             new LockQuickRegression(this).run();
             return;

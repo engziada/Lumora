@@ -274,3 +274,9 @@ See [implementation and validation notes](docs/LOCKED_APPS_QUICK_MENU_2026-11-08
 
 Refined the lock to a smaller title-corner mark with two bounces, matched the Quick icon to
 Settings, and added animated focus-driven detail panes. See [refinement notes](docs/QUICK_MENU_REFINEMENT_2026-11-09.md).
+
+## Local checkpoint — Recent, Wi-Fi and navigation
+
+Added Recent app icons, optional Wi-Fi-name permission access, an explicit bounded internet
+download test, and separate D-pad navigation for menu/content panes. See
+[validation notes](docs/RECENT_WIFI_NAVIGATION_2026-11-09.md).

@@ -25,6 +25,7 @@ import android.util.DisplayMetrics;
 import android.view.Display;
 import android.view.Gravity;
 import android.view.KeyEvent;
+import com.firestick.aura.launcher.ui.PaneFocus;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -266,13 +267,13 @@ public class SettingsActivity extends AppCompatActivity {
             View view = findViewById(SECTIONS[i]);
             view.setOnClickListener(v -> {
                 SoundManager.playClick(v, preferences);
-                showSection(section);
+                setSection(section);
             });
             view.setOnFocusChangeListener((v, focused) -> {
                 if (focused) {
                     SoundManager.playFocus(v, preferences);
                     // Follow the focused rail row so the panel never shows a different section.
-                    // Focus itself stays on the row; OK switches and enters the panel.
+                    // Focus stays on the row; Right enters the panel.
                     setSection(section);
                 }
             });
@@ -280,10 +281,18 @@ public class SettingsActivity extends AppCompatActivity {
             // control regardless of geometry.
             view.setNextFocusRightId(FIRST_FOCUS[section]);
             if (section < SECTIONS.length - 1) view.setNextFocusDownId(SECTIONS[section + 1]);
-            // The section's first control returns UP to its rail row instead of the header.
+            // Clear the old cross-pane Up shortcut; dispatchKeyEvent keeps vertical focus in the panel.
             View first = findViewById(FIRST_FOCUS[section]);
-            if (first != null) first.setNextFocusUpId(SECTIONS[section]);
+            if (first != null) first.setNextFocusUpId(View.NO_ID);
         }
+    }
+
+    private final View[] lastSectionFocus = new View[SECTIONS.length];
+
+    private void enterSection() {
+        View previous = lastSectionFocus[currentSection];
+        if (previous != null && previous.isShown() && previous.isFocusable()) previous.requestFocus();
+        else showSection(currentSection);
     }
 
     private void showSection(int section) {
@@ -292,7 +301,13 @@ public class SettingsActivity extends AppCompatActivity {
                 : section == SECTION_HOME && firstSetup != null ? firstSetup
                 : section == SECTION_TOOLS && firstTools != null ? firstTools
                 : findViewById(FIRST_FOCUS[section]);
-        if (focus != null) focus.requestFocus();
+        if (focus != null && focus.isFocusable() && focus.isShown() && focus.isEnabled() && focus.requestFocus()) return;
+        ViewGroup panel = findViewById(PANELS[section]);
+        for (View child : panel.getFocusables(View.FOCUS_FORWARD)) {
+            if (child != panel && child.isShown() && child.isEnabled() && child.requestFocus()) return;
+        }
+        panel.setFocusable(true);
+        panel.requestFocus();
     }
 
     /** Switches the visible panel without moving focus, so the panel matches the rail row. */
@@ -847,6 +862,30 @@ public class SettingsActivity extends AppCompatActivity {
      * view through normal Android focus handling rather than leaving focus on the ScrollView.
      */
     @Override public boolean dispatchKeyEvent(KeyEvent event) {
+        int code = event.getKeyCode();
+        View focused = getCurrentFocus();
+        int railIndex = -1;
+        for (int i = 0; i < SECTIONS.length; i++) if (focused == findViewById(SECTIONS[i])) railIndex = i;
+        ViewGroup panel = findViewById(PANELS[currentSection]);
+        boolean inPanel = PaneFocus.contains(panel, focused);
+        boolean arrow = code == KeyEvent.KEYCODE_DPAD_UP || code == KeyEvent.KEYCODE_DPAD_DOWN
+                || code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT;
+        if (arrow && (railIndex >= 0 || inPanel)) {
+            if (event.getAction() != KeyEvent.ACTION_DOWN) return true;
+            if (railIndex >= 0) {
+                if (code == KeyEvent.KEYCODE_DPAD_RIGHT) enterSection();
+                else if (code == KeyEvent.KEYCODE_DPAD_UP || code == KeyEvent.KEYCODE_DPAD_DOWN) {
+                    int next = Math.max(0, Math.min(SECTIONS.length - 1, railIndex + (code == KeyEvent.KEYCODE_DPAD_UP ? -1 : 1)));
+                    findViewById(SECTIONS[next]).requestFocus();
+                }
+            } else if (code == KeyEvent.KEYCODE_DPAD_LEFT) {
+                lastSectionFocus[currentSection] = focused;
+                findViewById(SECTIONS[currentSection]).requestFocus();
+            } else if (code == KeyEvent.KEYCODE_DPAD_UP || code == KeyEvent.KEYCODE_DPAD_DOWN) {
+                PaneFocus.vertical(panel, focused, code == KeyEvent.KEYCODE_DPAD_UP ? View.FOCUS_UP : View.FOCUS_DOWN);
+            }
+            return true;
+        }
         if (event.getAction() == KeyEvent.ACTION_DOWN && getCurrentFocus() == null
                 && (currentSection == SECTION_DEVICE || currentSection == SECTION_ADB)) {
             int key = event.getKeyCode();

@@ -18,6 +18,11 @@ import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.ImageView;
+import android.widget.GridLayout;
+import android.Manifest;
+import androidx.core.app.ActivityCompat;
+import com.firestick.aura.launcher.ui.PaneFocus;
+import com.firestick.aura.launcher.manager.DownloadSpeedProbe;
 import android.widget.Button;
 import android.widget.ProgressBar;
 import android.view.KeyEvent;
@@ -61,6 +66,13 @@ final class QuickMenu {
     private LinearLayout detail;
     private int selected;
     private boolean clearing;
+    static final int WIFI_PERMISSION_REQUEST = 604;
+    private final java.util.List<View> rail = new java.util.ArrayList<>();
+    private DownloadSpeedProbe speedProbe;
+    private TextView speedText;
+    private Button speedButton;
+    private boolean permissionDenied;
+
 
 
     QuickMenu(Activity activity, PreferenceManager preferences, Launcher launcher) {
@@ -75,6 +87,7 @@ final class QuickMenu {
         LinearLayout tiles = dialog.findViewById(R.id.quickTiles);
         detail = dialog.findViewById(R.id.quickDetail);
         selected = 0;
+        rail.clear();
         View first = addTile(tiles, R.drawable.ic_qa_recent, R.string.qa_recent, 0);
         addTile(tiles, R.drawable.ic_qa_memory, R.string.qa_memory, 1);
         addTile(tiles, R.drawable.ic_qa_screenshot, R.string.qa_screenshot, 2);
@@ -85,9 +98,30 @@ final class QuickMenu {
         ((TextView) dialog.findViewById(R.id.txtQuickStatus)).setText(ready ? R.string.quick_status_ready : R.string.quick_status_setup);
         View setup = dialog.findViewById(R.id.btnQuickSetup);
         setup.setVisibility(ready ? View.GONE : View.VISIBLE);
+        if (!ready) rail.add(setup);
         setup.setOnClickListener(v -> {
             dismiss();
             QuickAccess.showSetup(activity);
+        });
+        dialog.setOnCancelListener(window -> cancelSpeedTest());
+        dialog.setOnKeyListener((window, code, event) -> {
+            View focused = dialog.getCurrentFocus();
+            int index = rail.indexOf(focused);
+            boolean inDetail = PaneFocus.contains(detail, focused);
+            boolean arrow = code == KeyEvent.KEYCODE_DPAD_UP || code == KeyEvent.KEYCODE_DPAD_DOWN
+                    || code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT;
+            if (!arrow || (index < 0 && !inDetail)) return false;
+            if (event.getAction() != KeyEvent.ACTION_DOWN) return true;
+            if (index >= 0) {
+                if (code == KeyEvent.KEYCODE_DPAD_RIGHT) focusDetail();
+                else if (code == KeyEvent.KEYCODE_DPAD_UP || code == KeyEvent.KEYCODE_DPAD_DOWN) {
+                    rail.get(Math.max(0, Math.min(rail.size() - 1, index + (code == KeyEvent.KEYCODE_DPAD_UP ? -1 : 1)))).requestFocus();
+                }
+            } else if (code == KeyEvent.KEYCODE_DPAD_LEFT) rail.get(selected).requestFocus();
+            else if (code == KeyEvent.KEYCODE_DPAD_UP || code == KeyEvent.KEYCODE_DPAD_DOWN) {
+                PaneFocus.vertical(detail, focused, code == KeyEvent.KEYCODE_DPAD_UP ? View.FOCUS_UP : View.FOCUS_DOWN);
+            }
+            return true;
         });
         dialog.show();
         View shell = dialog.findViewById(R.id.quickShell);
@@ -108,13 +142,12 @@ final class QuickMenu {
             v.animate().scaleX(focused ? 1.02f : 1f).scaleY(focused ? 1.02f : 1f).setDuration(120).start();
             if (focused) {
                 SoundManager.playFocus(v, preferences);
-                showDetail(section, true);
+                if (selected != section || detail.getChildCount() == 0) showDetail(section, true);
             }
         });
         tile.setOnClickListener(v -> {
             SoundManager.playClick(v, preferences);
-            showDetail(section, selected != section);
-            focusDetail();
+            if (selected != section || detail.getChildCount() == 0) showDetail(section, true);
         });
         tile.setOnKeyListener((v, code, event) -> {
             if (code == KeyEvent.KEYCODE_DPAD_RIGHT) {
@@ -123,11 +156,13 @@ final class QuickMenu {
             }
             return false;
         });
+        rail.add(tile);
         row.addView(tile);
         return tile;
     }
 
-    private void dismiss() {
+    void dismiss() {
+        cancelSpeedTest();
         if (dialog != null && dialog.isShowing()) dialog.dismiss();
     }
 
@@ -138,9 +173,8 @@ final class QuickMenu {
     private int dp(int value) { return Math.round(value * activity.getResources().getDisplayMetrics().density); }
 
     private void focusDetail() {
-        for (int i = 0; i < detail.getChildCount(); i++) {
-            View child = detail.getChildAt(i);
-            if (child.isFocusable() && child.isEnabled()) { child.requestFocus(); return; }
+        for (View child : detail.getFocusables(View.FOCUS_FORWARD)) {
+            if (child.isShown() && child.isEnabled()) { child.requestFocus(); return; }
         }
     }
 
@@ -159,7 +193,7 @@ final class QuickMenu {
         detail.addView(text);
     }
 
-    private void action(String label, Runnable run) {
+    private Button action(String label, Runnable run) {
         Button button = new Button(activity);
         button.setText(label); button.setTextSize(12); button.setAllCaps(false);
         button.setTextColor(activity.getColor(R.color.nova_text));
@@ -169,9 +203,11 @@ final class QuickMenu {
         detail.addView(button, params);
         button.setOnFocusChangeListener((v, focus) -> { if (focus) SoundManager.playFocus(v, preferences); });
         button.setOnClickListener(v -> { SoundManager.playClick(v, preferences); run.run(); });
+        return button;
     }
 
     private void showDetail(int section, boolean animate) {
+        if (section != selected) cancelSpeedTest();
         selected = section;
         detail.animate().cancel();
         detail.removeAllViews();
@@ -179,11 +215,34 @@ final class QuickMenu {
             heading(R.string.qa_recent, R.string.qa_recent_sub);
             PackageManager pm = activity.getPackageManager();
             int count = 0;
+            GridLayout apps = new GridLayout(activity);
+            apps.setColumnCount(3);
+            detail.addView(apps);
             for (String pkg : preferences.getRecentApps()) {
                 if (pm.getLeanbackLaunchIntentForPackage(pkg) == null && pm.getLaunchIntentForPackage(pkg) == null) continue;
                 try {
                     String label = pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString();
-                    action(label + (preferences.isLocked(pkg) ? "  🔒" : ""), () -> { dismiss(); launcher.launch(pkg); });
+                    LinearLayout tile = new LinearLayout(activity);
+                    tile.setOrientation(LinearLayout.VERTICAL);
+                    tile.setGravity(Gravity.CENTER);
+                    tile.setPadding(dp(5), dp(8), dp(5), dp(8));
+                    tile.setBackgroundResource(R.drawable.bg_quick_tile);
+                    tile.setFocusable(true); tile.setClickable(true);
+                    tile.setContentDescription(label + (preferences.isLocked(pkg) ? activity.getString(R.string.qa_recent_locked) : ""));
+                    GridLayout.LayoutParams params = new GridLayout.LayoutParams();
+                    params.width = dp(113); params.height = dp(118); params.setMargins(dp(3), dp(3), dp(3), dp(3));
+                    apps.addView(tile, params);
+                    ImageView icon = new ImageView(activity);
+                    icon.setImageDrawable(pm.getApplicationIcon(pkg));
+                    icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
+                    tile.addView(icon, new LinearLayout.LayoutParams(dp(64), dp(64)));
+                    TextView name = new TextView(activity);
+                    name.setText(label); name.setTextColor(activity.getColor(R.color.nova_text));
+                    name.setTextSize(10); name.setGravity(Gravity.CENTER); name.setMaxLines(2);
+                    name.setEllipsize(android.text.TextUtils.TruncateAt.END);
+                    name.setPadding(0, dp(6), 0, 0); tile.addView(name);
+                    tile.setOnFocusChangeListener((v, focus) -> { if (focus) SoundManager.playFocus(v, preferences); });
+                    tile.setOnClickListener(v -> { dismiss(); launcher.launch(pkg); });
                     if (++count == 6) break;
                 } catch (PackageManager.NameNotFoundException ignored) { }
             }
@@ -217,6 +276,12 @@ final class QuickMenu {
         } else {
             heading(R.string.qa_wifi, R.string.qa_wifi_sub);
             wifiStatus();
+            speedText = new TextView(activity);
+            speedText.setText(R.string.qa_speed_idle); speedText.setTextSize(12);
+            speedText.setTextColor(activity.getColor(R.color.nova_text));
+            speedText.setPadding(0, dp(8), 0, dp(8)); detail.addView(speedText);
+            note(activity.getString(R.string.qa_speed_note));
+            speedButton = action(activity.getString(R.string.qa_speed_start), this::startSpeedTest);
             action(activity.getString(R.string.qa_wifi_settings), this::openWifi);
         }
         detail.setAlpha(animate ? 0f : 1f);
@@ -237,11 +302,58 @@ final class QuickMenu {
             String ssid = info == null ? null : info.getSSID();
             if (ssid == null || ssid.equals("<unknown ssid>")) ssid = activity.getString(R.string.qa_wifi_private);
             else ssid = ssid.replace("\"", "");
+            if (ssid.trim().isEmpty()) ssid = activity.getString(R.string.qa_wifi_private);
             note(activity.getString(R.string.qa_wifi_current, ssid));
-            if (info != null && info.getLinkSpeed() > 0) note(activity.getString(R.string.qa_wifi_speed, info.getLinkSpeed()));
-            else note(activity.getString(R.string.qa_wifi_speed_unknown));
-            note(activity.getString(R.string.qa_wifi_speed_note));
+            if (ssid.equals(activity.getString(R.string.qa_wifi_private))) {
+                note(activity.getString(R.string.qa_wifi_permission_note));
+                if (ActivityCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    action(activity.getString(R.string.qa_wifi_reveal), this::requestWifiName);
+                } else {
+                    action(activity.getString(R.string.qa_wifi_location), () -> {
+                        dismiss();
+                        try { activity.startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)); }
+                        catch (ActivityNotFoundException missing) { toast(R.string.qa_open_failed); }
+                    });
+                }
+            }
         } catch (SecurityException denied) { note(activity.getString(R.string.qa_wifi_private)); }
+    }
+
+    private void requestWifiName() {
+        if (permissionDenied && !ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.ACCESS_FINE_LOCATION)) {
+            dismiss();
+            activity.startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    android.net.Uri.parse("package:" + activity.getPackageName())));
+        } else ActivityCompat.requestPermissions(activity,
+                new String[]{Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION}, WIFI_PERMISSION_REQUEST);
+    }
+
+    void wifiPermissionResult() {
+        permissionDenied = ActivityCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED;
+        if (dialog != null && dialog.isShowing() && selected == 4) { showDetail(4, false); focusDetail(); }
+    }
+
+    private void cancelSpeedTest() {
+        if (speedProbe != null) { speedProbe.cancel(); speedProbe = null; }
+    }
+
+    private void startSpeedTest() {
+        if (speedProbe != null) { cancelSpeedTest(); speedText.setText(R.string.qa_speed_canceled); speedButton.setText(R.string.qa_speed_start); return; }
+        DownloadSpeedProbe probe = new DownloadSpeedProbe(); speedProbe = probe;
+        speedText.setText(R.string.qa_speed_running); speedButton.setText(R.string.qa_speed_cancel);
+        java.util.concurrent.ExecutorService worker = Executors.newSingleThreadExecutor();
+        worker.execute(() -> {
+            String result;
+            try { result = activity.getString(R.string.qa_speed_result, probe.measure()); }
+            catch (Exception error) { android.util.Log.w("LumoraSpeed", "Download test failed", error); result = activity.getString(R.string.qa_speed_failed); }
+            final String value = result;
+            main.post(() -> {
+                if (speedProbe != probe) return;
+                speedProbe = null;
+                if (dialog != null && dialog.isShowing() && selected == 4) { speedText.setText(value); speedButton.setText(R.string.qa_speed_start); }
+            });
+            worker.shutdown();
+        });
     }
 
     private void timedScreenshot() {

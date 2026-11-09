@@ -289,4 +289,16 @@
     <string name="qa_wifi_settings">Open Wi-Fi settings</string>
     <string name="qa_power_restart_hint">Choose Restart in your device’s power menu.</string>
     <string name="qa_power_off_hint">Choose Power off in your device’s power menu, if available.</string>
+    <string name="qa_recent_locked">, locked</string>
+    <string name="qa_wifi_permission_note">Android needs location permission and device Location enabled to reveal the network name. Lumora only reads the Wi-Fi name.</string>
+    <string name="qa_wifi_reveal">Allow access to Wi-Fi name</string>
+    <string name="qa_wifi_location">Enable device Location</string>
+    <string name="qa_speed_idle">Internet download speed · not tested</string>
+    <string name="qa_speed_note">Run a short download from Cloudflare (up to 8 MB). This is a single-connection estimate, not router link speed.</string>
+    <string name="qa_speed_start">Test internet download speed</string>
+    <string name="qa_speed_cancel">Cancel speed test</string>
+    <string name="qa_speed_canceled">Download test canceled</string>
+    <string name="qa_speed_running">Measuring internet download…</string>
+    <string name="qa_speed_result">Internet download: %1$.1f Mbps</string>
+    <string name="qa_speed_failed">Could not measure download speed. Check your connection and try again.</string>
 </resources>
