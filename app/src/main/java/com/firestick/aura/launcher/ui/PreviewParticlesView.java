@@ -62,6 +62,7 @@ public final class PreviewParticlesView extends View {
     private int state = SPHERE;
     private boolean active;
     private boolean locked;
+    private float titleRight, titleTop;
     private boolean textReady;
     private String label = "";
     private int accent;
@@ -265,15 +266,18 @@ public final class PreviewParticlesView extends View {
             float dot = lerp(size[i] * (.65f + depth * .85f), size[i] * 1.05f, morph);
             canvas.drawCircle(drawX, drawY, dot, dotPaint);
         }
-        if (locked) drawOrbitingLock(canvas, w, h);
+        if (locked) drawTitleLock(canvas, w, h);
     }
 
-    /** An upright dotted padlock travels around the name on an elliptical orbit. */
-    private void drawOrbitingLock(Canvas canvas, int w, int h) {
-        float angle = time * 1.15f;
-        float x = w * .5f + (float) Math.cos(angle) * w * .39f;
-        float y = h * .5f + (float) Math.sin(angle) * h * .30f;
-        float unit = Math.min(dp(18f), h * .09f);
+    /** A small dotted lock marks the title corner, bounces twice, then rests. */
+    private void drawTitleLock(Canvas canvas, int w, int h) {
+        float unit = Math.min(dp(10f), h * .05f);
+        float bounce = 0f;
+        if (state == HOLDING && phaseTime < .9f) {
+            bounce = Math.abs((float) Math.sin(phaseTime / .9f * Math.PI * 2)) * dp(6f);
+        }
+        float x = Math.min(w - unit * 1.5f, titleRight + unit);
+        float y = titleTop - unit * .8f - bounce;
         dotPaint.setColor(light);
         dotPaint.setAlpha((int) (225 * morph));
         for (int i = 0; i < 64; i++) {
@@ -315,8 +319,10 @@ public final class PreviewParticlesView extends View {
                 textPaint.setTextSize(textSize);
             }
             textPaint.setTextScaleX(Math.min(1f, w * (locked ? .68f : .88f) / Math.max(1f, textPaint.measureText(text))));
+            titleRight = w * .5f + textPaint.measureText(text) * .5f;
             Paint.FontMetrics metrics = textPaint.getFontMetrics();
             float baseline = h * .5f - (metrics.ascent + metrics.descent) * .5f;
+            titleTop = baseline + metrics.ascent;
             new Canvas(bitmap).drawText(text, w * .5f, baseline, textPaint);
 
             int step = Math.max(2, Math.round(dp(2f)));

@@ -269,3 +269,8 @@ licenses; see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 Locked app names now form with an orbiting particle lock, app operations require the key, and
 Quick Menu uses compact rows beside Settings with a Play/Pause remote shortcut.
 See [implementation and validation notes](docs/LOCKED_APPS_QUICK_MENU_2026-11-08.md).
+
+## Local checkpoint — 2026-11-09
+
+Refined the lock to a smaller title-corner mark with two bounces, matched the Quick icon to
+Settings, and added animated focus-driven detail panes. See [refinement notes](docs/QUICK_MENU_REFINEMENT_2026-11-09.md).

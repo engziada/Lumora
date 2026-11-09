@@ -208,7 +208,11 @@ public class MainActivity extends AppCompatActivity
             SoundManager.playClick(view, preferences);
             quickMenu.show();
         });
-        bindNavFocus(quick);
+        quick.setOnFocusChangeListener((view, focused) -> {
+            findViewById(R.id.quickTooltip).setVisibility(focused ? View.VISIBLE : View.GONE);
+            view.animate().scaleX(focused ? 1.12f : 1f).scaleY(focused ? 1.12f : 1f).setDuration(120).start();
+            if (focused) SoundManager.playFocus(view, preferences);
+        });
 
         assistantButton = findViewById(R.id.btnAssistant);
         assistantIcon = findViewById(R.id.imgAssistant);
@@ -410,7 +414,7 @@ public class MainActivity extends AppCompatActivity
         styleNav(R.id.txtNavShows, R.id.imgNavShows, currentTab == TAB_SHOWS);
         styleNav(R.id.txtNavApps, R.id.imgNavApps, currentTab == TAB_APPS);
         styleNav(R.id.txtNavMovies, R.id.imgNavMovies, currentTab == TAB_STREAMING);
-        styleNav(R.id.txtNavQuick, R.id.imgNavQuick, false);
+
     }
 
     private void styleNav(int labelId, int iconId, boolean selected) {

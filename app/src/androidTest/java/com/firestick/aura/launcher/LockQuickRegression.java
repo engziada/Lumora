@@ -118,11 +118,19 @@ final class LockQuickRegression {
             });
             key(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE);
             node(activity.getString(R.string.quick_title));
-            for (int label : new int[]{R.string.qa_recent,R.string.qa_memory,R.string.qa_screenshot,R.string.qa_restart,R.string.qa_wifi}) {
+            for (int label : new int[]{R.string.qa_recent,R.string.qa_memory,R.string.qa_screenshot,R.string.qa_power,R.string.qa_wifi}) {
                 Rect bounds = new Rect(); node(activity.getString(label)).getBoundsInScreen(bounds);
                 check(!bounds.isEmpty(), "Quick action visible");
             }
             capture("quick-menu");
+            int[] panelTitles = {R.string.qa_memory_sub, R.string.qa_capture_sub, R.string.qa_power_sub, R.string.qa_wifi_sub};
+            for (int subtitle : panelTitles) {
+                key(KeyEvent.KEYCODE_DPAD_DOWN);
+                node(activity.getString(subtitle));
+                capture("quick-panel-" + subtitle);
+            }
+            key(KeyEvent.KEYCODE_DPAD_RIGHT);
+            node(activity.getString(R.string.qa_wifi_settings));
             key(KeyEvent.KEYCODE_BACK);
             main(() -> activity.findViewById(R.id.navQuick).performClick());
             node(activity.getString(R.string.quick_title));

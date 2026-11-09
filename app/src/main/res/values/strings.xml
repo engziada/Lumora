@@ -126,7 +126,7 @@
     <string name="qa_open_failed">The system did not accept this action.</string>
     <string name="qa_unsupported">This action needs Android 9 or newer.</string>
     <string name="quick_status_ready">Quick actions are ready.</string>
-    <string name="quick_status_setup">Screenshot and Restart need a one-time setup.</string>
+    <string name="quick_status_setup">Screenshot and Power need a one-time setup.</string>
     <string name="quick_setup_button">Set up</string>
     <string name="quick_setup_title">One-time setup</string>
     <string name="quick_setup_message">Fire OS hides accessibility switches for apps outside the Appstore, so the permission cannot be granted on the TV. Run these two commands once from a computer on the same network (ADB debugging must be on in Developer options). Lumora then turns quick actions and the Home button redirect on by itself, and keeps them on.</string>
@@ -265,4 +265,28 @@
     <string name="lock_sub_memory">Enter your key to clear memory for locked apps.</string>
     <string name="quick_shortcut">Quick menu · Play/Pause on remote</string>
     <string name="lock_missing_code">Lock key unavailable. Set a key in launcher settings first.</string>
+    <string name="qa_power">Power</string>
+    <string name="qa_power_off">Power off</string>
+    <string name="qa_power_sub">Take a pause. Start fresh.</string>
+    <string name="qa_power_system">Continue to your device’s power menu and choose the requested action. Availability depends on your device.</string>
+    <string name="qa_power_continue">Open power controls</string>
+    <string name="qa_memory_sub">A little room to breathe.</string>
+    <string name="qa_memory_stats">Total  %1$s\nUsed  %2$s\nFree  %3$s</string>
+    <string name="qa_memory_note">Android manages memory automatically. Clearing asks background apps to stop; protected processes may stay running.</string>
+    <string name="qa_clear_now">Clear background memory</string>
+    <string name="qa_capture_sub">Save a moment from your screen.</string>
+    <string name="qa_capture_note">The menu closes before capture for a clean image. Use the timer to prepare your screen. Your device handles saving the screenshot.</string>
+    <string name="qa_capture_now">Capture now</string>
+    <string name="qa_capture_timer">Capture with a 3-second timer</string>
+    <string name="qa_capture_count">Capture in %1$d…</string>
+    <string name="qa_wifi_sub">Your connection at a glance.</string>
+    <string name="qa_wifi_current">Current Wi-Fi\n%1$s</string>
+    <string name="qa_wifi_speed">Link speed  %1$d Mbps</string>
+    <string name="qa_wifi_speed_note">Link speed is the connection to your router, not an internet speed test.</string>
+    <string name="qa_wifi_speed_unknown">Link speed unavailable</string>
+    <string name="qa_wifi_private">Connected · network name hidden by Android</string>
+    <string name="qa_wifi_disconnected">Wi-Fi is not the active connection.</string>
+    <string name="qa_wifi_settings">Open Wi-Fi settings</string>
+    <string name="qa_power_restart_hint">Choose Restart in your device’s power menu.</string>
+    <string name="qa_power_off_hint">Choose Power off in your device’s power menu, if available.</string>
 </resources>

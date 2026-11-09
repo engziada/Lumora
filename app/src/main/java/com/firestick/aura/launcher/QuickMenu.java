@@ -10,7 +10,6 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.res.ColorStateList;
-import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
@@ -19,6 +18,15 @@ import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.ImageView;
+import android.widget.Button;
+import android.widget.ProgressBar;
+import android.view.KeyEvent;
+import android.view.ViewGroup;
+import android.net.wifi.WifiManager;
+import android.net.wifi.WifiInfo;
+import android.net.ConnectivityManager;
+import android.net.NetworkCapabilities;
+import com.firestick.aura.launcher.manager.DeviceStats;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -31,15 +39,12 @@ import com.firestick.aura.launcher.manager.SoundManager;
 import com.firestick.aura.launcher.service.QuickActionService;
 import com.firestick.aura.launcher.ui.Glass;
 import com.firestick.aura.launcher.ui.LockPad;
-import com.firestick.aura.launcher.ui.GlassMenu;
 
-import java.util.ArrayList;
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Executors;
 
-/** Quick menu: Recent apps, Clear memory, Screenshot, Restart and Wi-Fi. */
+/** Focus-driven quick menu with an animated detail pane and explicit actions. */
 final class QuickMenu {
     interface Launcher {
         void launch(String packageName);
@@ -53,6 +58,10 @@ final class QuickMenu {
     private final Launcher launcher;
     private final Handler main = new Handler(Looper.getMainLooper());
     private Dialog dialog;
+    private LinearLayout detail;
+    private int selected;
+    private boolean clearing;
+
 
     QuickMenu(Activity activity, PreferenceManager preferences, Launcher launcher) {
         this.activity = activity;
@@ -64,12 +73,13 @@ final class QuickMenu {
         if (dialog != null && dialog.isShowing()) return;
         dialog = Glass.overlay(activity, R.layout.dialog_quick_menu, Gravity.TOP | Gravity.END);
         LinearLayout tiles = dialog.findViewById(R.id.quickTiles);
-        View first = addTile(tiles, R.drawable.ic_qa_recent, R.string.qa_recent, this::showRecent);
-        addTile(tiles, R.drawable.ic_qa_memory, R.string.qa_memory, this::authorizeClearMemory);
-        addTile(tiles, R.drawable.ic_qa_screenshot, R.string.qa_screenshot, this::screenshot);
-        addTile(tiles, R.drawable.ic_qa_restart, R.string.qa_restart,
-                () -> runGlobal(AccessibilityService.GLOBAL_ACTION_POWER_DIALOG, R.string.qa_power_hint));
-        addTile(tiles, R.drawable.ic_qa_wifi, R.string.qa_wifi, this::openWifi);
+        detail = dialog.findViewById(R.id.quickDetail);
+        selected = 0;
+        View first = addTile(tiles, R.drawable.ic_qa_recent, R.string.qa_recent, 0);
+        addTile(tiles, R.drawable.ic_qa_memory, R.string.qa_memory, 1);
+        addTile(tiles, R.drawable.ic_qa_screenshot, R.string.qa_screenshot, 2);
+        addTile(tiles, R.drawable.ic_qa_restart, R.string.qa_power, 3);
+        addTile(tiles, R.drawable.ic_qa_wifi, R.string.qa_wifi, 4);
 
         boolean ready = QuickActionService.isRunning();
         ((TextView) dialog.findViewById(R.id.txtQuickStatus)).setText(ready ? R.string.quick_status_ready : R.string.quick_status_setup);
@@ -80,10 +90,14 @@ final class QuickMenu {
             QuickAccess.showSetup(activity);
         });
         dialog.show();
+        View shell = dialog.findViewById(R.id.quickShell);
+        shell.setAlpha(0f);
+        shell.setTranslationX(dp(28));
+        shell.animate().alpha(1f).translationX(0f).setDuration(220).start();
         first.requestFocus();
     }
 
-    private View addTile(LinearLayout row, int icon, int label, Runnable action) {
+    private View addTile(LinearLayout row, int icon, int label, int section) {
         View tile = LayoutInflater.from(activity).inflate(R.layout.item_quick_tile, row, false);
         ImageView image = tile.findViewById(R.id.quickIcon);
         image.setImageResource(icon);
@@ -92,11 +106,22 @@ final class QuickMenu {
         ((TextView) tile.findViewById(R.id.quickLabel)).setText(label);
         tile.setOnFocusChangeListener((v, focused) -> {
             v.animate().scaleX(focused ? 1.02f : 1f).scaleY(focused ? 1.02f : 1f).setDuration(120).start();
-            if (focused) SoundManager.playFocus(v, preferences);
+            if (focused) {
+                SoundManager.playFocus(v, preferences);
+                showDetail(section, true);
+            }
         });
         tile.setOnClickListener(v -> {
             SoundManager.playClick(v, preferences);
-            action.run();
+            showDetail(section, selected != section);
+            focusDetail();
+        });
+        tile.setOnKeyListener((v, code, event) -> {
+            if (code == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                if (event.getAction() == KeyEvent.ACTION_DOWN) focusDetail();
+                return true;
+            }
+            return false;
         });
         row.addView(tile);
         return tile;
@@ -110,28 +135,127 @@ final class QuickMenu {
         Toast.makeText(activity, text, Toast.LENGTH_SHORT).show();
     }
 
-    private void showRecent() {
-        PackageManager pm = activity.getPackageManager();
-        List<String> packages = new ArrayList<>();
-        List<GlassMenu.Item> items = new ArrayList<>();
-        for (String pkg : preferences.getRecentApps()) {
-            if (pm.getLeanbackLaunchIntentForPackage(pkg) == null && pm.getLaunchIntentForPackage(pkg) == null) continue;
-            try {
-                CharSequence label = pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0));
-                Drawable icon = pm.getApplicationIcon(pkg);
-                items.add(new GlassMenu.Item(icon, label));
-                packages.add(pkg);
-            } catch (PackageManager.NameNotFoundException ignored) {
-                // Uninstalled since it was launched.
+    private int dp(int value) { return Math.round(value * activity.getResources().getDisplayMetrics().density); }
+
+    private void focusDetail() {
+        for (int i = 0; i < detail.getChildCount(); i++) {
+            View child = detail.getChildAt(i);
+            if (child.isFocusable() && child.isEnabled()) { child.requestFocus(); return; }
+        }
+    }
+
+    private void heading(int title, int subtitle) {
+        TextView text = new TextView(activity);
+        text.setText(title); text.setTextSize(21); text.setTextColor(activity.getColor(R.color.nova_text));
+        text.setTypeface(null, android.graphics.Typeface.BOLD);
+        detail.addView(text);
+        note(activity.getString(subtitle));
+    }
+
+    private void note(String value) {
+        TextView text = new TextView(activity);
+        text.setText(value); text.setTextSize(11); text.setTextColor(activity.getColor(R.color.nova_text_dim));
+        text.setPadding(0, dp(8), 0, dp(16));
+        detail.addView(text);
+    }
+
+    private void action(String label, Runnable run) {
+        Button button = new Button(activity);
+        button.setText(label); button.setTextSize(12); button.setAllCaps(false);
+        button.setTextColor(activity.getColor(R.color.nova_text));
+        button.setBackgroundResource(R.drawable.bg_quick_tile);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(44));
+        params.bottomMargin = dp(8);
+        detail.addView(button, params);
+        button.setOnFocusChangeListener((v, focus) -> { if (focus) SoundManager.playFocus(v, preferences); });
+        button.setOnClickListener(v -> { SoundManager.playClick(v, preferences); run.run(); });
+    }
+
+    private void showDetail(int section, boolean animate) {
+        selected = section;
+        detail.animate().cancel();
+        detail.removeAllViews();
+        if (section == 0) {
+            heading(R.string.qa_recent, R.string.qa_recent_sub);
+            PackageManager pm = activity.getPackageManager();
+            int count = 0;
+            for (String pkg : preferences.getRecentApps()) {
+                if (pm.getLeanbackLaunchIntentForPackage(pkg) == null && pm.getLaunchIntentForPackage(pkg) == null) continue;
+                try {
+                    String label = pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString();
+                    action(label + (preferences.isLocked(pkg) ? "  🔒" : ""), () -> { dismiss(); launcher.launch(pkg); });
+                    if (++count == 6) break;
+                } catch (PackageManager.NameNotFoundException ignored) { }
             }
+            if (count == 0) note(activity.getString(R.string.qa_recent_empty));
+        } else if (section == 1) {
+            heading(R.string.qa_memory, R.string.qa_memory_sub);
+            ActivityManager manager = activity.getSystemService(ActivityManager.class);
+            if (manager != null) {
+                ActivityManager.MemoryInfo info = new ActivityManager.MemoryInfo();
+                manager.getMemoryInfo(info);
+                note(activity.getString(R.string.qa_memory_stats, DeviceStats.formatBytes(info.totalMem),
+                        DeviceStats.formatBytes(Math.max(0, info.totalMem - info.availMem)), DeviceStats.formatBytes(info.availMem)));
+                ProgressBar bar = new ProgressBar(activity, null, android.R.attr.progressBarStyleHorizontal);
+                bar.setProgress(DeviceStats.percent(info.totalMem - info.availMem, info.totalMem));
+                bar.setProgressTintList(ColorStateList.valueOf(preferences.getAccentColor(activity.getColor(R.color.nova_accent))));
+                detail.addView(bar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(6)));
+                note(activity.getString(R.string.qa_memory_note));
+                action(activity.getString(clearing ? R.string.qa_memory_running : R.string.qa_clear_now), this::authorizeClearMemory);
+                detail.getChildAt(detail.getChildCount() - 1).setEnabled(!clearing);
+            }
+        } else if (section == 2) {
+            heading(R.string.qa_screenshot, R.string.qa_capture_sub);
+            note(activity.getString(R.string.qa_capture_note));
+            action(activity.getString(R.string.qa_capture_now), this::screenshot);
+            action(activity.getString(R.string.qa_capture_timer), this::timedScreenshot);
+        } else if (section == 3) {
+            heading(R.string.qa_power, R.string.qa_power_sub);
+            note(activity.getString(R.string.qa_power_system));
+            action(activity.getString(R.string.qa_restart), () -> power(R.string.qa_restart));
+            action(activity.getString(R.string.qa_power_off), () -> power(R.string.qa_power_off));
+        } else {
+            heading(R.string.qa_wifi, R.string.qa_wifi_sub);
+            wifiStatus();
+            action(activity.getString(R.string.qa_wifi_settings), this::openWifi);
         }
-        if (packages.isEmpty()) {
-            toast(R.string.qa_recent_empty);
-            return;
+        detail.setAlpha(animate ? 0f : 1f);
+        detail.setTranslationX(animate ? dp(16) : 0);
+        if (animate) detail.animate().alpha(1f).translationX(0f).setDuration(180).start();
+    }
+
+    @SuppressWarnings("deprecation")
+    private void wifiStatus() {
+        ConnectivityManager connectivity = activity.getSystemService(ConnectivityManager.class);
+        NetworkCapabilities caps = connectivity == null ? null : connectivity.getNetworkCapabilities(connectivity.getActiveNetwork());
+        if (caps == null || !caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
+            note(activity.getString(R.string.qa_wifi_disconnected)); return;
         }
+        try {
+            WifiManager wifi = (WifiManager) activity.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+            WifiInfo info = wifi == null ? null : wifi.getConnectionInfo();
+            String ssid = info == null ? null : info.getSSID();
+            if (ssid == null || ssid.equals("<unknown ssid>")) ssid = activity.getString(R.string.qa_wifi_private);
+            else ssid = ssid.replace("\"", "");
+            note(activity.getString(R.string.qa_wifi_current, ssid));
+            if (info != null && info.getLinkSpeed() > 0) note(activity.getString(R.string.qa_wifi_speed, info.getLinkSpeed()));
+            else note(activity.getString(R.string.qa_wifi_speed_unknown));
+            note(activity.getString(R.string.qa_wifi_speed_note));
+        } catch (SecurityException denied) { note(activity.getString(R.string.qa_wifi_private)); }
+    }
+
+    private void timedScreenshot() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) { toast(R.string.qa_unsupported); return; }
+        if (!QuickActionService.isRunning()) { runGlobal(AccessibilityService.GLOBAL_ACTION_TAKE_SCREENSHOT, 0); return; }
         dismiss();
-        GlassMenu.show(activity, activity.getString(R.string.qa_recent), activity.getString(R.string.qa_recent_sub), null,
-                items, false, (index, item) -> launcher.launch(packages.get(index)));
+        main.postDelayed(() -> {
+            if (!QuickActionService.perform(AccessibilityService.GLOBAL_ACTION_TAKE_SCREENSHOT)) toast(R.string.qa_open_failed);
+        }, 3000L);
+    }
+
+    private void power(int choice) {
+        runGlobal(AccessibilityService.GLOBAL_ACTION_POWER_DIALOG,
+                choice == R.string.qa_restart ? R.string.qa_power_restart_hint : R.string.qa_power_off_hint);
     }
 
     /**
@@ -153,9 +277,13 @@ final class QuickMenu {
             toast(R.string.qa_open_failed);
             return;
         }
+        if (clearing) return;
+        clearing = true;
+        if (dialog != null && dialog.isShowing()) showDetail(1, false);
         toast(R.string.qa_memory_running);
         Context app = activity.getApplicationContext();
-        Executors.newSingleThreadExecutor().execute(() -> {
+        java.util.concurrent.ExecutorService worker = Executors.newSingleThreadExecutor();
+        worker.execute(() -> {
             long before = availableMemory(manager);
             for (String pkg : launchablePackages(app)) {
                 try {
@@ -170,7 +298,13 @@ final class QuickMenu {
                 Thread.currentThread().interrupt();
             }
             long freedMb = Math.max(0L, availableMemory(manager) - before) / (1024L * 1024L);
+            worker.shutdown();
             main.post(() -> {
+                clearing = false;
+                if (dialog != null && dialog.isShowing() && selected == 1) {
+                    showDetail(1, false);
+                    focusDetail();
+                }
                 if (freedMb >= 1L) {
                     Toast.makeText(app, app.getString(R.string.qa_memory_done, (int) freedMb), Toast.LENGTH_LONG).show();
                 } else {
