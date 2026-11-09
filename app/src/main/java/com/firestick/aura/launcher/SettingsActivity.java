@@ -552,7 +552,7 @@ public class SettingsActivity extends AppCompatActivity {
                 toast(getString(R.string.lock_none));
                 return;
             }
-            LockPad.verify(this, preferences, getString(R.string.lock_sub_manage), this::showLockedApps);
+            showLockedApps();
         });
         lockSettings.listener(checked -> {
             if (checked) {
@@ -581,10 +581,13 @@ public class SettingsActivity extends AppCompatActivity {
         Collections.sort(packages, (a, b) -> labelFor(a).compareToIgnoreCase(labelFor(b)));
         List<GlassMenu.Item> items = new ArrayList<>();
         for (String pkg : packages) items.add(appItem(pkg).checked(true));
-        GlassMenu.show(this, getString(R.string.lock_apps_title), getString(R.string.lock_apps_sub), null, items, true,
+        GlassMenu.show(this, getString(R.string.lock_apps_title), getString(R.string.lock_apps_sub), null, items, false,
                 (index, item) -> {
-                    preferences.setLocked(packages.get(index), item.isChecked());
-                    updateLockButtons();
+                    String pkg = packages.get(index);
+                    LockPad.verify(this, preferences, getString(R.string.lock_sub_unlock, labelFor(pkg)), () -> {
+                        preferences.setLocked(pkg, false);
+                        updateLockButtons();
+                    });
                 });
     }
 
@@ -784,9 +787,17 @@ public class SettingsActivity extends AppCompatActivity {
                 () -> QuickAccess.showSetup(this)));
         findViewById(R.id.btnManageHidden).setOnClickListener(v -> showHiddenApps());
         findViewById(R.id.btnResetHidden).setOnClickListener(v -> {
-            preferences.resetHiddenApps();
-            refreshStats();
-            toast(getString(R.string.hidden_reset));
+            Runnable reset = () -> {
+                preferences.resetHiddenApps();
+                refreshStats();
+                toast(getString(R.string.hidden_reset));
+            };
+            boolean includesLocked = false;
+            for (String pkg : preferences.getHiddenApps()) {
+                if (preferences.isLocked(pkg)) { includesLocked = true; break; }
+            }
+            if (includesLocked) LockPad.verify(this, preferences, getString(R.string.lock_sub_manage), reset::run);
+            else reset.run();
         });
         findViewById(R.id.btnOpenDeviceSettings).setOnClickListener(v -> {
             QuickActionService.suppressRedirect(15_000L);
@@ -869,11 +880,16 @@ public class SettingsActivity extends AppCompatActivity {
         Collections.sort(packages, (a, b) -> labelFor(a).compareToIgnoreCase(labelFor(b)));
         List<GlassMenu.Item> items = new ArrayList<>();
         for (String pkg : packages) items.add(appItem(pkg).checked(true));
-        GlassMenu.show(this, getString(R.string.hidden_title, packages.size()), getString(R.string.hidden_sub), null, items, true,
+        GlassMenu.show(this, getString(R.string.hidden_title, packages.size()), getString(R.string.hidden_sub), null, items, false,
                 (index, item) -> {
-                    if (item.isChecked()) preferences.hideApp(packages.get(index));
-                    else preferences.unhideApp(packages.get(index));
-                    refreshStats();
+                    String pkg = packages.get(index);
+                    Runnable unhide = () -> {
+                        preferences.unhideApp(pkg);
+                        refreshStats();
+                    };
+                    if (preferences.isLocked(pkg)) {
+                        LockPad.verify(this, preferences, getString(R.string.lock_sub_app, labelFor(pkg)), unhide::run);
+                    } else unhide.run();
                 });
     }
 

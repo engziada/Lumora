@@ -1,34 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="0dp"
-    android:layout_height="112dp"
+    android:layout_width="match_parent"
+    android:layout_height="44dp"
     android:layout_marginStart="6dp"
     android:layout_marginEnd="6dp"
-    android:layout_weight="1"
+    android:layout_marginBottom="6dp"
     android:background="@drawable/bg_quick_tile"
     android:clickable="true"
     android:focusable="true"
-    android:gravity="center"
-    android:orientation="vertical"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
     android:paddingStart="6dp"
     android:paddingEnd="6dp">
 
     <ImageView
         android:id="@+id/quickIcon"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
         android:background="@drawable/bg_icon_circle"
         android:contentDescription="@null"
-        android:padding="12dp" />
+        android:padding="6dp" />
 
     <TextView
         android:id="@+id/quickLabel"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
+        android:layout_marginStart="12dp"
         android:ellipsize="end"
-        android:gravity="center"
-        android:maxLines="1"
+        android:gravity="center_vertical"
+        android:maxLines="2"
         android:textColor="@color/nova_text"
         android:textSize="11sp" />
 </LinearLayout>

@@ -114,16 +114,20 @@ public final class AppPreview {
         spent.destroy();
     }
 
+    private boolean currentLocked;
+
     public void focus(String packageName, String label) {
         int content = preferences.getPanelContent();
-        if (content == PreferenceManager.PANEL_CONTENT_OFF) {
+        if (content == PreferenceManager.PANEL_CONTENT_OFF
+                || (preferences.isLocked(packageName) && content != PreferenceManager.PANEL_CONTENT_PARTICLES)) {
             hide();
             return;
         }
         Provider next = AppPreviewSamples.providerFor(packageName);
         String nextLabel = label == null ? "" : label;
         if (content == PreferenceManager.PANEL_CONTENT_PARTICLES) {
-            if (packageName.equals(current) && nextLabel.equals(currentLabel)) return;
+            if (packageName.equals(current) && nextLabel.equals(currentLabel)
+                    && currentLocked == preferences.isLocked(packageName)) return;
             // Keep an existing sphere alive between app tiles; only its target and energy change.
             boolean continuous = panel.getVisibility() == View.VISIBLE && particles.getVisibility() == View.VISIBLE;
             if (continuous) {
@@ -136,6 +140,7 @@ public final class AppPreview {
             discardPlayer();
             current = packageName;
             currentLabel = nextLabel;
+            currentLocked = preferences.isLocked(packageName);
             provider = null;
             country = preferences.getShowsCountry();
             status.setVisibility(View.GONE);
@@ -167,7 +172,7 @@ public final class AppPreview {
             status.setVisibility(View.GONE);
             particles.setVisibility(View.VISIBLE);
             panel.setVisibility(View.VISIBLE);
-            particles.start(current, currentLabel);
+            particles.start(current, currentLabel, currentLocked);
             return;
         }
         status.setVisibility(View.VISIBLE);

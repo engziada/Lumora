@@ -263,3 +263,9 @@ See [CHANGELOG.md](CHANGELOG.md).
 
 MIT — see [LICENSE](LICENSE). Bundled fonts, AndroidX and the Gradle wrapper retain their own
 licenses; see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+
+## Local checkpoint — 2026-11-08
+
+Locked app names now form with an orbiting particle lock, app operations require the key, and
+Quick Menu uses compact rows beside Settings with a Play/Pause remote shortcut.
+See [implementation and validation notes](docs/LOCKED_APPS_QUICK_MENU_2026-11-08.md).

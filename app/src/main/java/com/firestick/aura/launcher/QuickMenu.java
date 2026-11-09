@@ -30,6 +30,7 @@ import com.firestick.aura.launcher.manager.QuickAccess;
 import com.firestick.aura.launcher.manager.SoundManager;
 import com.firestick.aura.launcher.service.QuickActionService;
 import com.firestick.aura.launcher.ui.Glass;
+import com.firestick.aura.launcher.ui.LockPad;
 import com.firestick.aura.launcher.ui.GlassMenu;
 
 import java.util.ArrayList;
@@ -60,10 +61,11 @@ final class QuickMenu {
     }
 
     void show() {
-        dialog = Glass.overlay(activity, R.layout.dialog_quick_menu, Gravity.CENTER);
+        if (dialog != null && dialog.isShowing()) return;
+        dialog = Glass.overlay(activity, R.layout.dialog_quick_menu, Gravity.TOP | Gravity.END);
         LinearLayout tiles = dialog.findViewById(R.id.quickTiles);
         View first = addTile(tiles, R.drawable.ic_qa_recent, R.string.qa_recent, this::showRecent);
-        addTile(tiles, R.drawable.ic_qa_memory, R.string.qa_memory, this::clearMemory);
+        addTile(tiles, R.drawable.ic_qa_memory, R.string.qa_memory, this::authorizeClearMemory);
         addTile(tiles, R.drawable.ic_qa_screenshot, R.string.qa_screenshot, this::screenshot);
         addTile(tiles, R.drawable.ic_qa_restart, R.string.qa_restart,
                 () -> runGlobal(AccessibilityService.GLOBAL_ACTION_POWER_DIALOG, R.string.qa_power_hint));
@@ -89,7 +91,7 @@ final class QuickMenu {
         image.setImageTintList(ColorStateList.valueOf(accent));
         ((TextView) tile.findViewById(R.id.quickLabel)).setText(label);
         tile.setOnFocusChangeListener((v, focused) -> {
-            v.animate().scaleX(focused ? 1.06f : 1f).scaleY(focused ? 1.06f : 1f).setDuration(120).start();
+            v.animate().scaleX(focused ? 1.02f : 1f).scaleY(focused ? 1.02f : 1f).setDuration(120).start();
             if (focused) SoundManager.playFocus(v, preferences);
         });
         tile.setOnClickListener(v -> {
@@ -136,6 +138,15 @@ final class QuickMenu {
      * Asks the system to stop cached processes of every launchable app. Android only kills
      * background processes, so the foreground app (Lumora) is unaffected.
      */
+    private void authorizeClearMemory() {
+        if (preferences.getLockedApps().isEmpty()) {
+            clearMemory();
+        } else {
+            dismiss();
+            LockPad.verify(activity, preferences, activity.getString(R.string.lock_sub_memory), this::clearMemory);
+        }
+    }
+
     private void clearMemory() {
         ActivityManager manager = (ActivityManager) activity.getSystemService(Context.ACTIVITY_SERVICE);
         if (manager == null) {

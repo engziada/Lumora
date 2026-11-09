@@ -206,7 +206,7 @@
     <string name="lock_change_code">Change code</string>
     <string name="lock_apps_count">Locked apps (%1$d)</string>
     <string name="lock_apps_title">Locked apps</string>
-    <string name="lock_apps_sub">Clear a tick to unlock</string>
+    <string name="lock_apps_sub">Select an app and enter your key to unlock it.</string>
     <string name="lock_none">No locked apps. Use Lock with code in an app\'s menu.</string>
     <string name="lock_settings_on">Code required for Lumora settings: On</string>
     <string name="lock_settings_off">Code required for Lumora settings: Off</string>
@@ -231,7 +231,7 @@
     <string name="manage_hidden">Manage hidden apps</string>
     <string name="unhide_all">Unhide all</string>
     <string name="hidden_title">Hidden apps (%1$d)</string>
-    <string name="hidden_sub">Clear a tick to show the app again</string>
+    <string name="hidden_sub">Select an app to show it again</string>
     <string name="hidden_none">No hidden apps</string>
     <string name="hidden_reset">All hidden apps are visible again</string>
     <string name="settings_system">Device</string>
@@ -262,4 +262,7 @@
     <string name="about_web_title">Website</string>
     <string name="about_no_handler">No app on this device can open it. Use another device:</string>
     <string name="credits">Listings and posters: TVmaze (CC BY-SA 4.0). App logos: dashboard-icons (Apache-2.0). Space wallpapers: ESA/Hubble (CC BY 4.0). Night sky and desert wallpapers: Unsplash. Type: Poppins (SIL OFL 1.1).</string>
+    <string name="lock_sub_memory">Enter your key to clear memory for locked apps.</string>
+    <string name="quick_shortcut">Quick menu · Play/Pause on remote</string>
+    <string name="lock_missing_code">Lock key unavailable. Set a key in launcher settings first.</string>
 </resources>

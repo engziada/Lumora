@@ -61,6 +61,7 @@ public final class PreviewParticlesView extends View {
     private float phaseTime;
     private int state = SPHERE;
     private boolean active;
+    private boolean locked;
     private boolean textReady;
     private String label = "";
     private int accent;
@@ -115,6 +116,11 @@ public final class PreviewParticlesView extends View {
 
     /** Starts a fresh focus scene. {@code seed} varies the movement; {@code appName} becomes particles. */
     public void start(String seed, String appName) {
+        start(seed, appName, false);
+    }
+
+    public void start(String seed, String appName, boolean appLocked) {
+        locked = appLocked;
         boolean continuous = active;
         label = appName == null ? "" : appName.trim();
         kick = ((seed == null ? 0 : seed.hashCode()) & 1) == 0 ? .34f : -.34f;
@@ -130,8 +136,8 @@ public final class PreviewParticlesView extends View {
         if (ValueAnimator.areAnimatorsEnabled()) {
             if (animator == null) startClock();
         } else {
-            morph = 0f;
-            state = SPHERE; // A static sphere remains available when system animations are disabled.
+            morph = 1f;
+            state = HOLDING; // Keep the name and lock readable with system animations disabled.
         }
         invalidate();
     }
@@ -146,7 +152,7 @@ public final class PreviewParticlesView extends View {
         animator.setInterpolator(new LinearInterpolator());
         animator.addUpdateListener(animation -> {
             long now = System.nanoTime();
-            float dt = Math.min((now - lastFrame) / 1_000_000_000f, .05f);
+            float dt = (now - lastFrame) / 1_000_000_000f;
             lastFrame = now;
             update(dt);
             // Thirty frames per second is enough for this scene and leaves headroom on Fire TV.
@@ -160,19 +166,25 @@ public final class PreviewParticlesView extends View {
 
     private void update(float dt) {
         time += dt;
-        spin += dt * (.30f + energy * 1.5f);
-        energy = Math.max(0f, energy - dt * .72f);
+        // Bound the sphere's motion, but use elapsed time for formation and orbit timing.
+        // Dropped frames must not leave a name stuck in its intro on slower Fire TVs.
+        float motionStep = Math.min(dt, .05f);
+        spin += motionStep * (.30f + energy * 1.5f);
+        energy = Math.max(0f, energy - motionStep * .72f);
         if (state == SPHERE) return;
         phaseTime += dt;
         if (state == FORMING) {
             if (!textReady) {
-                state = SPHERE;
+                // A newly revealed panel may not have been measured on the first frame.
+                // Wait for onSizeChanged to build the name instead of abandoning formation.
+                phaseTime = -INTRO_SECONDS;
+                return;
             } else if (phaseTime >= 0f) {
                 float progress = Math.min(1f, phaseTime / FORM_SECONDS);
                 morph = lerp(morphFrom, 1f, ease(progress));
                 if (progress >= 1f) changeState(HOLDING);
             }
-        } else if (state == HOLDING && phaseTime >= HOLD_SECONDS) {
+        } else if (state == HOLDING && !locked && phaseTime >= HOLD_SECONDS) {
             changeState(EXPLODING);
         } else if (state == EXPLODING) {
             float progress = Math.min(1f, phaseTime / EXPLODE_SECONDS);
@@ -253,6 +265,35 @@ public final class PreviewParticlesView extends View {
             float dot = lerp(size[i] * (.65f + depth * .85f), size[i] * 1.05f, morph);
             canvas.drawCircle(drawX, drawY, dot, dotPaint);
         }
+        if (locked) drawOrbitingLock(canvas, w, h);
+    }
+
+    /** An upright dotted padlock travels around the name on an elliptical orbit. */
+    private void drawOrbitingLock(Canvas canvas, int w, int h) {
+        float angle = time * 1.15f;
+        float x = w * .5f + (float) Math.cos(angle) * w * .39f;
+        float y = h * .5f + (float) Math.sin(angle) * h * .30f;
+        float unit = Math.min(dp(18f), h * .09f);
+        dotPaint.setColor(light);
+        dotPaint.setAlpha((int) (225 * morph));
+        for (int i = 0; i < 64; i++) {
+            float px, py;
+            if (i < 24) {
+                double arc = Math.PI + Math.PI * i / 23;
+                px = (float) Math.cos(arc) * .55f;
+                py = -.32f + (float) Math.sin(arc) * .65f;
+            } else if (i < 60) {
+                float edge = (i - 24) / 9f;
+                if (edge < 1) { px = -.8f + 1.6f * edge; py = -.3f; }
+                else if (edge < 2) { px = .8f; py = -.3f + (edge - 1); }
+                else if (edge < 3) { px = .8f - 1.6f * (edge - 2); py = .7f; }
+                else { px = -.8f; py = .7f - (edge - 3); }
+            } else { px = 0; py = .05f + (i - 60) * .1f; }
+            // Assemble the lock from scattered points in step with the app name.
+            float spread = (1f - morph) * unit * 3;
+            canvas.drawCircle(x + px * unit + (float) Math.cos(i * 2.4) * spread,
+                    y + py * unit + (float) Math.sin(i * 2.4) * spread, dp(.9f), dotPaint);
+        }
     }
 
     /** Rasterises one name, then distributes the existing sphere particles over its opaque pixels. */
@@ -269,11 +310,11 @@ public final class PreviewParticlesView extends View {
             float textSize = Math.min(h * .27f, dp(58f));
             float minimum = dp(15f);
             textPaint.setTextSize(textSize);
-            while (textSize > minimum && textPaint.measureText(text) > w * .88f) {
+            while (textSize > minimum && textPaint.measureText(text) > w * (locked ? .68f : .88f)) {
                 textSize = Math.max(minimum, textSize - dp(2f));
                 textPaint.setTextSize(textSize);
             }
-            textPaint.setTextScaleX(Math.min(1f, w * .88f / Math.max(1f, textPaint.measureText(text))));
+            textPaint.setTextScaleX(Math.min(1f, w * (locked ? .68f : .88f) / Math.max(1f, textPaint.measureText(text))));
             Paint.FontMetrics metrics = textPaint.getFontMetrics();
             float baseline = h * .5f - (metrics.ascent + metrics.descent) * .5f;
             new Canvas(bitmap).drawText(text, w * .5f, baseline, textPaint);

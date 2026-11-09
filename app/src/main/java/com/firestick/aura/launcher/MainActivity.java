@@ -74,7 +74,7 @@ public class MainActivity extends AppCompatActivity
     private static final String FILTER_ALL = "\u0000all", FILTER_TV = "\u0000tv", FILTER_WEB = "\u0000web";
     /** Bridge targets for a DOWN key that a tile of the ribbon or a grid cannot resolve. */
     private static final int[] NAV_TARGETS = {R.id.navHome, R.id.navShows, R.id.navApps,
-            R.id.navMovies, R.id.navQuick};
+            R.id.navMovies};
 
     private RecyclerView homeView, gridView, showsView;
     private AppRowAdapter homeAdapter, appsAdapter, streamingAdapter;
@@ -260,7 +260,7 @@ public class MainActivity extends AppCompatActivity
 
     private void updateAssistantButton() {
         boolean visible = assistant.isFloatingButtonEnabled();
-        if (!visible && assistantButton.hasFocus()) findViewById(R.id.navQuick).requestFocus();
+        if (!visible && assistantButton.hasFocus()) findViewById(R.id.navMovies).requestFocus();
         assistantButton.setVisibility(visible ? View.VISIBLE : View.GONE);
         assistantIcon.setImageTintList(ColorStateList.valueOf(accent()));
     }
@@ -512,8 +512,7 @@ public class MainActivity extends AppCompatActivity
         if (appPreview == null) return;
         AppModel focusedHomeApp = homeAdapter.getFocusedApp();
         if (!previewResumed || !hasWindowFocus() || currentTab != TAB_HOME || !homeView.hasFocus()
-                || !preferences.isAppPreviewEnabled() || movingPackage != null || focusedHomeApp == null
-                || preferences.isLocked(focusedHomeApp.getPackageName())) {
+                || !preferences.isAppPreviewEnabled() || movingPackage != null || focusedHomeApp == null) {
             appPreview.hide();
             return;
         }
@@ -542,6 +541,11 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override public boolean dispatchKeyEvent(KeyEvent event) {
+        // Play/Pause is unused on the launcher; Menu retains app actions and assistant hold.
+        if (event.getKeyCode() == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE && movingPackage == null) {
+            if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled()) quickMenu.show();
+            return true;
+        }
         if (event.getAction() == KeyEvent.ACTION_DOWN
                 && event.getKeyCode() == KeyEvent.KEYCODE_DPAD_DOWN && movingPackage == null) {
             if (bridgeFocusToNav()) return true;
@@ -734,7 +738,7 @@ public class MainActivity extends AppCompatActivity
         List<GlassMenu.Item> items = new ArrayList<>();
         List<Runnable> actions = new ArrayList<>();
         items.add(new GlassMenu.Item(R.drawable.ic_act_open, getString(R.string.action_open)));
-        actions.add(() -> launchPackage(pkg));
+        actions.add(() -> startApp(pkg));
         if (moveRow != null) {
             items.add(new GlassMenu.Item(R.drawable.ic_act_move, getString(R.string.action_move)));
             actions.add(() -> startMove(app, moveRow));
@@ -763,15 +767,14 @@ public class MainActivity extends AppCompatActivity
         actions.add(() -> openAppInfo(pkg));
         items.add(new GlassMenu.Item(R.drawable.ic_act_delete, getString(R.string.action_uninstall)).danger());
         actions.add(() -> uninstall(pkg, label));
-        GlassMenu.show(this, label, pkg, app.getIcon(), items, false, (index, item) -> actions.get(index).run());
+        GlassMenu.show(this, label, pkg, app.getIcon(), items, false, (index, item) -> runUnlocked(pkg, actions.get(index)));
     }
 
     private void toggleLock(String pkg, String label, boolean locked) {
         if (locked) {
-            LockPad.verify(this, preferences, getString(R.string.lock_sub_unlock, label), () -> {
-                preferences.setLocked(pkg, false);
-                refreshApps(true);
-            });
+            // The selected menu action has already verified the key.
+            preferences.setLocked(pkg, false);
+            refreshApps(true);
         } else if (!AppLock.hasCode(preferences)) {
             LockPad.create(this, preferences, () -> {
                 preferences.setLocked(pkg, true);

@@ -49,10 +49,10 @@ public final class LockPad {
         this.done = done;
     }
 
-    /** Runs {@code done} after the correct code; runs it immediately when no code is set. */
+    /** Runs {@code done} only after the correct code; missing credentials cannot bypass a lock. */
     public static void verify(Activity activity, PreferenceManager prefs, CharSequence subtitle, OnDone done) {
         if (!AppLock.hasCode(prefs)) {
-            done.onDone();
+            Toast.makeText(activity, R.string.lock_missing_code, Toast.LENGTH_LONG).show();
             return;
         }
         new LockPad(activity, prefs, MODE_VERIFY, subtitle, done).show();
@@ -64,7 +64,9 @@ public final class LockPad {
 
     /** Verifies the current code (if any), then records a new one. */
     public static void change(Activity activity, PreferenceManager prefs, OnDone done) {
-        verify(activity, prefs, activity.getString(R.string.lock_enter_current), () -> create(activity, prefs, done));
+        if (AppLock.hasCode(prefs)) {
+            verify(activity, prefs, activity.getString(R.string.lock_enter_current), () -> create(activity, prefs, done));
+        } else create(activity, prefs, done);
     }
 
     private void show() {

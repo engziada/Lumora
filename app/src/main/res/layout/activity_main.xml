@@ -72,6 +72,36 @@
             android:layout_height="1dp"
             android:layout_weight="1" />
 
+        <LinearLayout
+            android:id="@+id/navQuick"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:layout_marginEnd="8dp"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:background="@drawable/bg_gear"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:contentDescription="@string/quick_shortcut"
+            android:nextFocusRight="@id/btnGear">
+            <ImageView
+                android:id="@+id/imgNavQuick"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_nav_quick" />
+            <TextView
+                android:id="@+id/txtNavQuick"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="@string/nav_quick"
+                android:textColor="@color/nova_text"
+                android:textSize="11sp" />
+        </LinearLayout>
+
         <FrameLayout
             android:id="@+id/btnGear"
             android:layout_width="40dp"
@@ -412,22 +442,7 @@
                     android:text="@string/nav_streaming" />
             </LinearLayout>
 
-            <LinearLayout
-                android:id="@+id/navQuick"
-                style="@style/Lumora.NavItem"
-                android:nextFocusRight="@+id/btnAssistant">
 
-                <ImageView
-                    android:id="@+id/imgNavQuick"
-                    style="@style/Lumora.NavIcon"
-                    android:contentDescription="@null"
-                    android:src="@drawable/ic_nav_quick" />
-
-                <TextView
-                    android:id="@+id/txtNavQuick"
-                    style="@style/Lumora.NavLabel"
-                    android:text="@string/nav_quick" />
-            </LinearLayout>
         </LinearLayout>
     </LinearLayout>
 
@@ -442,7 +457,7 @@
         android:contentDescription="@string/assistant_open"
         android:elevation="10dp"
         android:focusable="true"
-        android:nextFocusLeft="@id/navQuick"
+        android:nextFocusLeft="@id/navMovies"
         app:layout_constraintBottom_toBottomOf="@id/bottomNav"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="@id/bottomNav">
