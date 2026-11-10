@@ -70,7 +70,10 @@ public class IptvAdapter extends RecyclerView.Adapter<IptvAdapter.Holder> {
             @Override
             public boolean areContentsTheSame(int oldPosition, int newPosition) {
                 IptvChannel a = previous.get(oldPosition), b = fresh.get(newPosition);
-                return a.logo.equals(b.logo) && a.name.equals(b.name) && a.currentProgram.equals(b.currentProgram);
+                return a.logo.equals(b.logo) && a.name.equals(b.name)
+                        && a.url.equals(b.url) && a.category.equals(b.category)
+                        && a.genres.equals(b.genres) && a.currentProgram.equals(b.currentProgram)
+                        && a.isFavorite == b.isFavorite;
             }
         });
         items.clear();
@@ -176,14 +179,12 @@ public class IptvAdapter extends RecyclerView.Adapter<IptvAdapter.Holder> {
             focusRing.setBackgroundTintList(ColorStateList.valueOf(accent));
             
             // Show favorite badge if applicable
+            poster.clearColorFilter();
             if (channel.isFavorite) {
-                poster.setImageResource(R.drawable.ic_star);
-                poster.setColorFilter(accent);
                 if (favoriteBadge != null) {
                     favoriteBadge.setVisibility(View.VISIBLE);
                 }
             } else {
-                poster.setImageResource(0);
                 if (favoriteBadge != null) {
                     favoriteBadge.setVisibility(View.GONE);
                 }
@@ -209,6 +210,9 @@ public class IptvAdapter extends RecyclerView.Adapter<IptvAdapter.Holder> {
                 }
                 return false;
             });
+            itemView.setContentDescription(itemView.getContext().getString(
+                    channel.isFavorite ? R.string.iptv_remove_favorite : R.string.iptv_add_favorite,
+                    channel.name));
             
             focusRing.setVisibility(itemView.isFocused() ? View.VISIBLE : View.INVISIBLE);
         }

@@ -14,6 +14,7 @@ import java.util.Set;
 public class PreferenceManager {
     private static final String PREF_NAME = "ztv_launcher_prefs";
     private static final String KEY_FAVORITES = "pref_favorites";
+    private static final String KEY_IPTV_FAVORITES = "pref_iptv_favorites";
     private static final String KEY_HIDDEN = "pref_hidden";
     private static final String KEY_ACCENT = "pref_accent_color";
     private static final String KEY_WALLPAPER_INTERVAL = "pref_wallpaper_interval";
@@ -115,6 +116,20 @@ public class PreferenceManager {
     public void removeFavorite(String packageName) {
         Set<String> set = getFavorites();
         if (set.remove(packageName)) applyHomeChange(prefs.edit().putStringSet(KEY_FAVORITES, set));
+    }
+
+    public Set<String> getIptvFavorites() {
+        return getSet(KEY_IPTV_FAVORITES);
+    }
+
+    public boolean isIptvFavorite(String channelId) {
+        return getIptvFavorites().contains(channelId);
+    }
+
+    public void setIptvFavorite(String channelId, boolean favorite) {
+        Set<String> set = getIptvFavorites();
+        boolean changed = favorite ? set.add(channelId) : set.remove(channelId);
+        if (changed) prefs.edit().putStringSet(KEY_IPTV_FAVORITES, set).apply();
     }
 
     // ------------------------------------------------------------------ hidden

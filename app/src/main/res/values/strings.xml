@@ -28,8 +28,8 @@
     <string name="greeting_all_apps_subtitle">Everything that is not a streaming service.</string>
     <string name="greeting_streaming">STREAMING</string>
     <string name="greeting_streaming_subtitle">Your streaming services in one place.</string>
-    <string name="greeting_shows">TONIGHT</string>
-    <string name="greeting_shows_subtitle">What is airing on TV and streaming today.</string>
+    <string name="greeting_shows">LIVE TV</string>
+    <string name="greeting_shows_subtitle">Explore live channels from around the world.</string>
     <string name="greeting_night">GOOD NIGHT</string>
     <string name="greeting_morning">GOOD MORNING</string>
     <string name="greeting_afternoon">GOOD AFTERNOON</string>
@@ -85,14 +85,8 @@
     <string name="lock_saved">Code saved</string>
 
     <!-- IPTV / Shows -->
-    <string name="shows_all">All</string>
-    <string name="shows_tv">On TV</string>
-    <string name="shows_streaming">Streaming</string>
-    <string name="shows_loading">Loading today\'s listings…</string>
-    <string name="shows_empty">Nothing listed here today.</string>
-    <string name="shows_error">Listings unavailable. Check the connection and try again.</string>
-    <string name="shows_disabled">TV listings are off. Turn them on in Settings, TV listings.</string>
-    <string name="shows_attribution">Live TV from iptv-org (CC BY-SA)</string>
+    <string name="shows_disabled">IPTV is off. Turn it on in Settings, IPTV.</string>
+    <string name="shows_attribution">Channel listings from iptv-org. Stream availability varies by channel and region.</string>
     <string name="show_channel_time">%1$s · %2$s</string>
     <string name="show_episode">Season %1$d, episode %2$d · %3$s</string>
     <string name="show_rating">★ %1$.1f</string>
@@ -100,21 +94,26 @@
     <string name="show_watch_on">Watch on %1$s</string>
     
     <!-- IPTV Specific Strings -->
-    <string name="iptv_countries">Countries</string>
-    <string name="iptv_channels">Channels</string>
     <string name="iptv_search_placeholder">Search channels...</string>
-    <string name="iptv_categories">Categories</string>
     <string name="iptv_favorites">Favorites</string>
-    <string name="iptv_add_favorite">Add to favorites</string>
-    <string name="iptv_remove_favorite">Remove from favorites</string>
-    <string name="iptv_now_playing">Now playing</string>
-    <string name="iptv_next_up">Next</string>
-    <string name="iptv_live">LIVE</string>
-    <string name="iptv_play">Play</string>
-    <string name="iptv_no_channel_selected">Select a channel to watch</string>
-    <string name="iptv_search_results">Search results for \"%1$s\"</string>
+    <string name="iptv_add_favorite">Long-press to add %1$s to favorites</string>
+    <string name="iptv_remove_favorite">Long-press to remove %1$s from favorites</string>
     <string name="iptv_no_results">No channels found</string>
     <string name="iptv_categories_all">All</string>
+    <string name="iptv_country_hint">Choose a country</string>
+    <string name="iptv_loading_countries">Loading countries…</string>
+    <string name="iptv_loading_channels">Loading channels…</string>
+    <string name="iptv_country_error">The country list could not be loaded.</string>
+    <string name="iptv_channels_error">Channels could not be loaded for this country.</string>
+    <string name="iptv_no_channels">No channels are listed for this country yet.</string>
+    <string name="iptv_no_player">No video player is available for this stream.</string>
+    <string name="iptv_playback_failed_title">This stream could not be played</string>
+    <string name="iptv_playback_failed_hint">Check the connection or try another channel.</string>
+    <string name="iptv_playback_retry">Try again</string>
+    <string name="iptv_favorite_added">Added to favorites</string>
+    <string name="iptv_favorite_removed">Removed from favorites</string>
+    <string name="iptv_home_favorites">Favorite channels · %1$d</string>
+    <string name="iptv_favorites_country_hint">Choose the country to browse saved channels.</string>
     <string name="show_get_app">Get %1$s</string>
     <string name="show_find_app">Find %1$s in the Appstore</string>
     <string name="show_other_apps">Other apps</string>
@@ -160,7 +159,7 @@
     <string name="sec_appearance">Appearance</string>
     <string name="sec_wallpaper">Wallpaper</string>
     <string name="sec_audio">Audio</string>
-    <string name="sec_shows">TV listings</string>
+    <string name="sec_shows">IPTV</string>
     <string name="sec_lock">App lock</string>
     <string name="sec_system">Home &amp; system</string>
     <string name="sec_adb">ADB tools</string>
@@ -211,12 +210,12 @@
     <string name="sound_toggle_label">Remote sounds</string>
     <string name="sound_hint">Short synthesised tones on focus and select. No audio files are shipped.</string>
 
-    <string name="shows_label">TV listings</string>
-    <string name="shows_toggle_on">TV listings: On</string>
-    <string name="shows_toggle_off">TV listings: Off</string>
-    <string name="shows_toggle_label">TV listings</string>
+    <string name="shows_label">IPTV channels</string>
+    <string name="shows_toggle_on">IPTV channels: On</string>
+    <string name="shows_toggle_off">IPTV channels: Off</string>
+    <string name="shows_toggle_label">IPTV channels</string>
     <string name="shows_country">Country: %1$s</string>
-    <string name="shows_hint">Broadcast TV and local streaming services of the selected country, plus global services (Netflix, Disney+, …) in the country\'s languages. From TVmaze, no account needed.</string>
+    <string name="shows_hint">Browse free-to-access public IPTV channel listings. Channel streams may be unavailable or restricted in some regions.</string>
 
     <string name="lock_label">Arrow-key code</string>
     <string name="lock_set_code">Set a code</string>
