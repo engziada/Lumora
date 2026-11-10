@@ -74,7 +74,7 @@ public class MainActivity extends AppCompatActivity
     /** Package to launch on arrival; sent by the assistant so locks and launch history apply. */
     public static final String EXTRA_LAUNCH_PACKAGE = "com.firestick.aura.launcher.extra.LAUNCH_PACKAGE";
     private static final int TAB_HOME = 0, TAB_SHOWS = 1, TAB_APPS = 2, TAB_STREAMING = 3;
-    private static final int GRID_COLUMNS = 7, IPTV_COLUMNS = 6, HOME_FALLBACK = 8;
+    private static final int GRID_COLUMNS = 7, IPTV_COLUMNS = 8, HOME_FALLBACK = 8;
     private static final long SHOWS_MAX_AGE_MS = 60L * 60L * 1000L;
     private static final long GEAR_DELAY_MS = 350L, GEAR_KEY_WINDOW_MS = 600L, GEAR_REOPEN_GUARD_MS = 900L;
     /** Bridge targets for a DOWN key that a tile of the ribbon or a grid cannot resolve. */
@@ -100,7 +100,7 @@ public class MainActivity extends AppCompatActivity
     private AutoCompleteTextView iptvCountry;
     private EditText iptvSearch;
     private View homePanel, gridPanel, showsPanel, gear, assistantButton;
-    private LinearLayout showsChips;
+    private TextView iptvFilter;
     private PopupWindow gearMenu;
     private final Map<String, List<AppModel>> rows = new HashMap<>();
     private final LongPress menuPress = new LongPress();
@@ -211,7 +211,8 @@ public class MainActivity extends AppCompatActivity
         streamingAdapter = new AppRowAdapter(preferences, this, AppRepository.ROW_STREAMING, AppRowAdapter.STYLE_TILE, null);
 
         showsPanel = findViewById(R.id.showsPanel);
-        showsChips = findViewById(R.id.showsChips);
+        iptvFilter = findViewById(R.id.iptvFilter);
+        iptvFilter.setOnClickListener(v -> openCategoryMenu());
         showsStatus = findViewById(R.id.txtShowsStatus);
         showsView = findViewById(R.id.recyclerShows);
         showsView.setLayoutManager(new GridLayoutManager(this, IPTV_COLUMNS));
@@ -232,8 +233,11 @@ public class MainActivity extends AppCompatActivity
             }
         });
         iptvCountry.setOnItemClickListener((parent, view, position, id) -> {
-            if (position >= 0 && position < iptvCountries.size()) {
-                selectIptvCountry(iptvCountries.get(position));
+            for (IptvCountry option : iptvCountries) {
+                if (countryLabel(option).equals(parent.getItemAtPosition(position))) {
+                    selectIptvCountry(option);
+                    break;
+                }
             }
         });
         iptvSearch = findViewById(R.id.iptvSearch);
@@ -928,7 +932,7 @@ public class MainActivity extends AppCompatActivity
             iptvGeneration++;
             countryChannels = new ArrayList<>();
             channelsLoaded = false;
-            showsChips.removeAllViews();
+            iptvFilter.setEnabled(false);
             iptvAdapter.setItems(null);
             setShowsStatus(R.string.shows_disabled);
             return;
@@ -963,9 +967,10 @@ public class MainActivity extends AppCompatActivity
                 return;
             }
             iptvCountries.clear();
+            iptvCountries.add(new IptvCountry("ALL", getString(R.string.iptv_all_countries), "", java.util.Collections.emptyList()));
             iptvCountries.addAll(countries);
             List<String> labels = new ArrayList<>(countries.size());
-            for (IptvCountry country : countries) labels.add(countryLabel(country));
+            for (IptvCountry country : iptvCountries) labels.add(countryLabel(country));
             ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
                     android.R.layout.simple_dropdown_item_1line, labels);
             iptvCountry.setAdapter(adapter);
@@ -994,10 +999,10 @@ public class MainActivity extends AppCompatActivity
     }
 
     private void selectIptvCountry(IptvCountry country) {
+        iptvCountry.setText(countryLabel(country), false);
         if (country.code.equals(selectedIptvCountry) && channelsLoaded) return;
         selectedIptvCountry = country.code;
         preferences.setShowsCountry(country.code);
-        iptvCountry.setText(countryLabel(country), false);
         loadCountryChannels(country.code);
     }
 
@@ -1005,7 +1010,7 @@ public class MainActivity extends AppCompatActivity
         int request = ++iptvGeneration;
         channelsLoaded = false;
         countryChannels = new ArrayList<>();
-        showsChips.removeAllViews();
+        iptvFilter.setEnabled(false);
         iptvAdapter.setItems(null);
         setShowsStatus(R.string.iptv_loading_channels);
         iptvRepository.loadChannels(countryCode, (channels, failed) -> {
@@ -1015,71 +1020,45 @@ public class MainActivity extends AppCompatActivity
                 return;
             }
             countryChannels = new ArrayList<>(channels.size());
+            java.util.Set<String> favorites = preferences.getIptvFavorites();
             for (IptvChannel channel : channels) {
-                countryChannels.add(copyChannel(channel, preferences.isIptvFavorite(iptvFavoriteKey(channel))));
+                countryChannels.add(copyChannel(channel, favorites.contains(iptvFavoriteKey(channel))));
             }
             channelsLoaded = true;
             iptvLoadedAt = System.currentTimeMillis();
-            buildIptvFilterChips();
+            iptvFilter.setEnabled(true);
             applyIptvFilters();
         });
     }
 
-    private void buildIptvFilterChips() {
-        showsChips.removeAllViews();
-        addIptvFilterChip("favorites", getString(R.string.iptv_favorites));
-        addIptvFilterChip("all", getString(R.string.iptv_categories_all));
-        List<String> categories = new ArrayList<>();
-        for (IptvChannel channel : countryChannels) {
-            for (String category : channel.genres) {
-                if (!category.trim().isEmpty() && !categories.contains(category)) categories.add(category);
-            }
-        }
-        categories.sort(String.CASE_INSENSITIVE_ORDER);
-        for (String category : categories) addIptvFilterChip("category:" + category, category);
-        updateIptvChipSelection();
+    private String categoryLabel(String key) {
+        if ("all".equals(key)) return getString(R.string.iptv_all_categories);
+        if ("favorites".equals(key)) return getString(R.string.iptv_favorites);
+        return key.substring("category:".length());
     }
 
-    private void addIptvFilterChip(String key, String label) {
-        TextView chip = new TextView(this);
-        chip.setText(label);
-        chip.setTag(key);
-        chip.setTextSize(10);
-        chip.setGravity(Gravity.CENTER);
-        chip.setSingleLine(true);
-        chip.setFocusable(true);
-        chip.setClickable(true);
-        chip.setPadding(dp(14), dp(6), dp(14), dp(6));
-        chip.setBackground(chipBackground());
-        chip.setTextColor(new ColorStateList(
-                new int[][]{{android.R.attr.state_selected}, {}},
-                new int[]{ContextCompat.getColor(this, R.color.nova_text_on_accent),
-                        ContextCompat.getColor(this, R.color.nova_text)}));
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        params.setMarginEnd(dp(8));
-        chip.setOnClickListener(view -> {
-            SoundManager.playClick(view, preferences);
-            selectedIptvCategory = key;
-            updateIptvChipSelection();
-            applyIptvFilters();
-            showsView.scrollToPosition(0);
-        });
-        chip.setOnFocusChangeListener((view, focused) -> {
-            if (focused) SoundManager.playFocus(view, preferences);
-        });
-        showsChips.addView(chip, params);
-    }
-
-    private void updateIptvChipSelection() {
-        for (int i = 0; i < showsChips.getChildCount(); i++) {
-            View chip = showsChips.getChildAt(i);
-            chip.setSelected(selectedIptvCategory.equals(chip.getTag()));
-        }
+    private void openCategoryMenu() {
+        java.util.Set<String> genres = new java.util.TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+        java.util.Collections.addAll(genres, "Movies", "Music", "18+");
+        for (IptvChannel channel : countryChannels) genres.addAll(channel.genres);
+        List<String> keys = new ArrayList<>();
+        keys.add("all");
+        keys.add("favorites");
+        for (String genre : genres) keys.add("category:" + genre);
+        List<GlassMenu.Item> items = new ArrayList<>();
+        for (String key : keys) items.add(new GlassMenu.Item(R.drawable.ic_tv, categoryLabel(key))
+                .checked(key.equals(selectedIptvCategory)));
+        GlassMenu.show(this, getString(R.string.iptv_all_categories), null, null, items, false,
+                (index, item) -> {
+                    selectedIptvCategory = keys.get(index);
+                    applyIptvFilters();
+                    showsView.scrollToPosition(0);
+                });
     }
 
     private void applyIptvFilters() {
         if (iptvAdapter == null || !channelsLoaded) return;
+        iptvFilter.setText(categoryLabel(selectedIptvCategory));
         List<IptvChannel> filtered = new ArrayList<>();
         for (IptvChannel channel : countryChannels) {
             if ("favorites".equals(selectedIptvCategory) && !channel.isFavorite) continue;
@@ -1141,6 +1120,7 @@ public class MainActivity extends AppCompatActivity
                     break;
                 }
             }
+            if (label == null && "ALL".equals(code)) label = getString(R.string.iptv_all_countries);
             if (label == null) {
                 String name = new java.util.Locale.Builder().setRegion(code).build().getDisplayCountry();
                 label = name.isEmpty() ? code : name + " (" + code + ")";

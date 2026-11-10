@@ -317,4 +317,6 @@
     <string name="qa_speed_running">Measuring internet download…</string>
     <string name="qa_speed_result">Internet download: %1$.1f Mbps</string>
     <string name="qa_speed_failed">Could not measure download speed. Check your connection and try again.</string>
+    <string name="iptv_all_categories">All categories</string>
+    <string name="iptv_all_countries">All countries</string>
 </resources>

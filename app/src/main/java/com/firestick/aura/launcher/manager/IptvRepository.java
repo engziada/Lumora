@@ -59,12 +59,13 @@ public final class IptvRepository {
 
     public void loadChannels(String countryCode, ChannelsCallback callback) {
         String code = countryCode == null ? "" : countryCode.toLowerCase(Locale.ROOT).replaceAll("[^a-z]", "");
-        if (code.length() != 2) {
+        boolean worldwide = "ALL".equals(countryCode);
+        if (!worldwide && code.length() != 2) {
             main.post(() -> callback.onLoaded(Collections.emptyList(), true));
             return;
         }
         io.execute(() -> {
-            String playlist = fetch(PLAYLISTS + "/" + code + ".m3u", "country-" + code + ".m3u");
+            String playlist = fetch(worldwide ? "https://iptv-org.github.io/iptv/index.m3u" : PLAYLISTS + "/" + code + ".m3u", "country-" + code + ".m3u");
             List<IptvChannel> channels = parsePlaylist(playlist, code.toUpperCase(Locale.ROOT));
             boolean failed = playlist == null;
             main.post(() -> callback.onLoaded(failed ? Collections.emptyList() : channels, failed));
@@ -134,6 +135,12 @@ public final class IptvRepository {
             List<String> categories = new ArrayList<>();
             for (String category : group.split(";")) {
                 String normalized = category.trim();
+                switch (normalized.toLowerCase(Locale.ROOT)) {
+                    case "movie": case "movies": case "cinema": normalized = "Movies"; break;
+                    case "music": normalized = "Music"; break;
+                    case "adult": case "xxx": case "nsfw": normalized = "18+"; break;
+                    default: break;
+                }
                 if (!normalized.isEmpty() && !categories.contains(normalized)) categories.add(normalized);
             }
             if (!name.isEmpty() && (line.startsWith("http://") || line.startsWith("https://"))) {
@@ -143,7 +150,8 @@ public final class IptvRepository {
                     long stableId = Long.parseLong(Http.sha1(identity).substring(0, 15), 16);
                     channels.add(new IptvChannel(stableId, name, logo,
                             categories.isEmpty() ? "" : categories.get(0), categories,
-                            countryCode, "", line, false, "", "", "", ""));
+                            ("ALL".equals(countryCode) && id.matches(".*\\.[A-Za-z]{2}")
+                                    ? id.substring(id.length() - 2).toUpperCase(Locale.ROOT) : countryCode), "", line, false, "", "", "", ""));
                 }
             }
             metadata = null;

@@ -114,7 +114,7 @@ public class IptvAdapter extends RecyclerView.Adapter<IptvAdapter.Holder> {
     @NonNull
     @Override
     public Holder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        return new Holder(LayoutInflater.from(parent.getContext()).inflate(R.layout.item_poster_card, parent, false));
+        return new Holder(LayoutInflater.from(parent.getContext()).inflate(R.layout.item_iptv_channel, parent, false));
     }
 
     @Override

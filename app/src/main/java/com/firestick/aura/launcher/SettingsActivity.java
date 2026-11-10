@@ -105,7 +105,7 @@ public class SettingsActivity extends AppCompatActivity {
             R.string.wall_cat_night_sky, R.string.wall_cat_desert};
 
     /** Countries offered for the TVmaze schedules (ISO 3166-1 alpha-2). */
-    private static final String[] COUNTRIES = {"US", "GB", "CA", "AU", "IE", "DE", "FR", "NL", "IN", "EG", "AE", "SA"};
+    private static final String[] COUNTRIES = {"ALL", "US", "GB", "CA", "AU", "IE", "DE", "FR", "NL", "IN", "EG", "AE", "SA"};
     private static final String SUPPORT_EMAIL = "support@zakaa-ai.net";
     private static final String WEBSITE = "https://zakaa-ai.net";
     private static final long DEVICE_REFRESH_MS = 1000L;
@@ -542,7 +542,8 @@ public class SettingsActivity extends AppCompatActivity {
         });
     }
 
-    private static String countryLabel(String code) {
+    private String countryLabel(String code) {
+        if ("ALL".equals(code)) return getString(R.string.iptv_all_countries);
         String name = new Locale.Builder().setRegion(code).build().getDisplayCountry();
         return name.isEmpty() ? code : name + " (" + code + ")";
     }
