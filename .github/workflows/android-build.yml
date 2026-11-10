@@ -148,7 +148,8 @@ jobs:
           cp "$APK_IN" "$APK"
           SHA=$(sha256sum "$APK" | cut -d' ' -f1)
           SIZE=$(stat -c%s "$APK")
-          NOTES=$(git log -1 --pretty=%s)
+          NOTES=$(awk '/^## / { if (seen++) exit; next } seen { print }' CHANGELOG.md)
+          if [ -z "$NOTES" ]; then NOTES=$(git log -1 --pretty=%s); fi
           URL="https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/$APK"
           # Beta/rc builds become pre-releases; the release channel follows only "--latest" ones.
           case "$NAME" in

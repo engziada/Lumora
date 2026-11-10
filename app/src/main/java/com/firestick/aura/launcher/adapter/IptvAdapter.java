@@ -72,7 +72,7 @@ public class IptvAdapter extends RecyclerView.Adapter<IptvAdapter.Holder> {
                 IptvChannel a = previous.get(oldPosition), b = fresh.get(newPosition);
                 return a.logo.equals(b.logo) && a.name.equals(b.name)
                         && a.url.equals(b.url) && a.category.equals(b.category)
-                        && a.genres.equals(b.genres) && a.currentProgram.equals(b.currentProgram)
+                        && a.genres.equals(b.genres) && a.streamUrls.equals(b.streamUrls) && a.currentProgram.equals(b.currentProgram)
                         && a.isFavorite == b.isFavorite;
             }
         });
@@ -97,7 +97,7 @@ public class IptvAdapter extends RecyclerView.Adapter<IptvAdapter.Holder> {
                     items.get(i).currentProgram,
                     items.get(i).nextProgram,
                     items.get(i).currentTime,
-                    items.get(i).nextTime
+                    items.get(i).nextTime, items.get(i).channelId, items.get(i).streamUrls, items.get(i).legacyIds
                 );
                 items.set(i, updated);
                 notifyItemChanged(i);
@@ -114,7 +114,12 @@ public class IptvAdapter extends RecyclerView.Adapter<IptvAdapter.Holder> {
     @NonNull
     @Override
     public Holder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        return new Holder(LayoutInflater.from(parent.getContext()).inflate(R.layout.item_iptv_channel, parent, false));
+        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_iptv_channel, parent, false);
+        if (parent instanceof RecyclerView && ((RecyclerView) parent).getLayoutManager() instanceof androidx.recyclerview.widget.LinearLayoutManager
+                && !(((RecyclerView) parent).getLayoutManager() instanceof androidx.recyclerview.widget.GridLayoutManager)) {
+            view.getLayoutParams().width = Math.round(130 * parent.getResources().getDisplayMetrics().density);
+        }
+        return new Holder(view);
     }
 
     @Override
@@ -149,11 +154,12 @@ public class IptvAdapter extends RecyclerView.Adapter<IptvAdapter.Holder> {
         }
 
         void bind(IptvChannel channel) {
+            itemView.setTag("channel:" + channel.id);
             title.setText(channel.name);
             availability.setTag(channel.url);
             availability.setText(R.string.iptv_checking);
             availability.setTextColor(ContextCompat.getColor(itemView.getContext(), R.color.nova_text_dim));
-            com.firestick.aura.launcher.manager.StreamAvailability.check(channel.url, reachable -> {
+            com.firestick.aura.launcher.manager.StreamAvailability.checkChannel(channel, reachable -> {
                 if (!channel.url.equals(availability.getTag())) return;
                 if (reachable == null) {
                     availability.setText(R.string.iptv_not_checked);
@@ -207,7 +213,7 @@ public class IptvAdapter extends RecyclerView.Adapter<IptvAdapter.Holder> {
 
             itemView.setOnFocusChangeListener((v, focused) -> {
                 focusRing.setVisibility(focused ? View.VISIBLE : View.INVISIBLE);
-                frame.animate().scaleX(focused ? 1.06f : 1f).scaleY(focused ? 1.06f : 1f).setDuration(140).start();
+                frame.animate().scaleX(focused && !preferences.reducedMotion() ? 1.06f : 1f).scaleY(focused && !preferences.reducedMotion() ? 1.06f : 1f).setDuration(preferences.reducedMotion() ? 0 : 140).start();
                 title.setSelected(focused);
                 if (focused) SoundManager.playFocus(v, preferences);
             });

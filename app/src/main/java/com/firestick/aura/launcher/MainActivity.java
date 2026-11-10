@@ -81,6 +81,14 @@ public class MainActivity extends AppCompatActivity
     private static final int[] NAV_TARGETS = {R.id.navHome, R.id.navShows, R.id.navApps,
             R.id.navMovies};
 
+    private com.firestick.aura.launcher.ui.HomeRows homeRows;
+    private Object lastHomeFocusTag;
+    private long appsLoadedAt;
+    private final Map<Integer, View> tabFocus = new HashMap<>();
+    private final List<IptvChannel> visibleChannels = new ArrayList<>();
+    private int onlineChecked, onlineTotal, onlinePending;
+    private final android.os.Handler filterHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private final Runnable updateOnline = this::applyIptvFilters;
     private RecyclerView homeView, gridView, showsView;
     private AppRowAdapter homeAdapter, appsAdapter, streamingAdapter;
     private IptvAdapter iptvAdapter;
@@ -93,7 +101,10 @@ public class MainActivity extends AppCompatActivity
     private AppPreview appPreview;
     private boolean previewResumed;
     private final ViewTreeObserver.OnGlobalFocusChangeListener previewFocusListener =
-            (oldFocus, newFocus) -> updateAppPreview();
+            (oldFocus, newFocus) -> {
+                if (newFocus != null && insideRecyclerView(newFocus)) tabFocus.put(MainActivity.this.currentTab, newFocus);
+                updateAppPreview();
+            };
     private TextView greeting, greetingSub, heroTitle, heroMeta, showsStatus, gridEmpty, moveHint,
             homeIptvFavorites;
     private ImageView assistantIcon;
@@ -101,9 +112,11 @@ public class MainActivity extends AppCompatActivity
     private EditText iptvSearch;
     private View homePanel, gridPanel, showsPanel, gear, assistantButton;
     private TextView iptvFilter;
+    private android.app.Dialog countryPicker;
     private PopupWindow gearMenu;
     private final Map<String, List<AppModel>> rows = new HashMap<>();
     private final LongPress menuPress = new LongPress();
+    private AppModel focusedHeroApp;
     private List<AppModel> homeApps = new ArrayList<>();
     private final List<IptvCountry> iptvCountries = new ArrayList<>();
     private List<IptvChannel> countryChannels = new ArrayList<>();
@@ -175,6 +188,8 @@ public class MainActivity extends AppCompatActivity
     }
 
     private void initViews() {
+        findViewById(R.id.updateBadge).setOnClickListener(view ->
+                com.firestick.aura.launcher.ui.UpdateFlow.checkNow(this, this::updateBadge));
         greeting = findViewById(R.id.txtGreeting);
         greetingSub = findViewById(R.id.txtGreetingSub);
         heroTitle = findViewById(R.id.txtHeroTitle);
@@ -189,6 +204,11 @@ public class MainActivity extends AppCompatActivity
         homeAdapter = new AppRowAdapter(preferences, this, AppRepository.ROW_HOME, AppRowAdapter.STYLE_WIDE,
                 (rowId, app) -> setHero(app));
         homeView.setAdapter(homeAdapter);
+        findViewById(R.id.homeScroll).setOnScrollChangeListener((view, x, y, oldX, oldY) -> updateAppPreview());
+        homeView.setNestedScrollingEnabled(false);
+        homeView.setItemAnimator(null);
+        homeRows = new com.firestick.aura.launcher.ui.HomeRows(this, preferences, this, this::playIptvChannel, this::setHero);
+        findViewById(R.id.globalSearchButton).setOnClickListener(view -> startActivity(new Intent(this, SearchActivity.class)));
         homeIptvFavorites = findViewById(R.id.btnHomeIptvFavorites);
         homeIptvFavorites.setOnClickListener(view -> {
             SoundManager.playClick(view, preferences);
@@ -196,7 +216,7 @@ public class MainActivity extends AppCompatActivity
         });
         homeIptvFavorites.setOnFocusChangeListener((view, focused) -> {
             view.animate().scaleX(focused ? 1.04f : 1f).scaleY(focused ? 1.04f : 1f)
-                    .setDuration(120).start();
+                    .setDuration(preferences.reducedMotion() ? 0 : 120).start();
             if (focused) SoundManager.playFocus(view, preferences);
         });
         updateHomeIptvFavorites();
@@ -220,6 +240,14 @@ public class MainActivity extends AppCompatActivity
         });
         iptvFilter = findViewById(R.id.iptvFilter);
         iptvFilter.setOnClickListener(v -> openCategoryMenu());
+        findViewById(R.id.iptvRefresh).setOnClickListener(v -> {
+            onlineScanGeneration++;
+            onlineScanRunning = false;
+            onlineResults.clear();
+            com.firestick.aura.launcher.manager.StreamAvailability.clear();
+            channelsLoaded = false;
+            loadCountryChannels(selectedIptvCountry == null ? preferences.getShowsCountry() : selectedIptvCountry, true);
+        });
         showsStatus = findViewById(R.id.txtShowsStatus);
         showsView = findViewById(R.id.recyclerShows);
         showsView.setLayoutManager(new GridLayoutManager(this, IPTV_COLUMNS));
@@ -227,32 +255,30 @@ public class MainActivity extends AppCompatActivity
         showsView.setAdapter(iptvAdapter);
         iptvCountry = findViewById(R.id.iptvCountry);
         iptvCountry.setThreshold(0);
-        iptvCountry.setOnClickListener(view -> {
-            iptvCountry.setText("", false);
-            iptvCountry.post(() -> iptvCountry.showDropDown());
-        });
-        iptvCountry.setOnDismissListener(() -> {
-            for (IptvCountry country : iptvCountries) {
-                if (country.code.equals(selectedIptvCountry)) {
-                    iptvCountry.setText(countryLabel(country), false);
-                    break;
-                }
+        iptvCountry.setOnKeyListener((view, code, event) -> {
+            if (code == KeyEvent.KEYCODE_DPAD_DOWN) {
+                if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) openCountryPicker();
+                return true;
             }
+            if (code != KeyEvent.KEYCODE_DPAD_RIGHT) return false;
+            if (event.getAction() == KeyEvent.ACTION_DOWN) iptvFilter.requestFocus();
+            return true;
         });
-        iptvCountry.setOnItemClickListener((parent, view, position, id) -> {
-            for (IptvCountry option : iptvCountries) {
-                if (countryLabel(option).equals(parent.getItemAtPosition(position))) {
-                    selectIptvCountry(option);
-                    break;
-                }
-            }
-        });
+        iptvCountry.setOnClickListener(view -> openCountryPicker());
         iptvSearch = findViewById(R.id.iptvSearch);
+        iptvSearch.setOnKeyListener((view, code, event) -> {
+            if (code != KeyEvent.KEYCODE_DPAD_LEFT || iptvSearch.getSelectionStart() > 0) return false;
+            if (event.getAction() == KeyEvent.ACTION_DOWN) findViewById(R.id.iptvOnlineOnly).requestFocus();
+            return true;
+        });
         iptvSearch.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
                 iptvSearchQuery = s == null ? "" : s.toString().trim().toLowerCase(java.util.Locale.ROOT);
-                applyIptvFilters();
+                onlineScanGeneration++;
+                onlineScanRunning = false;
+                filterHandler.removeCallbacks(updateOnline);
+                filterHandler.postDelayed(updateOnline, 200);
             }
             @Override public void afterTextChanged(Editable s) { }
         });
@@ -268,7 +294,7 @@ public class MainActivity extends AppCompatActivity
         });
         quick.setOnFocusChangeListener((view, focused) -> {
             findViewById(R.id.quickTooltip).setVisibility(focused ? View.VISIBLE : View.GONE);
-            view.animate().scaleX(focused ? 1.12f : 1f).scaleY(focused ? 1.12f : 1f).setDuration(120).start();
+            view.animate().scaleX(focused ? 1.12f : 1f).scaleY(focused ? 1.12f : 1f).setDuration(preferences.reducedMotion() ? 0 : 120).start();
             if (focused) SoundManager.playFocus(view, preferences);
         });
 
@@ -279,14 +305,14 @@ public class MainActivity extends AppCompatActivity
             openAssistant();
         });
         assistantButton.setOnFocusChangeListener((view, focused) -> {
-            view.animate().scaleX(focused ? 1.14f : 1f).scaleY(focused ? 1.14f : 1f).setDuration(140).start();
+            view.animate().scaleX(focused ? 1.14f : 1f).scaleY(focused ? 1.14f : 1f).setDuration(preferences.reducedMotion() ? 0 : 140).start();
             if (focused) SoundManager.playFocus(view, preferences);
         });
 
         gear = findViewById(R.id.btnGear);
         gear.setOnClickListener(view -> showGearMenu());
         gear.setOnFocusChangeListener((view, focused) -> {
-            view.animate().scaleX(focused ? 1.12f : 1f).scaleY(focused ? 1.12f : 1f).setDuration(120).start();
+            view.animate().scaleX(focused ? 1.12f : 1f).scaleY(focused ? 1.12f : 1f).setDuration(preferences.reducedMotion() ? 0 : 120).start();
             view.removeCallbacks(openGear);
             if (!focused) return;
             SoundManager.playFocus(view, preferences);
@@ -309,7 +335,7 @@ public class MainActivity extends AppCompatActivity
 
     private void bindNavFocus(View view) {
         view.setOnFocusChangeListener((source, focused) -> {
-            source.animate().scaleX(focused ? 1.04f : 1f).scaleY(focused ? 1.04f : 1f).setDuration(120).start();
+            source.animate().scaleX(focused ? 1.04f : 1f).scaleY(focused ? 1.04f : 1f).setDuration(preferences.reducedMotion() ? 0 : 120).start();
             if (focused) SoundManager.playFocus(source, preferences);
         });
     }
@@ -422,7 +448,7 @@ public class MainActivity extends AppCompatActivity
     /** True when {@code view} sits inside one of the three tile lists (not the channel chips). */
     private boolean insideRecyclerView(View view) {
         for (ViewParent parent = view.getParent(); parent != null; parent = parent.getParent()) {
-            if (parent == homeView || parent == gridView || parent == showsView) return true;
+            if (parent instanceof RecyclerView) return true;
         }
         return false;
     }
@@ -443,6 +469,8 @@ public class MainActivity extends AppCompatActivity
         updateNavSelection();
         if (tab == TAB_SHOWS) loadIptv();
         else applyRows();
+        View remembered = tabFocus.get(tab);
+        if (remembered != null) remembered.post(() -> { if (remembered.isShown()) remembered.requestFocus(); });
     }
 
     private void applyTabVisibility() {
@@ -511,6 +539,8 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override protected void onDestroy() {
+        filterHandler.removeCallbacksAndMessages(null);
+        onlineScanGeneration++;
         if (quickMenu != null) quickMenu.dismiss();
         if (appPreview != null) appPreview.destroy();
         homeView.getRootView().getViewTreeObserver().removeOnGlobalFocusChangeListener(previewFocusListener);
@@ -539,17 +569,25 @@ public class MainActivity extends AppCompatActivity
         previewResumed = true;
         // Keeps the quick-actions service on once WRITE_SECURE_SETTINGS has been granted over ADB.
         QuickAccess.ensureServiceEnabled(this);
+        boolean changed = appliedHomeRevision != preferences.getHomeRevision();
         appliedHomeRevision = preferences.getHomeRevision();
         applyTabVisibility();
-        // Always rebuild: packages removed for user 0 over ADB do not always broadcast.
-        refreshApps(true);
+        refreshApps(changed || SystemClock.elapsedRealtime() - appsLoadedAt > 60000);
+        homeRows.render(rows);
         updateGreeting();
         updateNavSelection();
         updateAssistantButton();
+        updateBadge();
         updateHomeIptvFavorites();
         if (currentTab == TAB_SHOWS) loadIptv();
         if (wallpapers != null) wallpapers.start();
         homeView.post(this::updateAppPreview);
+        homePanel.post(() -> {
+            if (lastHomeFocusTag != null && currentTab == TAB_HOME) {
+                View previous = homePanel.findViewWithTag(lastHomeFocusTag);
+                if (previous != null && previous.isShown()) previous.requestFocus();
+            }
+        });
     }
 
     @Override protected void onStop() {
@@ -561,6 +599,8 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override protected void onPause() {
+        if (countryPicker != null) countryPicker.dismiss();
+        if (currentTab == TAB_HOME && getCurrentFocus() != null) lastHomeFocusTag = getCurrentFocus().getTag();
         previewResumed = false;
         appPreview.hide();
         if (movingPackage != null) finishMove();
@@ -573,15 +613,17 @@ public class MainActivity extends AppCompatActivity
     @Override public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
         if (appPreview == null) return;
+        if (hasFocus) updateBadge();
         if (!hasFocus) appPreview.hide();
         else homeView.post(this::updateAppPreview);
     }
 
     private void updateAppPreview() {
         if (appPreview == null) return;
-        AppModel focusedHomeApp = homeAdapter.getFocusedApp();
-        if (!previewResumed || !hasWindowFocus() || currentTab != TAB_HOME || !homeView.hasFocus()
-                || !preferences.isAppPreviewEnabled() || movingPackage != null || focusedHomeApp == null) {
+        AppModel focusedHomeApp = focusedHeroApp;
+        if (!previewResumed || !hasWindowFocus() || currentTab != TAB_HOME || !homePanel.hasFocus()
+                || !findViewById(R.id.homeHeroArea).getGlobalVisibleRect(new android.graphics.Rect())
+                || preferences.reducedMotion() || !preferences.isAppPreviewEnabled() || movingPackage != null || focusedHomeApp == null) {
             appPreview.hide();
             return;
         }
@@ -662,6 +704,7 @@ public class MainActivity extends AppCompatActivity
         int request = ++refreshGeneration;
         repository.loadCategoriesAsync(categories -> {
             if (request != refreshGeneration || isFinishing() || isDestroyed()) return;
+            appsLoadedAt = SystemClock.elapsedRealtime();
             rows.clear();
             for (AppCategory category : categories) rows.put(category.getId(), new ArrayList<>(category.getApps()));
             applyRows();
@@ -682,6 +725,7 @@ public class MainActivity extends AppCompatActivity
             homeApps = favorites;
         }
         homeAdapter.setApps(homeApps);
+        homeRows.render(rows);
         appsAdapter.setApps(apps);
         streamingAdapter.setApps(streaming);
 
@@ -706,9 +750,16 @@ public class MainActivity extends AppCompatActivity
     }
 
     private void setHero(AppModel app) {
+        focusedHeroApp = app;
         heroTitle.setText(app.getLabel());
         heroMeta.setText(homeIsFallback ? R.string.hero_empty_home : R.string.hero_hint);
         updateAppPreview();
+    }
+
+    private void updateBadge() {
+        com.firestick.aura.launcher.update.UpdateManager manager = new com.firestick.aura.launcher.update.UpdateManager(this);
+        findViewById(R.id.updateBadge).setVisibility(
+                manager.latestVersionCode() > manager.installedVersionCode() ? View.VISIBLE : View.GONE);
     }
 
     private void updateGreeting() {
@@ -802,7 +853,7 @@ public class MainActivity extends AppCompatActivity
         boolean streaming = rowContains(AppRepository.ROW_STREAMING, pkg);
         boolean locked = preferences.isLocked(pkg);
         // The fallback Home row shows suggestions, not a saved order, so it cannot be rearranged.
-        String moveRow = AppRepository.ROW_HOME.equals(rowId) && homeIsFallback ? null : rowId;
+        String moveRow = (AppRepository.ROW_HOME.equals(rowId) && homeIsFallback) || "recent".equals(rowId) ? null : rowId;
 
         List<GlassMenu.Item> items = new ArrayList<>();
         List<Runnable> actions = new ArrayList<>();
@@ -831,6 +882,15 @@ public class MainActivity extends AppCompatActivity
         actions.add(() -> {
             preferences.hideApp(pkg);
             refreshApps(true);
+        });
+        items.add(new GlassMenu.Item(R.drawable.ic_act_info, getString(R.string.action_storage)));
+        actions.add(() -> openAppInfo(pkg));
+        items.add(new GlassMenu.Item(R.drawable.ic_act_info, getString(R.string.action_notifications)));
+        actions.add(() -> {
+            try {
+                startActivity(new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                        .putExtra(Settings.EXTRA_APP_PACKAGE, pkg));
+            } catch (ActivityNotFoundException | SecurityException unavailable) { openAppInfo(pkg); }
         });
         items.add(new GlassMenu.Item(R.drawable.ic_act_info, getString(R.string.action_info)));
         actions.add(() -> openAppInfo(pkg));
@@ -984,16 +1044,16 @@ public class MainActivity extends AppCompatActivity
             iptvCountries.clear();
             iptvCountries.add(new IptvCountry("ALL", getString(R.string.iptv_all_countries), "", java.util.Collections.emptyList()));
             iptvCountries.addAll(countries);
-            List<String> labels = new ArrayList<>(countries.size());
-            for (IptvCountry country : iptvCountries) labels.add(countryLabel(country));
-            ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
-                    android.R.layout.simple_dropdown_item_1line, labels);
-            iptvCountry.setAdapter(adapter);
-            iptvCountry.setDropDownBackgroundDrawable(new ColorDrawable(
-                    ContextCompat.getColor(this, R.color.nova_card_hi)));
             iptvCountriesLoaded = true;
             selectInitialIptvCountry();
         });
+    }
+
+    private void openCountryPicker() {
+        if (iptvCountries.isEmpty()) { loadIptv(); return; }
+        if (countryPicker != null && countryPicker.isShowing()) return;
+        countryPicker = com.firestick.aura.launcher.ui.CountryPicker.show(this,
+                new ArrayList<>(iptvCountries), selectedIptvCountry, this::selectIptvCountry);
     }
 
     private void selectInitialIptvCountry() {
@@ -1021,7 +1081,9 @@ public class MainActivity extends AppCompatActivity
         loadCountryChannels(country.code);
     }
 
-    private void loadCountryChannels(String countryCode) {
+    private void loadCountryChannels(String countryCode) { loadCountryChannels(countryCode, false); }
+
+    private void loadCountryChannels(String countryCode, boolean refresh) {
         onlineScanGeneration++;
         onlineScanRunning = false;
         int request = ++iptvGeneration;
@@ -1030,7 +1092,7 @@ public class MainActivity extends AppCompatActivity
         iptvFilter.setEnabled(false);
         iptvAdapter.setItems(null);
         setShowsStatus(R.string.iptv_loading_channels);
-        iptvRepository.loadChannels(countryCode, (channels, failed) -> {
+        IptvRepository.ChannelsCallback loaded = (channels, failed) -> {
             if (request != iptvGeneration || isFinishing() || isDestroyed()) return;
             if (failed) {
                 setShowsStatus(R.string.iptv_channels_error);
@@ -1039,13 +1101,29 @@ public class MainActivity extends AppCompatActivity
             countryChannels = new ArrayList<>(channels.size());
             java.util.Set<String> favorites = preferences.getIptvFavorites();
             for (IptvChannel channel : channels) {
-                countryChannels.add(copyChannel(channel, favorites.contains(iptvFavoriteKey(channel))));
+                String worldwideKey = "ALL:" + channel.id;
+                boolean favorite = favorites.contains(iptvFavoriteKey(channel)) || favorites.contains(worldwideKey);
+                if (!worldwideKey.equals(iptvFavoriteKey(channel)) && favorites.contains(worldwideKey))
+                    preferences.setIptvFavorite(worldwideKey, false);
+                for (Long old : channel.legacyIds) {
+                    for (String prefix : new String[]{channel.country, "ALL"}) {
+                        String legacy = prefix + ":" + old;
+                        if (favorites.contains(legacy)) {
+                            favorite = true;
+                            preferences.setIptvFavorite(legacy, false);
+                        }
+                    }
+                }
+                if (favorite) preferences.setIptvFavorite(iptvFavoriteKey(channel), true);
+                countryChannels.add(copyChannel(channel, favorite));
             }
             channelsLoaded = true;
             iptvLoadedAt = System.currentTimeMillis();
             iptvFilter.setEnabled(true);
             applyIptvFilters();
-        });
+        };
+        if (refresh) iptvRepository.refreshChannels(countryCode, loaded);
+        else iptvRepository.loadChannels(countryCode, loaded);
     }
 
     private String categoryLabel(String key) {
@@ -1071,14 +1149,17 @@ public class MainActivity extends AppCompatActivity
         List<String> keys = new ArrayList<>();
         keys.add("all");
         keys.add("favorites");
-        genres.add("18+");
+        genres.remove("18+");
         for (String genre : genres) if (!genre.trim().isEmpty()) keys.add("category:" + genre);
+        keys.add("category:18+");
         List<GlassMenu.Item> items = new ArrayList<>();
         for (String key : keys) items.add(new GlassMenu.Item(R.drawable.ic_tv, categoryLabel(key) + " · " + categoryCount(key))
                 .checked(key.equals(selectedIptvCategory)));
         GlassMenu.show(this, getString(R.string.iptv_all_categories), null, null, items, false,
                 (index, item) -> {
                     Runnable select = () -> {
+                        onlineScanGeneration++;
+                        onlineScanRunning = false;
                         selectedIptvCategory = keys.get(index);
                         applyIptvFilters();
                         showsView.scrollToPosition(0);
@@ -1098,17 +1179,17 @@ public class MainActivity extends AppCompatActivity
 
     private void scanOnline(List<IptvChannel> candidates, int offset, int generation) {
         if (generation != onlineScanGeneration || !onlineOnly || isDestroyed()) return;
-        if (offset >= candidates.size()) {
-            onlineScanRunning = false;
-            applyIptvFilters();
-            return;
-        }
-        IptvChannel channel = candidates.get(offset);
-        com.firestick.aura.launcher.manager.StreamAvailability.check(channel.url, reachable -> {
+        if (offset >= candidates.size()) return;
+        onlinePending++;
+        com.firestick.aura.launcher.manager.StreamAvailability.checkChannel(candidates.get(offset), reachable -> {
             if (generation != onlineScanGeneration || isDestroyed()) return;
-            onlineResults.put(channel.url, Boolean.TRUE.equals(reachable));
-            applyIptvFilters();
-            showsView.post(() -> scanOnline(candidates, offset + 1, generation));
+            onlineResults.put(candidates.get(offset).url, Boolean.TRUE.equals(reachable));
+            onlineChecked++;
+            onlinePending--;
+            if (offset + 3 < candidates.size()) scanOnline(candidates, offset + 3, generation);
+            if (onlinePending == 0) onlineScanRunning = false;
+            filterHandler.removeCallbacks(updateOnline);
+            filterHandler.postDelayed(updateOnline, 150);
         });
     }
 
@@ -1130,8 +1211,17 @@ public class MainActivity extends AppCompatActivity
         if (onlineOnly && !onlineScanRunning && !unchecked.isEmpty()) {
             onlineScanRunning = true;
             int generation = onlineScanGeneration;
-            showsView.post(() -> scanOnline(unchecked, 0, generation));
+            onlineChecked = 0;
+            onlineTotal = unchecked.size();
+            onlinePending = 0;
+            showsView.post(() -> {
+                for (int lane = 0; lane < Math.min(3, unchecked.size()); lane++) scanOnline(unchecked, lane, generation);
+            });
         }
+        visibleChannels.clear();
+        visibleChannels.addAll(filtered);
+        ((TextView) findViewById(R.id.onlineProgress)).setText(onlineOnly
+                ? getString(R.string.online_progress, onlineChecked, onlineTotal, filtered.size()) : "");
         iptvAdapter.setItems(filtered);
         if (filtered.isEmpty()) {
             int message = countryChannels.isEmpty() ? R.string.iptv_no_channels : R.string.iptv_no_results;
@@ -1202,18 +1292,17 @@ public class MainActivity extends AppCompatActivity
     }
 
     private IptvChannel copyChannel(IptvChannel channel, boolean favorite) {
-        return new IptvChannel(channel.id, channel.name, channel.logo, channel.category, channel.genres,
-                channel.country, channel.language, channel.url, favorite, channel.currentProgram,
-                channel.nextProgram, channel.currentTime, channel.nextTime);
+        return channel.withFavorite(favorite);
     }
 
     private void playIptvChannel(IptvChannel channel) {
         if (channel.url == null || channel.url.isEmpty()) return;
-        Intent play = new Intent(this, IptvPlayerActivity.class);
-        play.putExtra(IptvPlayerActivity.EXTRA_CHANNEL_NAME, channel.name);
-        play.putExtra(IptvPlayerActivity.EXTRA_COUNTRY, channel.country);
-        play.putExtra(IptvPlayerActivity.EXTRA_STREAM_URL, channel.url);
-        startActivity(play);
+        List<IptvChannel> queue = visibleChannels.contains(channel) ? new ArrayList<>(visibleChannels)
+                : preferences.recentChannels();
+        Runnable play = () -> com.firestick.aura.launcher.manager.PlaybackSession.open(this, queue, channel);
+        if (channel.isAdult() && !adultUnlocked)
+            LockPad.verify(this, preferences, getString(R.string.iptv_adults_unlock), play::run);
+        else play.run();
     }
 
     private void setShowsStatus(int textRes) {

@@ -14,6 +14,7 @@
         android:background="#000000" />
 
     <LinearLayout
+        android:id="@+id/iptvPlayerHeader"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="top|start"
@@ -41,6 +42,14 @@
             android:layout_marginTop="3dp"
             android:textColor="@color/nova_text_dim"
             android:textSize="13sp" />
+<LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal">
+<Button android:id="@+id/playerPrevious" android:layout_width="wrap_content" android:layout_height="40dp" android:text="@string/player_previous" android:textSize="11sp" android:textAllCaps="false" android:background="@drawable/bg_option_selector" android:layout_marginEnd="6dp" android:textColor="@color/nova_text" />
+<Button android:id="@+id/playerNext" android:layout_width="wrap_content" android:layout_height="40dp" android:text="@string/player_next" android:textSize="11sp" android:textAllCaps="false" android:background="@drawable/bg_option_selector" android:layout_marginEnd="6dp" android:textColor="@color/nova_text" />
+<Button android:id="@+id/playerAudio" android:layout_width="wrap_content" android:layout_height="40dp" android:text="@string/player_audio" android:textSize="11sp" android:textAllCaps="false" android:background="@drawable/bg_option_selector" android:layout_marginEnd="6dp" android:textColor="@color/nova_text" />
+<Button android:id="@+id/playerSubtitles" android:layout_width="wrap_content" android:layout_height="40dp" android:text="@string/player_subtitles" android:textSize="11sp" android:textAllCaps="false" android:background="@drawable/bg_option_selector" android:layout_marginEnd="6dp" android:textColor="@color/nova_text" />
+<Button android:id="@+id/playerPicture" android:layout_width="wrap_content" android:layout_height="40dp" android:text="@string/player_picture" android:textSize="11sp" android:textAllCaps="false" android:background="@drawable/bg_option_selector" android:layout_marginEnd="6dp" android:textColor="@color/nova_text" />
+<Button android:id="@+id/playerGuide" android:layout_width="wrap_content" android:layout_height="40dp" android:text="@string/player_guide" android:textSize="11sp" android:textAllCaps="false" android:background="@drawable/bg_option_selector" android:layout_marginEnd="6dp" android:textColor="@color/nova_text" />
+</LinearLayout>
     </LinearLayout>
 
     <LinearLayout

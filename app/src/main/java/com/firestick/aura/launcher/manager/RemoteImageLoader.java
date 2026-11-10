@@ -16,8 +16,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * Loads poster images: memory cache, then disk cache, then network. Bitmaps are decoded as RGB_565
- * and sampled down to the requested width, because posters are opaque and shown at about 216 px.
+ * Loads poster images: memory cache, then disk cache, then network. Bitmaps preserve transparency
+ * and are sampled down to the requested width, because posters are opaque and shown at about 216 px.
  */
 public final class RemoteImageLoader {
     public interface Callback {
@@ -105,6 +105,8 @@ public final class RemoteImageLoader {
         return data;
     }
 
+    public void trimMemory() { memory.evictAll(); }
+
     private static Bitmap decode(byte[] data, int targetWidthPx) {
         BitmapFactory.Options bounds = new BitmapFactory.Options();
         bounds.inJustDecodeBounds = true;
@@ -114,7 +116,7 @@ public final class RemoteImageLoader {
         while (bounds.outWidth / (sample * 2) >= targetWidthPx) sample *= 2;
         BitmapFactory.Options options = new BitmapFactory.Options();
         options.inSampleSize = sample;
-        options.inPreferredConfig = Bitmap.Config.RGB_565;
+        options.inPreferredConfig = Bitmap.Config.ARGB_8888;
         return BitmapFactory.decodeByteArray(data, 0, data.length, options);
     }
 

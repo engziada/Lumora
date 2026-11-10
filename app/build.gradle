@@ -18,7 +18,7 @@ android {
         // Every CI build is newer than the last, which the in-app updater relies on.
         // The 1100 base also advances beyond devices reporting legacy build 1085.
         versionCode ciRunNumber ? 1100 + ciRunNumber.toInteger() : 10
-        versionName '5.4.2'
+        versionName '5.5.0'
         // Shown in Settings > About.
         resValue 'string', 'build_date', new java.text.SimpleDateFormat('yyyy-MM-dd').format(new Date())
     }

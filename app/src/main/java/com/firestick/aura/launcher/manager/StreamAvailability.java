@@ -19,7 +19,7 @@ public final class StreamAvailability {
 
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     private static final ThreadPoolExecutor IO = new ThreadPoolExecutor(
-            3, 3, 30, TimeUnit.SECONDS, new ArrayBlockingQueue<>(24));
+            3, 3, 30, TimeUnit.SECONDS, new ArrayBlockingQueue<>(64));
     private static final LinkedHashMap<String, Result> CACHE = new LinkedHashMap<>();
     private static final long TTL_MS = 5 * 60 * 1000L;
 
@@ -45,6 +45,21 @@ public final class StreamAvailability {
         } catch (RejectedExecutionException full) {
             MAIN.post(() -> callback.onChecked(null));
         }
+    }
+
+    public static void clear() { synchronized (CACHE) { CACHE.clear(); } }
+
+    public static void checkChannel(com.firestick.aura.launcher.model.IptvChannel channel, Callback callback) {
+        checkFeed(channel.streamUrls, 0, callback);
+    }
+
+    private static void checkFeed(java.util.List<String> urls, int index, Callback callback) {
+        if (index >= urls.size()) { callback.onChecked(false); return; }
+        check(urls.get(index), reachable -> {
+            if (Boolean.TRUE.equals(reachable)) callback.onChecked(true);
+            else if (reachable == null) callback.onChecked(null);
+            else checkFeed(urls, index + 1, callback);
+        });
     }
 
     private static boolean probe(String url) {

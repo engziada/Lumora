@@ -3,6 +3,9 @@ package com.firestick.aura.launcher.model;
 import java.util.List;
 
 public class IptvChannel {
+    public final String channelId;
+    public final List<String> streamUrls;
+    public final List<Long> legacyIds;
     public final long id;
     public final String name;
     public final String logo;
@@ -20,6 +23,18 @@ public class IptvChannel {
     public IptvChannel(long id, String name, String logo, String category, List<String> genres,
                        String country, String language, String url, boolean isFavorite,
                        String currentProgram, String nextProgram, String currentTime, String nextTime) {
+        this(id, name, logo, category, genres, country, language, url, isFavorite,
+                currentProgram, nextProgram, currentTime, nextTime, "",
+                java.util.Collections.singletonList(url), java.util.Collections.emptyList());
+    }
+
+    public IptvChannel(long id, String name, String logo, String category, List<String> genres,
+            String country, String language, String url, boolean isFavorite, String currentProgram,
+            String nextProgram, String currentTime, String nextTime, String channelId,
+            List<String> streamUrls, List<Long> legacyIds) {
+        this.channelId = channelId;
+        this.streamUrls = java.util.Collections.unmodifiableList(new java.util.ArrayList<>(streamUrls));
+        this.legacyIds = java.util.Collections.unmodifiableList(new java.util.ArrayList<>(legacyIds));
         this.id = id;
         this.name = name;
         this.logo = logo;
@@ -33,5 +48,37 @@ public class IptvChannel {
         this.nextProgram = nextProgram;
         this.currentTime = currentTime;
         this.nextTime = nextTime;
+    }
+    public IptvChannel withFavorite(boolean favorite) {
+        return new IptvChannel(id, name, logo, category, genres, country, language, url, favorite,
+                currentProgram, nextProgram, currentTime, nextTime, channelId, streamUrls, legacyIds);
+    }
+
+    public boolean isAdult() { return genres.contains("18+"); }
+
+    public org.json.JSONObject toJson() {
+        org.json.JSONObject json = new org.json.JSONObject();
+        try {
+            json.put("id", id).put("name", name).put("logo", logo).put("country", country)
+                .put("category", category).put("genres", new org.json.JSONArray(genres))
+                .put("channelId", channelId).put("urls", new org.json.JSONArray(streamUrls));
+        } catch (org.json.JSONException error) { throw new IllegalStateException(error); }
+        return json;
+    }
+
+    public static IptvChannel fromJson(org.json.JSONObject json) throws org.json.JSONException {
+        java.util.ArrayList<String> urls = new java.util.ArrayList<>();
+        org.json.JSONArray rawUrls = json.getJSONArray("urls");
+        for (int i = 0; i < rawUrls.length() && i < 30; i++) {
+            String url = rawUrls.getString(i);
+            if (url.startsWith("http://") || url.startsWith("https://")) urls.add(url);
+        }
+        if (urls.isEmpty()) throw new org.json.JSONException("No stream URLs");
+        java.util.ArrayList<String> genres = new java.util.ArrayList<>();
+        org.json.JSONArray rawGenres = json.optJSONArray("genres");
+        if (rawGenres != null) for (int i = 0; i < rawGenres.length(); i++) genres.add(rawGenres.getString(i));
+        return new IptvChannel(json.getLong("id"), json.getString("name"), json.optString("logo"),
+                json.optString("category"), genres, json.optString("country"), "", urls.get(0), false,
+                "", "", "", "", json.optString("channelId"), urls, java.util.Collections.emptyList());
     }
 }

@@ -370,6 +370,42 @@ public class PreferenceManager {
         prefs.edit().putBoolean(KEY_HOME_REDIRECT, enabled).apply();
     }
 
+    public List<com.firestick.aura.launcher.model.IptvChannel> recentChannels() {
+        List<com.firestick.aura.launcher.model.IptvChannel> result = new ArrayList<>();
+        try {
+            org.json.JSONArray rows = new org.json.JSONArray(prefs.getString("pref_recent_channels", "[]"));
+            for (int i = 0; i < rows.length() && i < 12; i++)
+                result.add(com.firestick.aura.launcher.model.IptvChannel.fromJson(rows.getJSONObject(i)));
+        } catch (org.json.JSONException ignored) { }
+        return result;
+    }
+
+    public void recordChannel(com.firestick.aura.launcher.model.IptvChannel channel) {
+        List<com.firestick.aura.launcher.model.IptvChannel> recent = recentChannels();
+        recent.removeIf(item -> item.id == channel.id);
+        recent.add(0, channel);
+        org.json.JSONArray rows = new org.json.JSONArray();
+        for (int i = 0; i < Math.min(12, recent.size()); i++) rows.put(recent.get(i).toJson());
+        prefs.edit().putString("pref_recent_channels", rows.toString()).apply();
+    }
+
+    public List<String> homeSections() {
+        return split(prefs.getString("pref_home_sections", "favorites,recent,iptv"));
+    }
+
+    public void setHomeSections(List<String> sections) {
+        applyHomeChange(prefs.edit().putString("pref_home_sections", String.join(",", sections)));
+    }
+
+    public String tileSize() { return prefs.getString("pref_tile_size", "compact"); }
+    public void setTileSize(String size) { applyHomeChange(prefs.edit().putString("pref_tile_size", size)); }
+    public boolean reducedMotion() { return prefs.getBoolean("pref_reduced_motion", false); }
+    public void setReducedMotion(boolean reduced) {
+        applyHomeChange(prefs.edit().putBoolean("pref_reduced_motion", reduced));
+    }
+
+    public SharedPreferences storage() { return prefs; }
+
     private static List<String> split(String raw) {
         if (raw == null || raw.isEmpty()) return new ArrayList<>();
         return new ArrayList<>(Arrays.asList(raw.split(",")));

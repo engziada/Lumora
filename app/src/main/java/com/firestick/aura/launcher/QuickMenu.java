@@ -127,7 +127,7 @@ final class QuickMenu {
         View shell = dialog.findViewById(R.id.quickShell);
         shell.setAlpha(0f);
         shell.setTranslationX(dp(28));
-        shell.animate().alpha(1f).translationX(0f).setDuration(220).start();
+        shell.animate().alpha(1f).translationX(0f).setDuration(preferences.reducedMotion() ? 0 : 220).start();
         first.requestFocus();
     }
 
@@ -139,7 +139,7 @@ final class QuickMenu {
         image.setImageTintList(ColorStateList.valueOf(accent));
         ((TextView) tile.findViewById(R.id.quickLabel)).setText(label);
         tile.setOnFocusChangeListener((v, focused) -> {
-            v.animate().scaleX(focused ? 1.02f : 1f).scaleY(focused ? 1.02f : 1f).setDuration(120).start();
+            v.animate().scaleX(focused ? 1.02f : 1f).scaleY(focused ? 1.02f : 1f).setDuration(preferences.reducedMotion() ? 0 : 120).start();
             if (focused) {
                 SoundManager.playFocus(v, preferences);
                 if (selected != section || detail.getChildCount() == 0) showDetail(section, true);
@@ -286,7 +286,7 @@ final class QuickMenu {
         }
         detail.setAlpha(animate ? 0f : 1f);
         detail.setTranslationX(animate ? dp(16) : 0);
-        if (animate) detail.animate().alpha(1f).translationX(0f).setDuration(180).start();
+        if (animate) detail.animate().alpha(1f).translationX(0f).setDuration(preferences.reducedMotion() ? 0 : 180).start();
     }
 
     @SuppressWarnings("deprecation")

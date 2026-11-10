@@ -112,6 +112,10 @@ public final class UpdateFlow {
         Dialog dialog = Glass.info(activity, activity.getString(R.string.update_downloading_title),
                 activity.getString(R.string.update_downloading, 0), null, null, null);
         TextView text = dialog.findViewById(R.id.infoMessage);
+        android.widget.ProgressBar progress = new android.widget.ProgressBar(activity, null,
+                android.R.attr.progressBarStyleHorizontal);
+        progress.setMax(100);
+        ((android.view.ViewGroup) text.getParent()).addView(progress);
         View close = dialog.findViewById(R.id.btnInfoClose);
         close.setOnClickListener(v -> {
             cancelled.set(true);
@@ -123,7 +127,13 @@ public final class UpdateFlow {
             int error = UpdateManager.VERIFIED;
             try {
                 apk = manager.download(info, (done, total) -> MAIN.post(() ->
-                        text.setText(activity.getString(R.string.update_downloading, (int) (done * 100 / Math.max(1, total))))), cancelled);
+                        {
+                            if (!dialog.isShowing() || !alive(activity)) return;
+                            int percent = (int) (done * 100 / Math.max(1, total));
+                            progress.setProgress(percent);
+                            text.setText(activity.getString(R.string.update_download_detail, percent,
+                                    done / (1024f * 1024f), total / (1024f * 1024f)));
+                        }), cancelled);
             } catch (UpdateManager.UpdateException exception) {
                 error = exception.code;
             }

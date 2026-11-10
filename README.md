@@ -1,19 +1,27 @@
-# Lumora — v5.4.0
+# Lumora — v5.5.0
 
 ![Android CI](https://github.com/engziada/Lumora/actions/workflows/android-build.yml/badge.svg)
 ![License: MIT](https://img.shields.io/badge/license-MIT-E3A15A)
 ![Platform](https://img.shields.io/badge/platform-Android%20TV%20%2F%20Fire%20OS-8C5A34)
 
 *Your world on a brighter screen.* A lightweight, ad-free home screen for Fire TV and Android TV.
-Java only, no analytics SDK and no web views. The application id stays `com.firestick.aura.launcher`.
+Java application with no analytics SDK. The application id stays `com.firestick.aura.launcher`.
 
 ## Features
 
-- **Home**: one strip of wide glass cards at the bottom of the screen over a live, warm-graded
-  wallpaper; the focused app is shown as a large title.
-- **Shows**: today's broadcast TV and streaming releases for a chosen country, as posters with
-  channel chips. *Watch on <app>* opens the app on a search for the title; missing apps open their
-  Amazon Appstore page.
+- **Home**: reorder or hide Favorites, Recently used, IPTV, Apps and Streaming rows in
+  Settings → Appearance → Customize Home rows. Choose compact or comfortable tile containers.
+- **Global search**: the header search button finds installed apps, public IPTV channels and settings.
+- **IPTV**: country/category/name filters, favorites, Online-only checks with progress and refresh,
+  an alphabetical country jump column, and one card per channel with automatic alternate-feed fallback. Adults remains locked and is
+  listed last. Player controls include channel switching, audio, subtitles, picture size and an
+  on-demand current/next guide where public XMLTV sources are available.
+- **Recently watched**: successful live playback appears on Home with Continue live.
+- **Profiles and backup**: save/load appearance profiles and enable reduced motion in Appearance.
+  Export/restore layout, favorites and launcher settings in Tools. Backups preserve the existing
+  lock configuration. A saved key is required before export/restore when one is configured.
+  Devices without a document picker save backups under the app's external-files/backups directory.
+  Restore can also select JSON backups received through Tools → Receive files from phone.
 - **Apps** / **Streaming**: full grids. Any app can be moved between the two or added to Home.
 - **Quick**: Recent, Clear memory, Screenshot, Restart, Wi-Fi.
 - **Gear** (next to the clock): Lumora settings or Fire TV settings.
@@ -280,3 +288,16 @@ Settings, and added animated focus-driven detail panes. See [refinement notes](d
 Added Recent app icons, optional Wi-Fi-name permission access, an explicit bounded internet
 download test, and separate D-pad navigation for menu/content panes. See
 [validation notes](docs/RECENT_WIFI_NAVIGATION_2026-11-09.md).
+
+## Enhancement verification
+
+Run `gradlew.bat testDebugUnitTest lintDebug assembleDebug assembleDebugAndroidTest`.
+On an Android TV emulator, install the two debug APKs and run
+`adb shell am instrument -w -e enhancements true com.firestick.aura.launcher.localtest.test/com.firestick.aura.launcher.PreviewInstrumentation`.
+The device suite checks the filter focus path, the existing Adults key, online progress,
+real local-video fallback, successful watch history, player controls, search and Settings entry points.
+Online indicators measure endpoint reachability. Stream decoding and guide coverage depend on the provider.
+
+Guide discovery follows the [iptv-org guide catalog](https://github.com/iptv-org/api#guides).
+
+During full-screen IPTV playback, remote Up/Down switches next/previous channels. OK opens player controls; Back hides them before exiting playback. Channel Up/Down buttons remain available while controls are visible.

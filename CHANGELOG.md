@@ -1,5 +1,17 @@
 # Changelog
 
+## 5.5.0 — Home, search and IPTV playback
+
+- Global app/channel/settings search and configurable Home rows.
+- Recently watched IPTV with Continue live and automatic alternate-feed fallback.
+- Parallel Online-only checks, progress and refresh.
+- Country picker letter index and full-screen remote Up/Down channel switching.
+- Remote channel switching, audio/subtitle tracks, picture size and available XMLTV guides.
+- Adults keeps the existing key and moves to the end of categories.
+- Appearance profiles, reduced motion, configurable tile containers and launcher backup/restore.
+- App storage/notification shortcuts, cached app lists, focus restoration and clearer update status.
+
+
 ## 5.4.1 — Focus effect, assistant user guide
 
 ### Changed

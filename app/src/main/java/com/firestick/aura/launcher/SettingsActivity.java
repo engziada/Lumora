@@ -197,6 +197,8 @@ public class SettingsActivity extends AppCompatActivity {
         buildSetupPanel();
         buildToolsPanel();
         bindAbout();
+        new com.firestick.aura.launcher.ui.LauncherSettings(this, preferences).bind(
+                findViewById(R.id.appearanceRows), findViewById(R.id.toolsRows));
         findViewById(R.id.btnDone).setOnClickListener(v -> finish());
         int requested = getIntent().getIntExtra(EXTRA_SECTION, 0);
         showSection(requested >= 0 && requested < SECTIONS.length ? requested : 0);
@@ -369,7 +371,7 @@ public class SettingsActivity extends AppCompatActivity {
             preferences.setHdIconsEnabled(checked);
             SoundManager.playClick(iconStyle, preferences);
         });
-        ViewGroup appearance = findViewById(R.id.panelAppearance);
+        ViewGroup appearance = findViewById(R.id.appearanceRows);
         View effectSection = getLayoutInflater().inflate(R.layout.section_card_effect, appearance, false);
         appearance.addView(effectSection);
         cardEffect = effectSection.findViewById(R.id.btnCardEffect);
@@ -1312,7 +1314,9 @@ public class SettingsActivity extends AppCompatActivity {
         long last = updates.getLastCheck();
         CharSequence when = last <= 0 ? getString(R.string.update_never)
                 : DateUtils.getRelativeTimeSpanString(last, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS);
-        updateStatus.setText(getString(R.string.update_status, updates.installedVersionCode(), when));
+        String available = updates.latestVersionCode() > updates.installedVersionCode()
+                ? "\n" + getString(R.string.update_badge) + " · " + updates.latestVersionCode() : "";
+        updateStatus.setText(getString(R.string.update_status, updates.installedVersionCode(), when) + available);
     }
 
     /** TVs often have no mail app or browser; then show the address so it can be typed elsewhere. */

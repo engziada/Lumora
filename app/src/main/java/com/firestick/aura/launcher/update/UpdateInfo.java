@@ -53,7 +53,7 @@ public final class UpdateInfo {
             }
             if (!SHA256.matcher(sha).matches()) throw new IllegalArgumentException("sha256");
             if (size <= 0 || size > MAX_APK_BYTES) throw new IllegalArgumentException("size");
-            if (notes.length() > 300) notes = notes.substring(0, 300);
+            if (notes.length() > 1200) notes = notes.substring(0, 1200);
             return new UpdateInfo(code, name.isEmpty() ? "?" : name, apk, sha, size, notes);
         } catch (JSONException exception) {
             throw new IllegalArgumentException("json", exception);

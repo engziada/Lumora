@@ -64,6 +64,7 @@ public class AppRowAdapter extends RecyclerView.Adapter<AppRowAdapter.AppViewHol
     private final String rowId;
     private final int style;
     private RecyclerView recyclerView;
+    private String appliedTileSize;
     private String focusedPackage;
     private String movingPackage;
 
@@ -78,6 +79,8 @@ public class AppRowAdapter extends RecyclerView.Adapter<AppRowAdapter.AppViewHol
     }
 
     public void setApps(List<AppModel> apps) {
+        boolean sizeChanged = !preferences.tileSize().equals(appliedTileSize);
+        appliedTileSize = preferences.tileSize();
         List<AppModel> source = apps == null ? new ArrayList<>() : new ArrayList<>(apps);
         lastApps.clear();
         lastApps.addAll(source);
@@ -85,7 +88,7 @@ public class AppRowAdapter extends RecyclerView.Adapter<AppRowAdapter.AppViewHol
         boolean hd = preferences.isHdIconsEnabled();
         int fallback = recyclerView == null ? 0xFFE3A15A : ContextCompat.getColor(recyclerView.getContext(), R.color.nova_accent);
         int accent = preferences.getAccentColor(fallback);
-        String effect = preferences.getCardEffect();
+        String effect = preferences.reducedMotion() ? com.firestick.aura.launcher.ui.CardEffects.OFF : preferences.getCardEffect();
         Set<String> locked = preferences.getLockedApps();
         for (AppModel app : source) {
             String pkg = app.getPackageName();
@@ -121,6 +124,7 @@ public class AppRowAdapter extends RecyclerView.Adapter<AppRowAdapter.AppViewHol
         entries.clear();
         entries.addAll(next);
         result.dispatchUpdatesTo(this);
+        if (sizeChanged) notifyItemRangeChanged(0, entries.size());
         restoreFocus();
     }
 
@@ -181,6 +185,12 @@ public class AppRowAdapter extends RecyclerView.Adapter<AppRowAdapter.AppViewHol
 
     @Override
     public void onBindViewHolder(@NonNull AppViewHolder holder, int position) {
+        if (style == STYLE_WIDE) {
+            android.view.ViewGroup.LayoutParams bounds = holder.itemView.getLayoutParams();
+            bounds.width = Math.round(("comfortable".equals(preferences.tileSize()) ? 200 : 170)
+                    * holder.itemView.getResources().getDisplayMetrics().density);
+            holder.itemView.setLayoutParams(bounds);
+        }
         holder.bind(entries.get(position));
     }
 
@@ -229,6 +239,7 @@ public class AppRowAdapter extends RecyclerView.Adapter<AppRowAdapter.AppViewHol
         void bind(Entry entry) {
             AppModel app = entry.app;
             String pkg = app.getPackageName();
+            itemView.setTag("app:" + pkg);
             moving = entry.moving;
             icon.setTag(pkg);
             icon.setImageDrawable(app.getIcon());
@@ -280,8 +291,8 @@ public class AppRowAdapter extends RecyclerView.Adapter<AppRowAdapter.AppViewHol
         /** Lift and thin glowing ring; the background effect runs only on the focused card. */
         private void applyFocus(boolean focused) {
             boolean lifted = focused || moving;
-            float scale = lifted ? (style == STYLE_WIDE ? 1.06f : 1.08f) : 1f;
-            iconContainer.animate().scaleX(scale).scaleY(scale).translationZ(lifted ? 12f : 0f).setDuration(140).start();
+            float scale = preferences.reducedMotion() ? 1f : lifted ? (style == STYLE_WIDE ? 1.06f : 1.08f) : 1f;
+            iconContainer.animate().scaleX(scale).scaleY(scale).translationZ(lifted ? 12f : 0f).setDuration(preferences.reducedMotion() ? 0 : 140).start();
             focusRingView.setVisibility(lifted ? View.VISIBLE : View.INVISIBLE);
             label.setSelected(focused);
             label.setTextColor(lifted ? labelFocused : labelIdle);

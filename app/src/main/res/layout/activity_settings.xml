@@ -216,11 +216,12 @@
                 android:padding="22dp">
 
                 <!-- Appearance -->
-                <LinearLayout
+                <ScrollView
                     android:id="@+id/panelAppearance"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical">
+                    android:layout_height="match_parent">
+                    <LinearLayout android:id="@+id/appearanceRows" android:layout_width="match_parent"
+                        android:layout_height="wrap_content" android:orientation="vertical">
 
                     <TextView
                         style="@style/Lumora.PanelEyebrow"
@@ -303,6 +304,7 @@
                         style="@style/Lumora.Hint"
                         android:text="@string/preview_settings_hint" />
                 </LinearLayout>
+                </ScrollView>
 
                 <!-- Wallpaper -->
                 <LinearLayout

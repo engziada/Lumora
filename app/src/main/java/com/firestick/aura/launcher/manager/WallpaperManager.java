@@ -230,7 +230,7 @@ public class WallpaperManager {
         long token = ++fadeToken;
         front.setImageBitmap(bitmap);
         front.setAlpha(0f);
-        front.animate().alpha(1f).setDuration(900).withEndAction(() -> {
+        front.animate().alpha(1f).setDuration(preferences.reducedMotion() ? 0 : 900).withEndAction(() -> {
             if (token != fadeToken || destroyed) return;
             back.setImageBitmap(bitmap);
             front.setImageDrawable(null);

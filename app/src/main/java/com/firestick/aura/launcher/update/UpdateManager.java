@@ -136,10 +136,14 @@ public final class UpdateManager {
 
     // ----------------------------------------------------------------- check
 
+    public long latestVersionCode() { return prefs.getLong("latest_version", 0); }
+
     public Check check() {
         prefs.edit().putLong(KEY_LAST_CHECK, System.currentTimeMillis()).apply();
         Check result = getChannel() == CHANNEL_BETA ? checkBeta() : checkStable();
-        prefs.edit().putString(KEY_LAST_RESULT, result.detail).apply();
+        SharedPreferences.Editor saved = prefs.edit().putString(KEY_LAST_RESULT, result.detail);
+        if (result.info != null) saved.putLong("latest_version", result.info.versionCode);
+        saved.apply();
         return result;
     }
 

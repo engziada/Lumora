@@ -109,10 +109,10 @@ public final class IptvRepository {
         }
     }
 
-    private static List<IptvChannel> parsePlaylist(String playlist, String countryCode) {
+    public static List<IptvChannel> parsePlaylist(String playlist, String countryCode) {
         if (playlist == null) return null;
         List<IptvChannel> channels = new ArrayList<>();
-        Set<String> seen = new HashSet<>();
+        java.util.Map<String, Integer> positions = new java.util.LinkedHashMap<>();
         Set<String> urls = new HashSet<>();
         String[] lines = playlist.split("\\r?\\n");
         String metadata = null;
@@ -130,7 +130,8 @@ public final class IptvRepository {
                     ? metadata.substring(comma + 1).trim() : "";
             String name = attribute(metadata, "tvg-name");
             if (name.isEmpty()) name = playlistName;
-            String id = attribute(metadata, "tvg-id");
+            String originalId = attribute(metadata, "tvg-id");
+            String id = originalId.split("@", 2)[0];
             String logo = attribute(metadata, "tvg-logo");
             String group = attribute(metadata, "group-title");
             List<String> categories = new ArrayList<>();
@@ -139,7 +140,7 @@ public final class IptvRepository {
                 switch (normalized.toLowerCase(Locale.ROOT)) {
                     case "movie": case "movies": case "cinema": normalized = "Movies"; break;
                     case "music": normalized = "Music"; break;
-                    case "adult": case "xxx": case "nsfw": normalized = "18+"; break;
+                    case "adult": case "adults": case "xxx": case "nsfw": normalized = "18+"; break;
                     default: break;
                 }
                 if (!normalized.isEmpty() && !categories.contains(normalized)) categories.add(normalized);
@@ -148,13 +149,33 @@ public final class IptvRepository {
                 String identity = id.isEmpty()
                         ? countryCode + "|" + name.toLowerCase(Locale.ROOT) : id;
                 if (urls.add(line)) {
-                    boolean alternate = !seen.add(identity);
-                    if (alternate) identity += "|" + line;
-                    long stableId = Long.parseLong(Http.sha1(identity).substring(0, 15), 16);
-                    channels.add(new IptvChannel(stableId, alternate ? name + " · Alternate" : name, logo,
-                            categories.isEmpty() ? "" : categories.get(0), categories,
-                            ("ALL".equals(countryCode) && id.matches(".*\\.[A-Za-z]{2}")
-                                    ? id.substring(id.length() - 2).toUpperCase(Locale.ROOT) : countryCode), "", line, false, "", "", "", ""));
+                    Integer position = positions.get(identity);
+                    if (position == null) {
+                        long stableId = Long.parseLong(Http.sha1(identity).substring(0, 15), 16);
+                        positions.put(identity, channels.size());
+                        channels.add(new IptvChannel(stableId, name, logo,
+                                categories.isEmpty() ? "" : categories.get(0), categories,
+                                ("ALL".equals(countryCode) && id.matches(".*\\.[A-Za-z]{2}")
+                                        ? id.substring(id.length() - 2).toUpperCase(Locale.ROOT) : countryCode),
+                                "", line, false, "", "", "", "", id,
+                                Collections.singletonList(line), originalId.equals(id) ? Collections.emptyList()
+                                        : Collections.singletonList(Long.parseLong(Http.sha1(originalId).substring(0, 15), 16))));
+                    } else {
+                        IptvChannel first = channels.get(position);
+                        List<String> feeds = new ArrayList<>(first.streamUrls);
+                        feeds.add(line);
+                        List<Long> legacy = new ArrayList<>(first.legacyIds);
+                        legacy.add(Long.parseLong(Http.sha1(identity + "|" + line).substring(0, 15), 16));
+                        if (!originalId.equals(id)) {
+                            legacy.add(Long.parseLong(Http.sha1(originalId).substring(0, 15), 16));
+                            legacy.add(Long.parseLong(Http.sha1(originalId + "|" + line).substring(0, 15), 16));
+                        }
+                        List<String> genres = new ArrayList<>(first.genres);
+                        for (String genre : categories) if (!genres.contains(genre)) genres.add(genre);
+                        channels.set(position, new IptvChannel(first.id, first.name, first.logo,
+                                first.category, genres, first.country, first.language, first.url, false,
+                                "", "", "", "", first.channelId, feeds, legacy));
+                    }
                 }
             }
             metadata = null;
@@ -167,6 +188,15 @@ public final class IptvRepository {
         Matcher matcher = Pattern.compile(String.format(Locale.ROOT, ATTRIBUTE.pattern(), Pattern.quote(name)))
                 .matcher(line);
         return matcher.find() ? matcher.group(1).trim() : "";
+    }
+
+    public void refreshChannels(String countryCode, ChannelsCallback callback) {
+        String code = countryCode.toLowerCase(Locale.ROOT).replaceAll("[^a-z]", "");
+        io.execute(() -> {
+            File cache = new File(cacheDir, "country-" + code + ".m3u");
+            if (cache.exists()) cache.setLastModified(0);
+        });
+        loadChannels(countryCode, callback);
     }
 
     public void shutdown() {
