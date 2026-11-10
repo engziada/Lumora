@@ -134,9 +134,11 @@ public class IptvAdapter extends RecyclerView.Adapter<IptvAdapter.Holder> {
         private final TextView title;
         private final TextView meta;
         private final View favoriteBadge;
+        private final TextView availability;
 
         Holder(View view) {
             super(view);
+            availability = view.findViewById(R.id.iptvAvailability);
             frame = view.findViewById(R.id.posterFrame);
             focusRing = view.findViewById(R.id.posterFocus);
             poster = view.findViewById(R.id.imgPoster);
@@ -148,6 +150,19 @@ public class IptvAdapter extends RecyclerView.Adapter<IptvAdapter.Holder> {
 
         void bind(IptvChannel channel) {
             title.setText(channel.name);
+            availability.setTag(channel.url);
+            availability.setText(R.string.iptv_checking);
+            availability.setTextColor(ContextCompat.getColor(itemView.getContext(), R.color.nova_text_dim));
+            com.firestick.aura.launcher.manager.StreamAvailability.check(channel.url, reachable -> {
+                if (!channel.url.equals(availability.getTag())) return;
+                if (reachable == null) {
+                    availability.setText(R.string.iptv_not_checked);
+                    return;
+                }
+                availability.setText(reachable ? R.string.iptv_reachable : R.string.iptv_unavailable);
+                availability.setTextColor(ContextCompat.getColor(itemView.getContext(),
+                        reachable ? R.color.state_success : R.color.state_error));
+            });
             
             StringBuilder metaText = new StringBuilder();
             if (!channel.category.isEmpty()) {

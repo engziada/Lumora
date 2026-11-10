@@ -1037,16 +1037,25 @@ public class MainActivity extends AppCompatActivity
         return key.substring("category:".length());
     }
 
+    private int categoryCount(String key) {
+        int count = 0;
+        for (IptvChannel channel : countryChannels) {
+            if ("all".equals(key) || ("favorites".equals(key) && channel.isFavorite)
+                    || (key.startsWith("category:") && channel.genres.contains(categoryLabel(key)))) count++;
+        }
+        return count;
+    }
+
     private void openCategoryMenu() {
         java.util.Set<String> genres = new java.util.TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-        java.util.Collections.addAll(genres, "Movies", "Music", "18+");
+
         for (IptvChannel channel : countryChannels) genres.addAll(channel.genres);
         List<String> keys = new ArrayList<>();
         keys.add("all");
         keys.add("favorites");
-        for (String genre : genres) keys.add("category:" + genre);
+        for (String genre : genres) if (!genre.trim().isEmpty()) keys.add("category:" + genre);
         List<GlassMenu.Item> items = new ArrayList<>();
-        for (String key : keys) items.add(new GlassMenu.Item(R.drawable.ic_tv, categoryLabel(key))
+        for (String key : keys) items.add(new GlassMenu.Item(R.drawable.ic_tv, categoryLabel(key) + " · " + categoryCount(key))
                 .checked(key.equals(selectedIptvCategory)));
         GlassMenu.show(this, getString(R.string.iptv_all_categories), null, null, items, false,
                 (index, item) -> {

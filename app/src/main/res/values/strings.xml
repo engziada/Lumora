@@ -319,4 +319,8 @@
     <string name="qa_speed_failed">Could not measure download speed. Check your connection and try again.</string>
     <string name="iptv_all_categories">All categories</string>
     <string name="iptv_all_countries">All countries</string>
+    <string name="iptv_checking">Checking…</string>
+    <string name="iptv_reachable">● Reachable</string>
+    <string name="iptv_unavailable">● Unavailable</string>
+    <string name="iptv_not_checked">Not checked</string>
 </resources>

@@ -35,7 +35,7 @@ public final class IptvRepository {
 
     private static final String API = "https://iptv-org.github.io/api";
     private static final String PLAYLISTS = "https://iptv-org.github.io/iptv/countries";
-    private static final long CACHE_MAX_AGE_MS = 24L * 60L * 60L * 1000L;
+    private static final long CACHE_MAX_AGE_MS = 2L * 60L * 60L * 1000L;
     private static final Pattern ATTRIBUTE = Pattern.compile("(?:^|\\s)%s=\"([^\"]*)\"");
 
     private final File cacheDir;
@@ -113,6 +113,7 @@ public final class IptvRepository {
         if (playlist == null) return null;
         List<IptvChannel> channels = new ArrayList<>();
         Set<String> seen = new HashSet<>();
+        Set<String> urls = new HashSet<>();
         String[] lines = playlist.split("\\r?\\n");
         String metadata = null;
         for (String raw : lines) {
@@ -146,9 +147,11 @@ public final class IptvRepository {
             if (!name.isEmpty() && (line.startsWith("http://") || line.startsWith("https://"))) {
                 String identity = id.isEmpty()
                         ? countryCode + "|" + name.toLowerCase(Locale.ROOT) : id;
-                if (seen.add(identity)) {
+                if (urls.add(line)) {
+                    boolean alternate = !seen.add(identity);
+                    if (alternate) identity += "|" + line;
                     long stableId = Long.parseLong(Http.sha1(identity).substring(0, 15), 16);
-                    channels.add(new IptvChannel(stableId, name, logo,
+                    channels.add(new IptvChannel(stableId, alternate ? name + " · Alternate" : name, logo,
                             categories.isEmpty() ? "" : categories.get(0), categories,
                             ("ALL".equals(countryCode) && id.matches(".*\\.[A-Za-z]{2}")
                                     ? id.substring(id.length() - 2).toUpperCase(Locale.ROOT) : countryCode), "", line, false, "", "", "", ""));

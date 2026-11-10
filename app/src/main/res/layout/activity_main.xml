@@ -299,11 +299,13 @@
             android:orientation="horizontal">
             <AutoCompleteTextView
                 android:id="@+id/iptvCountry"
+                android:backgroundTint="@null"
+                android:nextFocusRight="@id/iptvFilter"
                 style="@style/Lumora.Body"
                 android:layout_width="0dp"
                 android:layout_weight="1"
                 android:layout_height="40dp"
-                android:background="@drawable/bg_glass_pill"
+                android:background="@drawable/bg_option_selector"
                 android:completionThreshold="0"
                 android:focusable="true"
                 android:hint="@string/iptv_country_hint"
@@ -317,6 +319,9 @@
 
             <Button
                 android:id="@+id/iptvFilter"
+                android:backgroundTint="@null"
+                android:nextFocusLeft="@id/iptvCountry"
+                android:nextFocusRight="@id/iptvSearch"
                 android:layout_width="0dp"
                 android:layout_height="40dp"
                 android:layout_weight="1"
@@ -324,16 +329,18 @@
                 android:singleLine="true"
                 android:textAllCaps="false"
                 android:textColor="@color/nova_text"
-                android:background="@drawable/bg_glass_pill"
+                android:background="@drawable/bg_option_selector"
                 android:text="@string/iptv_all_categories" />
 
             <EditText
                 android:id="@+id/iptvSearch"
+                android:backgroundTint="@null"
+                android:nextFocusLeft="@id/iptvFilter"
                 style="@style/Lumora.Body"
                 android:layout_width="0dp"
                 android:layout_weight="2"
                 android:layout_height="40dp"
-                android:background="@drawable/bg_glass_pill"
+                android:background="@drawable/bg_option_selector"
                 android:hint="@string/iptv_search_placeholder"
                 android:imeOptions="actionSearch"
                 android:inputType="text"

@@ -44,6 +44,14 @@
     </FrameLayout>
 
     <TextView
+        android:id="@+id/iptvAvailability"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="3dp"
+        android:textSize="8sp"
+        android:textColor="@color/nova_text_dim" />
+
+    <TextView
         android:id="@+id/txtPosterTitle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
