@@ -321,7 +321,7 @@
                 android:id="@+id/iptvFilter"
                 android:backgroundTint="@null"
                 android:nextFocusLeft="@id/iptvCountry"
-                android:nextFocusRight="@id/iptvSearch"
+                android:nextFocusRight="@id/iptvOnlineOnly"
                 android:layout_width="0dp"
                 android:layout_height="40dp"
                 android:layout_weight="1"
@@ -332,10 +332,23 @@
                 android:background="@drawable/bg_option_selector"
                 android:text="@string/iptv_all_categories" />
 
+            <CheckBox
+                android:id="@+id/iptvOnlineOnly"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/bg_option_selector"
+                android:buttonTint="@color/nova_accent"
+                android:nextFocusLeft="@id/iptvFilter"
+                android:nextFocusRight="@id/iptvSearch"
+                android:text="@string/iptv_online_only"
+                android:textColor="@color/nova_text"
+                android:textSize="10sp" />
+
             <EditText
                 android:id="@+id/iptvSearch"
                 android:backgroundTint="@null"
-                android:nextFocusLeft="@id/iptvFilter"
+                android:nextFocusLeft="@id/iptvOnlineOnly"
                 style="@style/Lumora.Body"
                 android:layout_width="0dp"
                 android:layout_weight="2"

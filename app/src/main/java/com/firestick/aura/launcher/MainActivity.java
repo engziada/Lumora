@@ -211,6 +211,13 @@ public class MainActivity extends AppCompatActivity
         streamingAdapter = new AppRowAdapter(preferences, this, AppRepository.ROW_STREAMING, AppRowAdapter.STYLE_TILE, null);
 
         showsPanel = findViewById(R.id.showsPanel);
+        ((android.widget.CheckBox) findViewById(R.id.iptvOnlineOnly)).setOnCheckedChangeListener((button, checked) -> {
+            onlineOnly = checked;
+            if (checked) onlineResults.clear();
+            onlineScanGeneration++;
+            onlineScanRunning = false;
+            applyIptvFilters();
+        });
         iptvFilter = findViewById(R.id.iptvFilter);
         iptvFilter.setOnClickListener(v -> openCategoryMenu());
         showsStatus = findViewById(R.id.txtShowsStatus);
@@ -543,6 +550,14 @@ public class MainActivity extends AppCompatActivity
         if (currentTab == TAB_SHOWS) loadIptv();
         if (wallpapers != null) wallpapers.start();
         homeView.post(this::updateAppPreview);
+    }
+
+    @Override protected void onStop() {
+        adultUnlocked = false;
+        if ("category:18+".equals(selectedIptvCategory)) selectedIptvCategory = "all";
+        onlineScanGeneration++;
+        onlineScanRunning = false;
+        super.onStop();
     }
 
     @Override protected void onPause() {
@@ -1007,6 +1022,8 @@ public class MainActivity extends AppCompatActivity
     }
 
     private void loadCountryChannels(String countryCode) {
+        onlineScanGeneration++;
+        onlineScanRunning = false;
         int request = ++iptvGeneration;
         channelsLoaded = false;
         countryChannels = new ArrayList<>();
@@ -1032,6 +1049,7 @@ public class MainActivity extends AppCompatActivity
     }
 
     private String categoryLabel(String key) {
+        if ("category:18+".equals(key)) return getString(R.string.iptv_adults);
         if ("all".equals(key)) return getString(R.string.iptv_all_categories);
         if ("favorites".equals(key)) return getString(R.string.iptv_favorites);
         return key.substring("category:".length());
@@ -1041,7 +1059,7 @@ public class MainActivity extends AppCompatActivity
         int count = 0;
         for (IptvChannel channel : countryChannels) {
             if ("all".equals(key) || ("favorites".equals(key) && channel.isFavorite)
-                    || (key.startsWith("category:") && channel.genres.contains(categoryLabel(key)))) count++;
+                    || (key.startsWith("category:") && channel.genres.contains(key.substring("category:".length())))) count++;
         }
         return count;
     }
@@ -1053,34 +1071,71 @@ public class MainActivity extends AppCompatActivity
         List<String> keys = new ArrayList<>();
         keys.add("all");
         keys.add("favorites");
+        genres.add("18+");
         for (String genre : genres) if (!genre.trim().isEmpty()) keys.add("category:" + genre);
         List<GlassMenu.Item> items = new ArrayList<>();
         for (String key : keys) items.add(new GlassMenu.Item(R.drawable.ic_tv, categoryLabel(key) + " · " + categoryCount(key))
                 .checked(key.equals(selectedIptvCategory)));
         GlassMenu.show(this, getString(R.string.iptv_all_categories), null, null, items, false,
                 (index, item) -> {
-                    selectedIptvCategory = keys.get(index);
-                    applyIptvFilters();
-                    showsView.scrollToPosition(0);
+                    Runnable select = () -> {
+                        selectedIptvCategory = keys.get(index);
+                        applyIptvFilters();
+                        showsView.scrollToPosition(0);
+                    };
+                    if ("category:18+".equals(keys.get(index))) {
+                        LockPad.verify(this, preferences, getString(R.string.iptv_adults_unlock), () -> {
+                            adultUnlocked = true;
+                            select.run();
+                        });
+                    } else select.run();
                 });
+    }
+
+    private boolean onlineOnly, adultUnlocked, onlineScanRunning;
+    private int onlineScanGeneration;
+    private final Map<String, Boolean> onlineResults = new HashMap<>();
+
+    private void scanOnline(List<IptvChannel> candidates, int offset, int generation) {
+        if (generation != onlineScanGeneration || !onlineOnly || isDestroyed()) return;
+        if (offset >= candidates.size()) {
+            onlineScanRunning = false;
+            applyIptvFilters();
+            return;
+        }
+        IptvChannel channel = candidates.get(offset);
+        com.firestick.aura.launcher.manager.StreamAvailability.check(channel.url, reachable -> {
+            if (generation != onlineScanGeneration || isDestroyed()) return;
+            onlineResults.put(channel.url, Boolean.TRUE.equals(reachable));
+            applyIptvFilters();
+            showsView.post(() -> scanOnline(candidates, offset + 1, generation));
+        });
     }
 
     private void applyIptvFilters() {
         if (iptvAdapter == null || !channelsLoaded) return;
         iptvFilter.setText(categoryLabel(selectedIptvCategory));
         List<IptvChannel> filtered = new ArrayList<>();
+        List<IptvChannel> unchecked = new ArrayList<>();
         for (IptvChannel channel : countryChannels) {
+            if (channel.genres.contains("18+") && (!adultUnlocked || !"category:18+".equals(selectedIptvCategory))) continue;
             if ("favorites".equals(selectedIptvCategory) && !channel.isFavorite) continue;
             if (selectedIptvCategory.startsWith("category:")
                     && !channel.genres.contains(selectedIptvCategory.substring("category:".length()))) continue;
             if (!iptvSearchQuery.isEmpty()
                     && !channel.name.toLowerCase(java.util.Locale.ROOT).contains(iptvSearchQuery)) continue;
-            filtered.add(channel);
+            if (onlineOnly && !onlineResults.containsKey(channel.url)) unchecked.add(channel);
+            if (!onlineOnly || Boolean.TRUE.equals(onlineResults.get(channel.url))) filtered.add(channel);
+        }
+        if (onlineOnly && !onlineScanRunning && !unchecked.isEmpty()) {
+            onlineScanRunning = true;
+            int generation = onlineScanGeneration;
+            showsView.post(() -> scanOnline(unchecked, 0, generation));
         }
         iptvAdapter.setItems(filtered);
         if (filtered.isEmpty()) {
             int message = countryChannels.isEmpty() ? R.string.iptv_no_channels : R.string.iptv_no_results;
-            setShowsStatus(message);
+            setShowsStatus(onlineOnly && onlineScanRunning ? R.string.iptv_online_checking : message);
         } else {
             showsStatus.setVisibility(View.GONE);
         }

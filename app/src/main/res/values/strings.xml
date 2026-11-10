@@ -15,7 +15,7 @@
 
     <!-- Navigation -->
     <string name="nav_home">Home</string>
-    <string name="nav_shows">Shows</string>
+    <string name="nav_shows">IPTV</string>
     <string name="nav_apps">Apps</string>
     <string name="nav_streaming">Streaming</string>
     <string name="nav_quick">Quick</string>
@@ -323,4 +323,8 @@
     <string name="iptv_reachable">● Reachable</string>
     <string name="iptv_unavailable">● Unavailable</string>
     <string name="iptv_not_checked">Not checked</string>
+    <string name="iptv_online_only">Online only</string>
+    <string name="iptv_adults">Adults</string>
+    <string name="iptv_adults_unlock">Enter your lock key to open Adults.</string>
+    <string name="iptv_online_checking">Checking stream availability…</string>
 </resources>
