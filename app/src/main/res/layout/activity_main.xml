@@ -265,7 +265,7 @@
             android:visibility="gone" />
     </FrameLayout>
 
-    <!-- Shows tab: channel chips, poster grid, attribution -->
+    <!-- Shows tab: country chips, search, channel grid -->
     <LinearLayout
         android:id="@+id/showsPanel"
         android:layout_width="match_parent"
@@ -276,6 +276,7 @@
         app:layout_constraintBottom_toTopOf="@id/bottomNav"
         app:layout_constraintTop_toBottomOf="@id/greetingBlock">
 
+        <!-- Country selector chips -->
         <HorizontalScrollView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -292,6 +293,8 @@
                 android:paddingTop="4dp"
                 android:paddingBottom="4dp" />
         </HorizontalScrollView>
+
+
 
         <FrameLayout
             android:layout_width="match_parent"

@@ -84,7 +84,7 @@
     <string name="lock_mismatch">The codes did not match. Start again.</string>
     <string name="lock_saved">Code saved</string>
 
-    <!-- Shows -->
+    <!-- IPTV / Shows -->
     <string name="shows_all">All</string>
     <string name="shows_tv">On TV</string>
     <string name="shows_streaming">Streaming</string>
@@ -92,12 +92,29 @@
     <string name="shows_empty">Nothing listed here today.</string>
     <string name="shows_error">Listings unavailable. Check the connection and try again.</string>
     <string name="shows_disabled">TV listings are off. Turn them on in Settings, TV listings.</string>
-    <string name="shows_attribution">Listings and posters: TVmaze (CC BY-SA)</string>
+    <string name="shows_attribution">Live TV from iptv-org (CC BY-SA)</string>
     <string name="show_channel_time">%1$s · %2$s</string>
     <string name="show_episode">Season %1$d, episode %2$d · %3$s</string>
     <string name="show_rating">★ %1$.1f</string>
     <string name="show_no_summary">No summary available.</string>
     <string name="show_watch_on">Watch on %1$s</string>
+    
+    <!-- IPTV Specific Strings -->
+    <string name="iptv_countries">Countries</string>
+    <string name="iptv_channels">Channels</string>
+    <string name="iptv_search_placeholder">Search channels...</string>
+    <string name="iptv_categories">Categories</string>
+    <string name="iptv_favorites">Favorites</string>
+    <string name="iptv_add_favorite">Add to favorites</string>
+    <string name="iptv_remove_favorite">Remove from favorites</string>
+    <string name="iptv_now_playing">Now playing</string>
+    <string name="iptv_next_up">Next</string>
+    <string name="iptv_live">LIVE</string>
+    <string name="iptv_play">Play</string>
+    <string name="iptv_no_channel_selected">Select a channel to watch</string>
+    <string name="iptv_search_results">Search results for \"%1$s\"</string>
+    <string name="iptv_no_results">No channels found</string>
+    <string name="iptv_categories_all">All</string>
     <string name="show_get_app">Get %1$s</string>
     <string name="show_find_app">Find %1$s in the Appstore</string>
     <string name="show_other_apps">Other apps</string>
