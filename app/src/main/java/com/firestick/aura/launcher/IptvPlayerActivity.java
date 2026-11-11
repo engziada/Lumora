@@ -279,10 +279,31 @@ public final class IptvPlayerActivity extends AppCompatActivity {
         } else finish();
     }
 
+    private void seekFromRemote(int direction) {
+        if (player == null) return;
+        if (player.isCurrentMediaItemSeekable()) {
+            long target = Math.max(0L, player.getCurrentPosition() + direction * 10_000L);
+            long duration = player.getDuration();
+            if (duration != C.TIME_UNSET && duration >= 0) target = Math.min(target, duration);
+            player.seekTo(target);
+        }
+        playerView.showController();
+    }
+
     @Override public boolean dispatchKeyEvent(KeyEvent event) {
         int code = event.getKeyCode();
         if (code == KeyEvent.KEYCODE_BACK) {
             if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled()) backFromPlayback();
+            return true;
+        }
+        boolean mediaSeek = code == KeyEvent.KEYCODE_MEDIA_REWIND || code == KeyEvent.KEYCODE_MEDIA_FAST_FORWARD;
+        boolean arrowSeek = !controlsShowing && (code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT);
+        if (mediaSeek || arrowSeek) {
+            if (event.getAction() == KeyEvent.ACTION_DOWN
+                    && (mediaSeek || event.getRepeatCount() == 0)) {
+                boolean forward = code == KeyEvent.KEYCODE_MEDIA_FAST_FORWARD || code == KeyEvent.KEYCODE_DPAD_RIGHT;
+                seekFromRemote(forward ? 1 : -1);
+            }
             return true;
         }
         boolean channelKey = code == KeyEvent.KEYCODE_CHANNEL_UP || code == KeyEvent.KEYCODE_CHANNEL_DOWN;

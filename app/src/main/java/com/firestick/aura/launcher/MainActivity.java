@@ -73,14 +73,13 @@ public class MainActivity extends AppCompatActivity
         implements AppRowAdapter.OnAppActionListener, ShowDetails.Host {
     /** Package to launch on arrival; sent by the assistant so locks and launch history apply. */
     public static final String EXTRA_LAUNCH_PACKAGE = "com.firestick.aura.launcher.extra.LAUNCH_PACKAGE";
-    private static final String EROFLIX_PACKAGE = "mob.play.rflx";
     private static final int TAB_HOME = 0, TAB_SHOWS = 1, TAB_APPS = 2, TAB_STREAMING = 3;
     private static final int GRID_COLUMNS = 7, IPTV_COLUMNS = 8, HOME_FALLBACK = 8;
     private static final long SHOWS_MAX_AGE_MS = 60L * 60L * 1000L;
     private static final long GEAR_DELAY_MS = 350L, GEAR_KEY_WINDOW_MS = 600L, GEAR_REOPEN_GUARD_MS = 900L;
     /** Bridge targets for a DOWN key that a tile of the ribbon or a grid cannot resolve. */
     private static final int[] NAV_TARGETS = {R.id.navHome, R.id.navShows, R.id.navApps,
-            R.id.navMovies, R.id.navEroflix};
+            R.id.navMovies};
 
     private com.firestick.aura.launcher.ui.HomeRows homeRows;
     private Object lastHomeFocusTag;
@@ -289,11 +288,6 @@ public class MainActivity extends AppCompatActivity
         bindNav(R.id.navShows, TAB_SHOWS);
         bindNav(R.id.navApps, TAB_APPS);
         bindNav(R.id.navMovies, TAB_STREAMING);
-        bindNavFocus(findViewById(R.id.navEroflix));
-        findViewById(R.id.navEroflix).setOnClickListener(view -> {
-            SoundManager.playClick(view, preferences);
-            launchPackage(EROFLIX_PACKAGE);
-        });
         View quick = findViewById(R.id.navQuick);
         quick.setOnClickListener(view -> {
             SoundManager.playClick(view, preferences);
@@ -716,25 +710,9 @@ public class MainActivity extends AppCompatActivity
             appsLoadedAt = SystemClock.elapsedRealtime();
             rows.clear();
             for (AppCategory category : categories) rows.put(category.getId(), new ArrayList<>(category.getApps()));
-            updateEroflixNav();
             applyRows();
             updateGreeting();
         });
-    }
-
-    private void updateEroflixNav() {
-        View item = findViewById(R.id.navEroflix);
-        boolean installed;
-        try {
-            getPackageManager().getApplicationInfo(EROFLIX_PACKAGE, 0);
-            installed = launchIntentFor(EROFLIX_PACKAGE) != null;
-            if (installed) ((ImageView) findViewById(R.id.imgNavEroflix))
-                    .setImageDrawable(getPackageManager().getApplicationIcon(EROFLIX_PACKAGE));
-        } catch (PackageManager.NameNotFoundException missing) {
-            installed = false;
-        }
-        if (!installed && item.hasFocus()) findViewById(R.id.navMovies).requestFocus();
-        item.setVisibility(installed ? View.VISIBLE : View.GONE);
     }
 
     private void applyRows() {
