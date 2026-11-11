@@ -1,5 +1,15 @@
 # Changelog
 
+## 5.5.1 — More IPTV sources and smarter playback
+
+- Combine iptv-org and Free-TV direct streams into one catalog, preserving favorites and avoiding ambiguous channel matches.
+- Retrieve additional backup streams and required request headers from the iptv-org API.
+- Add Settings → Tools → IPTV sources: toggle Free-TV, add up to five validated M3U URLs, or remove custom playlists.
+- Prefer streams using device-local startup, buffering and failure history; automatically try alternatives when playback fails.
+- Load sources in parallel with bounded downloads, cached offline fallback and independent source failures.
+- Exclude YouTube/Twitch web pages from embedded playback and skip unsupported feeds safely. Honor country metadata and keep uncategorized curated channels under General.
+- Preserve stream headers through favorites, history and playback queues. Exclude playback URLs from exported launcher backups.
+
 ## 5.5.0 — Home, search and IPTV playback
 
 - Global app/channel/settings search and configurable Home rows.

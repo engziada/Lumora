@@ -7,7 +7,7 @@ import java.util.*;
 public final class LauncherBackup {
     private static final Set<String> STRINGS = new HashSet<>(Arrays.asList(
             "pref_recent_apps", "pref_card_effect", "pref_shows_country", "pref_lock_hash", "pref_lock_salt",
-            "pref_recent_channels", "pref_home_sections", "pref_tile_size", "pref_appearance_profiles"));
+            "pref_home_sections", "pref_tile_size", "pref_appearance_profiles"));
     private static final Set<String> BOOLS = new HashSet<>(Arrays.asList(
             "pref_sound_enabled", "pref_hd_icons", "pref_app_preview_demo", "pref_shows_enabled",
             "pref_lock_settings", "pref_home_redirect", "pref_reduced_motion"));

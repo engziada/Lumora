@@ -37,6 +37,10 @@ public final class IptvPlayerActivity extends AppCompatActivity {
     private boolean recorded, controlsShowing;
     private EpgRepository guide;
     private PreferenceManager preferences;
+    private StreamHealth health;
+    private List<String> orderedFeeds = Collections.emptyList();
+    private String observedUrl;
+    private long startedAt, firstFrameAt, playingSince, playedMs, bufferingSince, bufferedMs;
     private final Runnable stalled = this::nextFeed;
 
     @Override protected void onCreate(@Nullable Bundle state) {
@@ -44,6 +48,7 @@ public final class IptvPlayerActivity extends AppCompatActivity {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         setContentView(R.layout.activity_iptv_player);
         preferences = new PreferenceManager(this);
+        health = new StreamHealth(this);
         guide = new EpgRepository(this);
         channels = PlaybackSession.read(this);
         channelIndex = state == null ? getIntent().getIntExtra("queue_index", 0) : state.getInt("channel_index");
@@ -61,7 +66,13 @@ public final class IptvPlayerActivity extends AppCompatActivity {
         header = findViewById(R.id.iptvPlayerHeader);
         channelTitle = findViewById(R.id.iptvPlayerChannelTitle);
         channelCountry = findViewById(R.id.iptvPlayerCountry);
-        findViewById(R.id.iptvPlayerRetry).setOnClickListener(v -> { feedIndex = 0; preparePlayback(); });
+        findViewById(R.id.iptvPlayerRetry).setOnClickListener(v -> {
+            if (channels.isEmpty()) return;
+            finishObservation(false);
+            orderedFeeds = health.rank(current().streamUrls);
+            feedIndex = 0;
+            preparePlayback();
+        });
         ((Button) findViewById(R.id.playerPrevious)).setOnClickListener(v -> switchChannel(-1));
         ((Button) findViewById(R.id.playerNext)).setOnClickListener(v -> switchChannel(1));
         findViewById(R.id.playerAudio).setOnClickListener(v -> chooseTrack(C.TRACK_TYPE_AUDIO));
@@ -89,7 +100,12 @@ public final class IptvPlayerActivity extends AppCompatActivity {
         super.onStart();
         hideSystemBars();
         if (channels.isEmpty()) { showPlaybackError(); return; }
-        player = new ExoPlayer.Builder(this).build();
+        androidx.media3.datasource.DefaultHttpDataSource.Factory http = new androidx.media3.datasource.DefaultHttpDataSource.Factory()
+                .setAllowCrossProtocolRedirects(true).setConnectTimeoutMs(8000).setReadTimeoutMs(12000);
+        player = new ExoPlayer.Builder(this).setMediaSourceFactory(new androidx.media3.exoplayer.source.DefaultMediaSourceFactory(
+                new androidx.media3.datasource.DefaultDataSource.Factory(this, http))).build();
+        orderedFeeds = health.rank(current().streamUrls);
+        feedIndex = 0;
         playerView.setPlayer(player);
         playerView.setShowBuffering(PlayerView.SHOW_BUFFERING_ALWAYS);
         playerView.setControllerShowTimeoutMs(5000);
@@ -100,11 +116,23 @@ public final class IptvPlayerActivity extends AppCompatActivity {
         header.setVisibility(View.GONE);
         playerView.requestFocus();
         player.addListener(new Player.Listener() {
+            @Override public void onRenderedFirstFrame() {
+                if (observedUrl != null && firstFrameAt == 0) firstFrameAt = android.os.SystemClock.elapsedRealtime();
+            }
+            @Override public void onIsPlayingChanged(boolean playing) {
+                long now = android.os.SystemClock.elapsedRealtime();
+                if (playingSince > 0) playedMs += now - playingSince;
+                playingSince = playing && observedUrl != null ? now : 0;
+            }
             @Override public void onPlaybackStateChanged(int state) {
                 if (player == null || player.getPlaybackState() != state) return;
+                long now = android.os.SystemClock.elapsedRealtime();
+                if (bufferingSince > 0) bufferedMs += now - bufferingSince;
+                bufferingSince = state == Player.STATE_BUFFERING && observedUrl != null ? now : 0;
                 handler.removeCallbacks(stalled);
                 if (state == Player.STATE_BUFFERING) handler.postDelayed(stalled, 18000);
                 if (state == Player.STATE_READY) {
+                    if (observedUrl != null && firstFrameAt == 0) firstFrameAt = now;
                     errorPanel.setVisibility(View.GONE);
                     if (!recorded) { preferences.recordChannel(current()); recorded = true; }
                 }
@@ -118,6 +146,7 @@ public final class IptvPlayerActivity extends AppCompatActivity {
     }
 
     @Override protected void onStop() {
+        finishObservation(false);
         handler.removeCallbacksAndMessages(null);
         if (!channels.isEmpty()) PlaybackSession.persistWindow(this, channels, current());
         if (player != null) { playerView.setPlayer(null); player.release(); player = null; }
@@ -133,10 +162,25 @@ public final class IptvPlayerActivity extends AppCompatActivity {
         errorPanel.setVisibility(View.GONE);
         channelTitle.setText(current().name);
         channelCountry.setText(current().country + " · " + (feedIndex + 1) + "/" + current().streamUrls.size());
-        String url = current().streamUrls.get(feedIndex);
+        String url = orderedFeeds.get(feedIndex);
+        player.stop();
+        observedUrl = url;
+        startedAt = android.os.SystemClock.elapsedRealtime();
+        firstFrameAt = playingSince = playedMs = bufferingSince = bufferedMs = 0;
         MediaItem.Builder item = new MediaItem.Builder().setUri(Uri.parse(url));
         if (url.toLowerCase(Locale.ROOT).contains(".m3u8")) item.setMimeType(MimeTypes.APPLICATION_M3U8);
-        player.setMediaItem(item.build());
+        androidx.media3.datasource.DefaultHttpDataSource.Factory http = new androidx.media3.datasource.DefaultHttpDataSource.Factory()
+                .setAllowCrossProtocolRedirects(true).setConnectTimeoutMs(8000).setReadTimeoutMs(12000)
+                .setDefaultRequestProperties(current().streamHeaders.getOrDefault(url, Collections.emptyMap()));
+        androidx.media3.exoplayer.source.MediaSource source;
+        try {
+            source = new androidx.media3.exoplayer.source.DefaultMediaSourceFactory(
+                    new androidx.media3.datasource.DefaultDataSource.Factory(this, http)).createMediaSource(item.build());
+        } catch (RuntimeException unsupportedFeed) {
+            handler.post(this::nextFeed);
+            return;
+        }
+        player.setMediaSource(source);
         player.prepare();
         player.play();
         handler.removeCallbacks(stalled);
@@ -146,14 +190,26 @@ public final class IptvPlayerActivity extends AppCompatActivity {
     private void nextFeed() {
         handler.removeCallbacks(stalled);
         if (player == null || channels.isEmpty()) return;
-        if (++feedIndex < current().streamUrls.size()) preparePlayback();
+        finishObservation(true);
+        if (++feedIndex < orderedFeeds.size()) preparePlayback();
         else { feedIndex = 0; player.stop(); showPlaybackError(); }
+    }
+
+    private void finishObservation(boolean failed) {
+        if (observedUrl == null) return;
+        long now = android.os.SystemClock.elapsedRealtime();
+        if (playingSince > 0) playedMs += now - playingSince;
+        if (bufferingSince > 0) bufferedMs += now - bufferingSince;
+        health.record(observedUrl, failed, firstFrameAt == 0 ? now - startedAt : firstFrameAt - startedAt,
+                playedMs, bufferedMs);
+        observedUrl = null;
+        playingSince = bufferingSince = 0;
     }
 
     private void switchChannel(int delta) {
         if (channels.size() < 2) return;
         int next = Math.floorMod(channelIndex + delta, channels.size());
-        Runnable play = () -> { channelIndex = next; feedIndex = 0; recorded = false; preparePlayback(); };
+        Runnable play = () -> { finishObservation(false); channelIndex = next; orderedFeeds = health.rank(current().streamUrls); feedIndex = 0; recorded = false; preparePlayback(); };
         if (channels.get(next).isAdult()) LockPad.verify(this, preferences, getString(R.string.iptv_adults_unlock), play::run);
         else play.run();
     }

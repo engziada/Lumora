@@ -26,8 +26,13 @@ public final class StreamAvailability {
     private StreamAvailability() { }
 
     public static void check(String url, Callback callback) {
+        check(url, java.util.Collections.emptyMap(), callback);
+    }
+
+    private static void check(String url, java.util.Map<String, String> headers, Callback callback) {
+        String cacheKey = url + "|" + headers.hashCode();
         synchronized (CACHE) {
-            Result result = CACHE.get(url);
+            Result result = CACHE.get(cacheKey);
             if (result != null && android.os.SystemClock.elapsedRealtime() - result.checkedAt < TTL_MS) {
                 MAIN.post(() -> callback.onChecked(result.reachable));
                 return;
@@ -35,9 +40,9 @@ public final class StreamAvailability {
         }
         try {
             IO.execute(() -> {
-                boolean reachable = probe(url);
+                boolean reachable = probe(url, headers);
                 synchronized (CACHE) {
-                    CACHE.put(url, new Result(reachable));
+                    CACHE.put(cacheKey, new Result(reachable));
                     while (CACHE.size() > 256) CACHE.remove(CACHE.keySet().iterator().next());
                 }
                 MAIN.post(() -> callback.onChecked(reachable));
@@ -50,19 +55,20 @@ public final class StreamAvailability {
     public static void clear() { synchronized (CACHE) { CACHE.clear(); } }
 
     public static void checkChannel(com.firestick.aura.launcher.model.IptvChannel channel, Callback callback) {
-        checkFeed(channel.streamUrls, 0, callback);
+        checkFeed(channel, 0, callback);
     }
 
-    private static void checkFeed(java.util.List<String> urls, int index, Callback callback) {
+    private static void checkFeed(com.firestick.aura.launcher.model.IptvChannel channel, int index, Callback callback) {
+        java.util.List<String> urls = channel.streamUrls;
         if (index >= urls.size()) { callback.onChecked(false); return; }
-        check(urls.get(index), reachable -> {
+        check(urls.get(index), channel.streamHeaders.getOrDefault(urls.get(index), java.util.Collections.emptyMap()), reachable -> {
             if (Boolean.TRUE.equals(reachable)) callback.onChecked(true);
             else if (reachable == null) callback.onChecked(null);
-            else checkFeed(urls, index + 1, callback);
+            else checkFeed(channel, index + 1, callback);
         });
     }
 
-    private static boolean probe(String url) {
+    private static boolean probe(String url, java.util.Map<String, String> headers) {
         HttpURLConnection connection = null;
         try {
             URL endpoint = new URL(url);
@@ -72,6 +78,7 @@ public final class StreamAvailability {
             connection.setReadTimeout(4000);
             connection.setRequestProperty("Range", "bytes=0-1023");
             connection.setRequestProperty("User-Agent", "Lumora IPTV");
+            for (java.util.Map.Entry<String, String> header : headers.entrySet()) connection.setRequestProperty(header.getKey(), header.getValue());
             int status = connection.getResponseCode();
             if (status < 200 || status >= 300) return false;
             String type = connection.getContentType();

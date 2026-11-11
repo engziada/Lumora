@@ -86,7 +86,7 @@
 
     <!-- IPTV / Shows -->
     <string name="shows_disabled">IPTV is off. Turn it on in Settings, IPTV.</string>
-    <string name="shows_attribution">Channel listings from iptv-org. Stream availability varies by channel and region.</string>
+    <string name="shows_attribution">Channel listings: iptv-org, Free-TV and your playlists. Availability varies by channel and region.</string>
     <string name="show_channel_time">%1$s · %2$s</string>
     <string name="show_episode">Season %1$d, episode %2$d · %3$s</string>
     <string name="show_rating">★ %1$.1f</string>
@@ -327,4 +327,16 @@
     <string name="iptv_adults">Adults</string>
     <string name="iptv_adults_unlock">Enter your lock key to open Adults.</string>
     <string name="iptv_online_checking">Checking stream availability…</string>
+    <string name="iptv_sources">IPTV sources</string>
+    <string name="iptv_curated_source">Include Free-TV curated channels</string>
+    <string name="iptv_source_add">Add M3U playlist URL</string>
+    <string name="iptv_source_remove">Remove: %1$s</string>
+    <string name="iptv_source_name">Playlist name</string>
+    <string name="iptv_source_url">Playlist URL</string>
+    <string name="iptv_source_hint">Enter an HTTP or HTTPS M3U playlist. Channels without a country appear under All. Provider URLs stay private and are excluded from exported backups.</string>
+    <string name="iptv_source_checking">Checking playlist…</string>
+    <string name="iptv_source_invalid">Could not load a playable M3U playlist. Check the URL and connection.</string>
+    <string name="iptv_source_limit">You can add up to five playlists.</string>
+    <string name="iptv_source_duplicate">This playlist is already added.</string>
+    <string name="iptv_source_saved">Playlist added. Open IPTV to load its channels.</string>
 </resources>

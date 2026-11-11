@@ -14,12 +14,14 @@ public class LauncherBackupTest {
         values.put("pref_favorites", new HashSet<>(Arrays.asList("com.example.tv")));
         values.put("pref_home_sections", "favorites,recent,iptv");
         values.put("unrelated_token", "private");
+        values.put("pref_recent_channels", "[{\"urls\":[\"https://provider.test/live?token=private\"]}]");
         Map<String, Object> restored = LauncherBackup.decode(LauncherBackup.encode(values));
         assertEquals(true, restored.get("pref_sound_enabled"));
         assertEquals(2, restored.get("pref_panel_content"));
         assertEquals(23L, restored.get("pref_home_revision"));
         assertEquals(values.get("pref_favorites"), restored.get("pref_favorites"));
         assertFalse(restored.containsKey("unrelated_token"));
+        assertFalse(restored.containsKey("pref_recent_channels"));
     }
 
     @Test(expected = JSONException.class) public void invalidTypeIsRejectedBeforeRestore() throws Exception {

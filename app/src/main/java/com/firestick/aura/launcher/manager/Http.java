@@ -50,6 +50,28 @@ public final class Http {
         }
     }
 
+    public static byte[] getBounded(String url, int connectMs, int readMs, int maxBytes) {
+        HttpURLConnection connection = null;
+        try {
+            connection = (HttpURLConnection) new URL(url).openConnection();
+            connection.setConnectTimeout(connectMs);
+            connection.setReadTimeout(readMs);
+            connection.setRequestProperty("User-Agent", USER_AGENT);
+            if (connection.getResponseCode() != 200) return null;
+            try (InputStream in = connection.getInputStream(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+                byte[] buffer = new byte[16384];
+                int count;
+                long deadline = System.nanoTime() + 30_000_000_000L;
+                while ((count = in.read(buffer)) != -1) {
+                    if (out.size() + count > maxBytes || System.nanoTime() > deadline) return null;
+                    out.write(buffer, 0, count);
+                }
+                return out.toByteArray();
+            }
+        } catch (Exception unavailable) { return null; }
+        finally { if (connection != null) connection.disconnect(); }
+    }
+
     /** Writes through a temporary file so a crash never leaves a truncated cache entry. */
     public static boolean writeFile(File file, byte[] data) {
         File parent = file.getParentFile();

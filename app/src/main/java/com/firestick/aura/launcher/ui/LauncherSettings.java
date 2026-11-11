@@ -70,6 +70,7 @@ public final class LauncherSettings {
     }
 
     public void bind(ViewGroup appearance, ViewGroup tools) {
+        button(tools, R.string.iptv_sources, () -> IptvSourceSettings.show(activity, io));
         button(appearance, R.string.home_customize, this::rows);
         button(appearance, R.string.home_tile_size, () -> {
             List<GlassMenu.Item> items = Arrays.asList(

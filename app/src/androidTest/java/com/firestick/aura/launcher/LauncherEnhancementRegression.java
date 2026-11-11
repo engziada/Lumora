@@ -28,9 +28,15 @@ final class LauncherEnhancementRegression {
         Bundle result = new Bundle();
         PreferenceManager prefs = new PreferenceManager(test.getTargetContext());
         Map<String, ?> original = prefs.storage().getAll();
+        SharedPreferences sourcePrefs = test.getTargetContext().getSharedPreferences("iptv_sources", Context.MODE_PRIVATE);
+        Map<String, ?> originalSources = sourcePrefs.getAll();
+        SharedPreferences healthPrefs = test.getTargetContext().getSharedPreferences("iptv_health", Context.MODE_PRIVATE);
+        Map<String, ?> originalHealth = healthPrefs.getAll();
         int finishCode = -1;
         try {
             startServer();
+            healthPrefs.edit().clear().commit();
+            verifyCatalog(sourcePrefs);
             EpgRepository epg = new EpgRepository(test.getTargetContext());
             java.lang.reflect.Method read = EpgRepository.class.getDeclaredMethod("readGuide", String.class, String.class, String.class);
             read.setAccessible(true);
@@ -43,8 +49,9 @@ final class LauncherEnhancementRegression {
             prefs.setReducedMotion(true);
             prefs.setHomeSections(Arrays.asList("favorites", "recent", "iptv"));
             List<IptvChannel> fixture = IptvRepository.parsePlaylist(
-                    "#EXTINF:-1 tvg-id=\"Fixture.us\" group-title=\"Movies\",Fixture\nhttp://127.0.0.1:" + server.getLocalPort() + "/bad\n"
-                    + "#EXTINF:-1 tvg-id=\"Fixture.us\" group-title=\"Movies\",Fixture\nhttp://127.0.0.1:" + server.getLocalPort() + "/valid.mp4\n"
+                    "#EXTINF:-1 tvg-id=\"Fixture.us\" group-title=\"Movies\",Fixture\nhttp://127.0.0.1:" + server.getLocalPort() + "/bad.mpd\n"
+                    + "#EXTINF:-1 tvg-id=\"Fixture.us\" group-title=\"Movies\",Fixture\nhttp://127.0.0.1:" + server.getLocalPort() + "/bad\n"
+                    + "#EXTINF:-1 tvg-id=\"Fixture.us\" group-title=\"Movies\",Fixture\n#EXTVLCOPT:http-user-agent=Fixture-Agent\nhttp://127.0.0.1:" + server.getLocalPort() + "/valid.mp4\n"
                     + "#EXTINF:-1 tvg-id=\"Next.us\" group-title=\"Music\",Next channel\nhttp://127.0.0.1:" + server.getLocalPort() + "/valid2.mp4\n"
                     + "#EXTINF:-1 tvg-id=\"Adult.us\" group-title=\"XXX\",Adult fixture\nhttp://127.0.0.1:" + server.getLocalPort() + "/adult.mp4\n", "US");
             IptvChannel selected = fixture.stream().filter(channel -> channel.name.equals("Fixture")).findFirst().get();
@@ -98,9 +105,7 @@ final class LauncherEnhancementRegression {
             main(() -> activity.findViewById(R.id.iptvFilter).performClick());
             AccessibilityNodeInfo adults = node("Adults · 1");
             check(adults != null, "Adults listed last");
-            AccessibilityNodeInfo target = adults;
-            while (target != null && !target.isClickable()) target = target.getParent();
-            check(target != null && target.performAction(AccessibilityNodeInfo.ACTION_CLICK), "Adults opens key dialog");
+            clickNode("Adults · 1");
             SystemClock.sleep(300);
             node(activity.getString(R.string.lock_title_verify));
             main(() -> check(!"category:18+".equals(get("selectedIptvCategory")), "Adults stays locked"));
@@ -117,11 +122,15 @@ final class LauncherEnhancementRegression {
                     "Online scan reports progress"));
             main(() -> PlaybackSession.open(activity, fixture, selected));
             activity = waitActivity(IptvPlayerActivity.class);
-            SystemClock.sleep(7000);
+            awaitPlayback();
             main(() -> {
                 ExoPlayer player = (ExoPlayer) get("player");
                 check(player != null && player.getCurrentMediaItem().localConfiguration.uri.toString().endsWith("valid.mp4"),
-                        "Player automatically falls back from 404 to valid feed");
+                        "Player falls back from unsupported format and HTTP 404 to valid feed");
+                check(new StreamHealth(activity).rank(selected.streamUrls).get(0).endsWith("valid.mp4"),
+                        "Saved device health deprioritizes failed stream");
+                check(player.isPlaying(), "Header-protected feed decodes and plays: state=" + player.getPlaybackState()
+                        + " error=" + player.getPlayerError());
                 check(prefs.recentChannels().get(0).id == selected.id, "Successful playback records history");
                 activity.findViewById(R.id.playerPicture).performClick();
             });
@@ -166,6 +175,19 @@ final class LauncherEnhancementRegression {
             reveal(R.id.panelAppearance, R.string.reduced_motion);
             node(activity.getString(R.string.reduced_motion));
             main(() -> activity.findViewById(R.id.secTools).requestFocus());
+            reveal(R.id.panelTools, R.string.iptv_sources);
+            clickNode(activity.getString(R.string.iptv_sources));
+            node(activity.getString(R.string.iptv_curated_source));
+            clickNode(activity.getString(R.string.iptv_source_add));
+            enterPrompt("Device fixture");
+            enterPrompt("http://127.0.0.1:" + server.getLocalPort() + "/playlist.m3u");
+            node(activity.getString(R.string.iptv_source_saved));
+            check(IptvSources.read(sourcePrefs).size() == 1, "Validated custom source persists");
+            clickNode(activity.getString(R.string.close));
+            reveal(R.id.panelTools, R.string.iptv_sources);
+            clickNode(activity.getString(R.string.iptv_sources));
+            clickNode(activity.getString(R.string.iptv_source_remove, "Device fixture"));
+            check(IptvSources.read(sourcePrefs).isEmpty(), "Custom source can be removed");
             reveal(R.id.panelTools, R.string.backup_export);
             node(activity.getString(R.string.backup_export));
             reveal(R.id.panelTools, R.string.backup_restore);
@@ -181,8 +203,78 @@ final class LauncherEnhancementRegression {
             serving = false;
             try { if (server != null) server.close(); } catch (IOException ignored) { }
             restore(prefs.storage(), original);
+            restore(sourcePrefs, originalSources);
+            restore(healthPrefs, originalHealth);
         }
         test.finish(finishCode, result);
+    }
+
+    private void enterPrompt(String value) {
+        android.accessibilityservice.AccessibilityServiceInfo service = test.getUiAutomation().getServiceInfo();
+        service.flags |= android.accessibilityservice.AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS;
+        test.getUiAutomation().setServiceInfo(service);
+        SystemClock.sleep(350);
+        AccessibilityNodeInfo root = test.getUiAutomation().getRootInActiveWindow();
+        List<AccessibilityNodeInfo> fields = root.findAccessibilityNodeInfosByViewId(
+                test.getTargetContext().getPackageName() + ":id/promptField");
+        check(!fields.isEmpty(), "Source prompt is editable");
+        Bundle args = new Bundle();
+        args.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, value);
+        check(fields.get(0).performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args), "Entered source field");
+        clickNode(activity.getString(R.string.prompt_save));
+    }
+
+    private void awaitPlayback() {
+        for (int i = 0; i < 60; i++) {
+            boolean[] playing = {false};
+            main(() -> {
+                ExoPlayer player = (ExoPlayer) get("player");
+                playing[0] = player != null && player.isPlaying() && player.getVideoSize().width > 0;
+            });
+            if (playing[0]) return;
+            SystemClock.sleep(250);
+        }
+        throw new AssertionError("Header-protected video did not start");
+    }
+
+    private void verifyCatalog(SharedPreferences sourcePrefs) throws Exception {
+        File directory = new File(test.getTargetContext().getCacheDir(), "iptv");
+        directory.mkdirs();
+        Map<File, byte[]> originals = new HashMap<>();
+        Map<String, String> fixtures = new HashMap<>();
+        fixtures.put("country-all.m3u", "#EXTM3U\n#EXTINF:-1 tvg-id=\"One.us\" group-title=\"News\",One\nhttps://a.test/live\n");
+        fixtures.put("free-tv.m3u", "#EXTM3U\n#EXTINF:-1 tvg-id=\"One.us\" tvg-country=\"US\" group-title=\"USA\",One\nhttps://b.test/live\n"
+                + "#EXTINF:-1 tvg-id=\"Two.eg\" tvg-country=\"EG\" group-title=\"Egypt\",Two\nhttps://c.test/live\n");
+        fixtures.put("streams.json", "[{\"channel\":\"One.us\",\"url\":\"https://d.test/live\",\"user_agent\":\"Fixture\"}]");
+        IptvRepository repository = null;
+        try {
+            for (Map.Entry<String, String> fixture : fixtures.entrySet()) {
+                File file = new File(directory, fixture.getKey());
+                originals.put(file, file.exists() ? Http.readFile(file) : null);
+                Http.writeFile(file, fixture.getValue().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            }
+            sourcePrefs.edit().clear().putBoolean("free_tv", true).commit();
+            IptvSources.save(sourcePrefs, Arrays.asList(
+                    new IptvSources.Source("Fixture", "http://127.0.0.1:" + server.getLocalPort() + "/playlist.m3u"),
+                    new IptvSources.Source("Unavailable", "http://127.0.0.1:" + server.getLocalPort() + "/bad")));
+            java.util.concurrent.CountDownLatch done = new java.util.concurrent.CountDownLatch(1);
+            final List<IptvChannel> result = new ArrayList<>();
+            final boolean[] failed = {true};
+            repository = new IptvRepository(test.getTargetContext());
+            repository.loadChannels("ALL", (rows, error) -> { result.addAll(rows); failed[0] = error; done.countDown(); });
+            check(done.await(20, java.util.concurrent.TimeUnit.SECONDS), "Combined catalog returns");
+            check(!failed[0] && result.size() == 3, "Failed custom source leaves other catalogs available");
+            IptvChannel one = result.stream().filter(row -> row.channelId.equals("One.us")).findFirst().get();
+            check(one.streamUrls.size() == 3, "Primary, curated and API feeds merge into one channel");
+            check("Fixture".equals(one.streamHeaders.get("https://d.test/live").get("User-Agent")), "API request headers retained");
+            check(IptvRepository.filterCountry(result, "EG").size() == 1, "Supplemental country filtering works");
+        } finally {
+            if (repository != null) repository.shutdown();
+            for (Map.Entry<File, byte[]> entry : originals.entrySet()) {
+                if (entry.getValue() == null) entry.getKey().delete(); else Http.writeFile(entry.getKey(), entry.getValue());
+            }
+            sourcePrefs.edit().clear().commit();
+        }
     }
 
     private Activity start(Class<?> type) {
@@ -223,10 +315,17 @@ final class LauncherEnhancementRegression {
     private void key(int code) { test.sendKeyDownUpSync(code); SystemClock.sleep(120); }
     private void check(boolean condition, String label) { if (!condition) throw new AssertionError(label); assertions++; }
     private void clickNode(String label) {
-        AccessibilityNodeInfo target = node(label);
-        while (target != null && !target.isClickable()) target = target.getParent();
-        check(target != null && target.performAction(AccessibilityNodeInfo.ACTION_CLICK), "Selected " + label);
-        SystemClock.sleep(250);
+        for (int attempt = 0; attempt < 10; attempt++) {
+            SystemClock.sleep(150);
+            AccessibilityNodeInfo target = node(label);
+            while (target != null && !target.isClickable()) target = target.getParent();
+            if (target != null && target.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+                check(true, "Selected " + label);
+                SystemClock.sleep(250);
+                return;
+            }
+        }
+        throw new AssertionError("Cannot select " + label);
     }
     private AccessibilityNodeInfo node(String text) {
         for (int i = 0; i < 30; i++) {
@@ -289,9 +388,19 @@ final class LauncherEnhancementRegression {
                 String line = reader.readLine();
                 if (line == null) continue;
                 String header;
-                while ((header = reader.readLine()) != null && !header.isEmpty()) { }
+                boolean authorized = false;
+                while ((header = reader.readLine()) != null && !header.isEmpty()) {
+                    if (header.equalsIgnoreCase("User-Agent: Fixture-Agent")) authorized = true;
+                }
                 OutputStream output = socket.getOutputStream();
-                if (line.contains("/bad")) output.write("HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".getBytes());
+                if (line.contains("/bad") || (line.contains(" /valid.mp4") && !authorized)) output.write("HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".getBytes());
+                else if (line.contains("/playlist.m3u")) {
+                    byte[] bytes = ("#EXTM3U\n#EXTINF:-1 tvg-id=\"Custom.us\" group-title=\"Music\",Custom\nhttp://127.0.0.1:"
+                            + server.getLocalPort() + "/valid2.mp4\n").getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                    output.write(("HTTP/1.1 200 OK\r\nContent-Type: application/x-mpegURL\r\nContent-Length: " + bytes.length
+                            + "\r\nConnection: close\r\n\r\n").getBytes());
+                    output.write(bytes);
+                }
                 else if (line.contains("/guide.xml")) {
                     java.time.ZonedDateTime now = java.time.ZonedDateTime.now(java.time.ZoneOffset.UTC);
                     java.time.format.DateTimeFormatter format = java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmmss xx");

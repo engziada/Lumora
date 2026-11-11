@@ -121,6 +121,7 @@ public class MainActivity extends AppCompatActivity
     private final List<IptvCountry> iptvCountries = new ArrayList<>();
     private List<IptvChannel> countryChannels = new ArrayList<>();
     private String selectedIptvCountry, selectedIptvCategory = "all", iptvSearchQuery = "";
+    private String sourceRevision = "";
     private long appliedHomeRevision = -1L, iptvLoadedAt, lastKeyDownAt, gearDismissedAt;
     private int currentTab = TAB_HOME, refreshGeneration, iptvGeneration;
     private boolean iptvCountriesLoaded, iptvCountriesLoading, channelsLoaded;
@@ -566,6 +567,8 @@ public class MainActivity extends AppCompatActivity
 
     @Override protected void onResume() {
         super.onResume();
+        String sources = getSharedPreferences("iptv_sources", MODE_PRIVATE).getAll().toString();
+        if (!sourceRevision.equals(sources)) { sourceRevision = sources; channelsLoaded = false; }
         previewResumed = true;
         // Keeps the quick-actions service on once WRITE_SECURE_SETTINGS has been granted over ADB.
         QuickAccess.ensureServiceEnabled(this);

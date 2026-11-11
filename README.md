@@ -1,4 +1,4 @@
-# Lumora — v5.5.0
+# Lumora — v5.5.1
 
 ![Android CI](https://github.com/engziada/Lumora/actions/workflows/android-build.yml/badge.svg)
 ![License: MIT](https://img.shields.io/badge/license-MIT-E3A15A)
@@ -17,9 +17,17 @@ Java application with no analytics SDK. The application id stays `com.firestick.
   listed last. Player controls include channel switching, audio, subtitles, picture size and an
   on-demand current/next guide where public XMLTV sources are available.
 - **Recently watched**: successful live playback appears on Home with Continue live.
+- **IPTV sources**: iptv-org plus Free-TV direct streams, merged into the same country/search/category views.
+  Settings → Tools → IPTV sources can disable Free-TV or add/remove up to five HTTP(S) M3U playlist URLs.
+  Custom playlists are checked before saving; entries without country metadata appear under All countries.
+  Stream alternatives retain supported User-Agent/Referer headers, including M3U EXTVLCOPT headers.
+  Successful playback, startup time, buffering and failures help choose feeds on the next play.
+  Observations expire and are bounded to 256 feeds. Source failures retain available catalogs and cached data.
+  Catalog membership and HTTP Online indicators do not guarantee decoding or availability in every region.
 - **Profiles and backup**: save/load appearance profiles and enable reduced motion in Appearance.
   Export/restore layout, favorites and launcher settings in Tools. Backups preserve the existing
   lock configuration. A saved key is required before export/restore when one is configured.
+  Custom IPTV source settings and recent playback URLs are excluded from exported backups because URLs may contain access tokens.
   Devices without a document picker save backups under the app's external-files/backups directory.
   Restore can also select JSON backups received through Tools → Receive files from phone.
 - **Apps** / **Streaming**: full grids. Any app can be moved between the two or added to Home.
