@@ -44,7 +44,7 @@ public class AppRepository {
             "org.xbmc.kodi", "org.jellyfin.androidtv", "com.spotify.tv.android", "com.crunchyroll.crunchyroid",
             "com.stremio.one", "org.videolan.vlc", "com.twitch.android.app", "tv.twitch.android.app", "com.tubitv.ott",
             "tv.pluto.android", "com.apple.atve.androidtv.appletv", "com.cbs.ott", "com.peacocktv.peacockandroid",
-            "com.lagradost.cloudstream3", "com.mxtech.videoplayer.ad"));
+            "com.lagradost.cloudstream3", "com.mxtech.videoplayer.ad", "mob.play.rflx"));
 
     private final Context context;
     private final PackageManager pm;

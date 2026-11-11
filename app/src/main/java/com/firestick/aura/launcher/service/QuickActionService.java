@@ -49,7 +49,8 @@ public class QuickActionService extends AccessibilityService {
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
-        if (event == null || event.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return;
+        if (event == null || (event.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
+                && event.getEventType() != AccessibilityEvent.TYPE_WINDOWS_CHANGED)) return;
         CharSequence source = event.getPackageName();
         if (source == null || !STOCK_HOME.contains(source.toString())) return;
         long now = SystemClock.elapsedRealtime();
@@ -57,7 +58,8 @@ public class QuickActionService extends AccessibilityService {
         if (!new PreferenceManager(this).isHomeRedirectEnabled()) return;
         lastRedirect = now;
         Intent home = new Intent(this, MainActivity.class)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
+                        | Intent.FLAG_ACTIVITY_NO_ANIMATION);
         try {
             startActivity(home);
         } catch (RuntimeException ignored) {

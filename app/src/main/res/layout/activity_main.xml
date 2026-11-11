@@ -545,6 +545,23 @@
                     android:text="@string/nav_streaming" />
             </LinearLayout>
 
+            <LinearLayout
+                android:id="@+id/navEroflix"
+                style="@style/Lumora.NavItem"
+                android:visibility="gone">
+
+                <ImageView
+                    android:id="@+id/imgNavEroflix"
+                    style="@style/Lumora.NavIcon"
+                    android:contentDescription="@null"
+                    android:scaleType="fitCenter" />
+
+                <TextView
+                    android:id="@+id/txtNavEroflix"
+                    style="@style/Lumora.NavLabel"
+                    android:text="@string/nav_eroflix" />
+            </LinearLayout>
+
 
         </LinearLayout>
     </LinearLayout>

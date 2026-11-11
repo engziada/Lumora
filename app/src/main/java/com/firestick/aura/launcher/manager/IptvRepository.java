@@ -43,6 +43,23 @@ public final class IptvRepository {
     private final ExecutorService io = Executors.newSingleThreadExecutor();
     private final ExecutorService downloads = Executors.newFixedThreadPool(3);
     private final Handler main = new Handler(Looper.getMainLooper());
+    // These catalogs are shared by every country selection. Keep their parsed forms for the
+    // lifetime of the repository so RC navigation does not repeatedly parse tens of thousands
+    // of JSON rows and the worldwide curated playlist.
+    private List<IptvChannel> curatedChannels;
+    private java.util.Map<String, List<ApiFeed>> apiFeeds;
+    private final java.util.Map<String, List<IptvChannel>> customChannels = new java.util.HashMap<>();
+
+    private static final class ApiFeed {
+        final String url;
+        final String referrer;
+        final String userAgent;
+        ApiFeed(JSONObject row) {
+            url = row.optString("url", "");
+            referrer = row.optString("referrer", "");
+            userAgent = row.optString("user_agent", "");
+        }
+    }
 
     public IptvRepository(Context context) {
         sources = context.getApplicationContext().getSharedPreferences("iptv_sources", Context.MODE_PRIVATE);
@@ -70,24 +87,36 @@ public final class IptvRepository {
         io.execute(() -> {
             java.util.concurrent.Future<String> primary = download(worldwide ? "https://iptv-org.github.io/iptv/index.m3u"
                     : PLAYLISTS + "/" + code + ".m3u", "country-" + code + ".m3u");
-            java.util.concurrent.Future<String> curated = sources.getBoolean("free_tv", true) ? download(
+            boolean useCurated = sources.getBoolean("free_tv", true);
+            java.util.concurrent.Future<String> curated = useCurated && curatedChannels == null ? download(
                     "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8", "free-tv.m3u") : null;
-            java.util.concurrent.Future<String> api = download(API + "/streams.json", "streams.json");
+            java.util.concurrent.Future<String> api = apiFeeds == null ? download(API + "/streams.json", "streams.json") : null;
+            List<IptvSources.Source> configuredSources = IptvSources.read(sources);
             List<java.util.concurrent.Future<String>> custom = new ArrayList<>();
-            for (IptvSources.Source source : IptvSources.read(sources))
+            for (IptvSources.Source source : configuredSources)
                 custom.add(download(source.url, "custom-" + Http.sha1(source.url) + ".m3u"));
             String playlist = downloaded(primary);
             List<IptvChannel> channels = parsePlaylist(playlist, code.toUpperCase(Locale.ROOT));
             if (channels == null) channels = new ArrayList<>();
-            if (curated != null) {
-                List<IptvChannel> additions = parseCurated(downloaded(curated));
+            if (useCurated && curatedChannels == null && curated != null) {
+                curatedChannels = parseCurated(downloaded(curated));
+            }
+            if (useCurated && curatedChannels != null)
+                channels = merge(channels, filterCountry(curatedChannels, countryCode));
+            for (int i = 0; i < custom.size(); i++) {
+                IptvSources.Source source = configuredSources.get(i);
+                List<IptvChannel> additions = customChannels.get(source.url);
+                if (additions == null) {
+                    additions = parsePlaylist(downloaded(custom.get(i)), "ALL");
+                    if (additions != null) customChannels.put(source.url, additions);
+                }
                 if (additions != null) channels = merge(channels, filterCountry(additions, countryCode));
             }
-            for (java.util.concurrent.Future<String> source : custom) {
-                List<IptvChannel> additions = parsePlaylist(downloaded(source), "ALL");
-                if (additions != null) channels = merge(channels, filterCountry(additions, countryCode));
+            if (apiFeeds == null) {
+                String json = downloaded(api);
+                if (json != null) apiFeeds = parseApiFeeds(json);
             }
-            channels = addApiFeeds(channels, downloaded(api));
+            channels = addApiFeeds(channels, apiFeeds);
             boolean failed = channels.isEmpty() && playlist == null;
             final List<IptvChannel> result = channels;
             main.post(() -> callback.onLoaded(failed ? Collections.emptyList() : result, failed));
@@ -314,30 +343,39 @@ public final class IptvRepository {
     }
 
     public static List<IptvChannel> addApiFeeds(List<IptvChannel> channels, String json) {
-        if (json == null) return channels;
-        java.util.Map<String, List<JSONObject>> feeds = new java.util.HashMap<>();
+        return addApiFeeds(channels, parseApiFeeds(json));
+    }
+
+    private static java.util.Map<String, List<ApiFeed>> parseApiFeeds(String json) {
+        if (json == null) return Collections.emptyMap();
+        java.util.Map<String, List<ApiFeed>> feeds = new java.util.HashMap<>();
         try {
             JSONArray rows = new JSONArray(json);
             for (int i = 0; i < rows.length(); i++) {
                 JSONObject row = rows.optJSONObject(i);
                 if (row == null || !IptvSources.validUrl(row.optString("url"))) continue;
-                feeds.computeIfAbsent(row.optString("channel"), key -> new ArrayList<>()).add(row);
+                feeds.computeIfAbsent(row.optString("channel"), key -> new ArrayList<>()).add(new ApiFeed(row));
             }
-        } catch (Exception invalid) { return channels; }
+        } catch (Exception invalid) { return Collections.emptyMap(); }
+        return feeds;
+    }
+
+    private static List<IptvChannel> addApiFeeds(List<IptvChannel> channels,
+            java.util.Map<String, List<ApiFeed>> feeds) {
+        if (feeds == null || feeds.isEmpty()) return channels;
         List<IptvChannel> result = new ArrayList<>();
         for (IptvChannel channel : channels) {
             List<String> urls = new ArrayList<>(channel.streamUrls);
             java.util.Map<String, java.util.Map<String, String>> headers = new java.util.HashMap<>(channel.streamHeaders);
-            for (JSONObject row : feeds.getOrDefault(channel.channelId, Collections.emptyList())) {
-                String url = row.optString("url");
+            for (ApiFeed row : feeds.getOrDefault(channel.channelId, Collections.emptyList())) {
+                String url = row.url;
                 if (!urls.contains(url) && urls.size() < 30) urls.add(url);
                 if (!urls.contains(url)) continue;
                 java.util.Map<String, String> entry = new java.util.HashMap<>();
-                for (String key : new String[]{"referrer", "user_agent"}) {
-                    String value = row.optString(key, "");
-                    if (!value.isEmpty() && !value.contains("\r") && !value.contains("\n"))
-                        entry.put("referrer".equals(key) ? "Referer" : "User-Agent", value);
-                }
+                if (!row.referrer.isEmpty() && !row.referrer.contains("\r") && !row.referrer.contains("\n"))
+                    entry.put("Referer", row.referrer);
+                if (!row.userAgent.isEmpty() && !row.userAgent.contains("\r") && !row.userAgent.contains("\n"))
+                    entry.put("User-Agent", row.userAgent);
                 if (!entry.isEmpty()) headers.put(url, entry);
             }
             result.add(new IptvChannel(channel.id, channel.name, channel.logo, channel.category, channel.genres,
@@ -354,12 +392,14 @@ public final class IptvRepository {
     }
 
     public void refreshChannels(String countryCode, ChannelsCallback callback) {
-        String code = countryCode.toLowerCase(Locale.ROOT).replaceAll("[^a-z]", "");
         io.execute(() -> {
             File[] files = cacheDir.listFiles();
             if (files != null) for (File cache : files) if (cache.isFile()) cache.setLastModified(0);
+            curatedChannels = null;
+            apiFeeds = null;
+            customChannels.clear();
+            loadChannels(countryCode, callback);
         });
-        loadChannels(countryCode, callback);
     }
 
     public void shutdown() {
