@@ -92,6 +92,23 @@ reporting build 1085. The feed reads its version code from the signed APK. Featu
 do not publish launcher updates. The 5 newest releases are kept. **Losing the
 keystore means every device must uninstall once again**; keep an offline backup.
 
+When CI cannot publish a pushed `main` commit (for example while GitHub Actions is unavailable),
+publish it from a Windows PC that holds the release keystore:
+
+```powershell
+pwsh -NoProfile -File tools/publish-release.ps1                       # dry run
+pwsh -NoProfile -File tools/publish-release.ps1 -SkipChecks -Publish  # publish
+```
+
+The script mirrors the CI publish step. It takes the version code from the commit's failed CI run,
+checks the keystore against the published certificate, runs the tests and lint (dry run), verifies
+the signed APK, writes the same `update.json` and notes, keeps the 5 newest releases and checks the
+live feed. It stops while the commit's CI run is in progress and does nothing if CI published the
+commit. The keystore password comes from `LUMORA_KEYSTORE_PASSWORD`, a DPAPI-protected file (see
+`Get-Help .\tools\publish-release.ps1 -Full`) or a masked prompt, and is never printed. Do not
+re-run a CI run that was published locally: it would reuse the version code. Commits with
+`[skip ci]` in the message run no CI and publish nothing.
+
 ## One-time setup: quick actions and the Home button
 
 Fire OS always opens Amazon's home on the Home button, ignores third-party home apps, and hides
@@ -252,6 +269,7 @@ app/src/main/java/com/firestick/aura/launcher/
 └── update/                 update.json parsing, schedule, download and verification
 brand/                      Visual identity, palette, logo SVGs
 docs/ASSISTANT.md           Assistant setup, phone link, TV control, privacy
+tools/publish-release.ps1   Local release publishing when CI cannot publish
 tools/qr-reference/         Reference QR encoder used to derive test fixtures
 ```
 
