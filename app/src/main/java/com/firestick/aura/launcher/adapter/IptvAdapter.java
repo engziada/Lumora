@@ -17,6 +17,7 @@ import com.firestick.aura.launcher.manager.PreferenceManager;
 import com.firestick.aura.launcher.manager.RemoteImageLoader;
 import com.firestick.aura.launcher.manager.SoundManager;
 import com.firestick.aura.launcher.model.IptvChannel;
+import com.firestick.aura.launcher.ui.Monogram;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -136,6 +137,7 @@ public class IptvAdapter extends RecyclerView.Adapter<IptvAdapter.Holder> {
         private final View frame;
         private final View focusRing;
         private final ImageView poster;
+        private final TextView initials;
         private final TextView title;
         private final TextView meta;
         private final View favoriteBadge;
@@ -147,6 +149,7 @@ public class IptvAdapter extends RecyclerView.Adapter<IptvAdapter.Holder> {
             frame = view.findViewById(R.id.posterFrame);
             focusRing = view.findViewById(R.id.posterFocus);
             poster = view.findViewById(R.id.imgPoster);
+            initials = view.findViewById(R.id.txtPosterInitials);
             title = view.findViewById(R.id.txtPosterTitle);
             meta = view.findViewById(R.id.txtPosterMeta);
             favoriteBadge = view.findViewById(R.id.favoriteBadge);
@@ -180,20 +183,21 @@ public class IptvAdapter extends RecyclerView.Adapter<IptvAdapter.Holder> {
             }
             meta.setText(metaText.toString());
 
-            // Set logo as poster (or placeholder)
+            // Set logo as poster; the initials show until it loads and remain without one.
             String url = channel.logo.isEmpty() ? "" : channel.logo;
             poster.setTag(url);
             poster.setImageDrawable(null);
+            initials.setText(Monogram.initials(channel.name));
+            initials.setVisibility(View.VISIBLE);
             int width = Math.round(CARD_WIDTH_DP * itemView.getResources().getDisplayMetrics().density);
             int height = Math.round(CARD_HEIGHT_DP * itemView.getResources().getDisplayMetrics().density);
             
             if (!url.isEmpty()) {
                 RemoteImageLoader.get(itemView.getContext()).load(url, width, bitmap -> {
-                    if (url.equals(poster.getTag())) poster.setImageBitmap(bitmap);
+                    if (!url.equals(poster.getTag())) return;
+                    poster.setImageBitmap(bitmap);
+                    initials.setVisibility(View.GONE);
                 });
-            } else {
-                // Use default poster with channel initial
-                poster.setBackgroundColor(ContextCompat.getColor(itemView.getContext(), R.color.nova_card));
             }
 
             int accent = preferences.getAccentColor(ContextCompat.getColor(itemView.getContext(), R.color.nova_accent));

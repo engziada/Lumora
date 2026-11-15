@@ -1,4 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Keep the default clipChildren on this tile and on iconContainer. A view whose parent does not
+  clip it reports unbounded damage, so every frame of the card effect, the label marquee or the
+  focus lift would redraw the whole grid. The focus scale still shows in full, because a view
+  clips in its own scaled space and the grid itself does not clip the tile.
+-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="118dp"
@@ -6,8 +12,6 @@
     android:layout_marginBottom="2dp"
     android:background="@android:color/transparent"
     android:clickable="true"
-    android:clipChildren="false"
-    android:clipToPadding="false"
     android:focusable="true"
     android:focusableInTouchMode="false"
     android:defaultFocusHighlightEnabled="false"
@@ -17,9 +21,7 @@
     <FrameLayout
         android:id="@+id/iconContainer"
         android:layout_width="78dp"
-        android:layout_height="78dp"
-        android:clipChildren="false"
-        android:clipToPadding="false">
+        android:layout_height="78dp">
 
         <View
             android:id="@+id/plateView"
@@ -96,6 +98,7 @@
         android:gravity="center"
         android:marqueeRepeatLimit="marquee_forever"
         android:maxLines="1"
+        android:paddingBottom="4dp"
         android:shadowColor="#CC000000"
         android:shadowDy="2"
         android:shadowRadius="5"

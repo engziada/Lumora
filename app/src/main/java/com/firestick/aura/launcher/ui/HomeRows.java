@@ -35,9 +35,11 @@ public final class HomeRows {
     }
 
     public void render(Map<String, List<AppModel>> rows) {
-        String current = prefs.getHomeRevision() + "|" + prefs.getRecentApps() + "|" + prefs.tileSize()
-                + "|" + prefs.storage().getString("pref_recent_channels", "") + "|" + prefs.getIptvFavorites() + "|" + rows.keySet();
-        for (List<AppModel> list : rows.values()) for (AppModel app : list) current += app.getPackageName();
+        StringBuilder print = new StringBuilder().append(prefs.getHomeRevision()).append('|').append(prefs.getRecentApps())
+                .append('|').append(prefs.tileSize()).append('|').append(prefs.storage().getString("pref_recent_channels", ""))
+                .append('|').append(prefs.getIptvFavorites()).append('|').append(rows.keySet());
+        for (List<AppModel> list : rows.values()) for (AppModel app : list) print.append(app.getPackageName());
+        String current = print.toString();
         if (current.equals(fingerprint)) return;
         fingerprint = current;
         parent.removeAllViews();

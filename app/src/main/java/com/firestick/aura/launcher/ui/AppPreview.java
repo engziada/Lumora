@@ -216,6 +216,8 @@ public final class AppPreview {
     }
 
     public void hide() {
+        // Already closed: skip blanking the idle WebView again on every focus move that keeps it shut.
+        if (current == null && panel.getVisibility() == View.GONE) return;
         if (particles != null) particles.stop();
         if (current != null) Log.i("LumoraPreview", "PREVIEW:stopped " + current);
         generation++;

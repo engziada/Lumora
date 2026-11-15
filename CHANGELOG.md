@@ -1,5 +1,15 @@
 # Changelog
 
+## 5.5.2 — Smoother Home, readability and accessibility
+
+- Lighter idle Home: the focus effect and the particle sphere share one 30 fps cadence and go idle while a dialog, menu or another app covers Home, and lightning rests between strikes. On a Fire TV Stick 4K (2nd Gen), idle Home no longer saturates the GPU: about 31 fps at 7 ms GPU time per frame. Cold start is unchanged.
+- A focused card repaints only its own area, not the whole row or grid.
+- The full-screen Home scrim is cached in a hardware layer (about 8 MB of GPU memory while Lumora is visible).
+- IPTV channels without a working logo show their initials, and reused channel tiles keep their rounded frame.
+- Easier reading: larger Home tagline and IPTV attribution, a roomier update button, app labels that no longer cut off descenders, and a real ellipsis in IPTV search.
+- Screen readers announce the empty Apps/Streaming message and IPTV status messages.
+- JUnit: `AmbientFramesTest`, `MonogramTest`.
+
 ## 5.5.1 — More IPTV sources and smarter playback
 
 - Combine iptv-org and Free-TV direct streams into one catalog, preserving favorites and avoiding ambiguous channel matches.

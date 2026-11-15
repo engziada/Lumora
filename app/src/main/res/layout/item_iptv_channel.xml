@@ -25,6 +25,19 @@
             android:padding="7dp"
             android:scaleType="fitCenter" />
 
+        <!-- Channel initials until the logo loads; they stay when there is no logo or it fails. -->
+        <TextView
+            android:id="@+id/txtPosterInitials"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:importantForAccessibility="no"
+            android:letterSpacing="0.04"
+            android:maxLines="1"
+            android:textColor="@color/nova_text_muted"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
         <View
             android:id="@+id/posterFocus"
             android:layout_width="match_parent"

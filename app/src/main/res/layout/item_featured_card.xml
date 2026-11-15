@@ -1,13 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Wide Home card. Uses the same view IDs as item_app_card so one adapter binds both. -->
+<!--
+  Wide Home card. Uses the same view IDs as item_app_card so one adapter binds both.
+  Keep the default clipChildren on this card and on iconContainer. A view whose parent does not
+  clip it reports unbounded damage, so every frame of the card effect or the focus lift would
+  redraw the whole row. The focus scale still shows in full, because a view clips in its own
+  scaled space and the row itself does not clip the card.
+-->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="170dp"
     android:layout_height="108dp"
     android:layout_marginStart="7dp"
     android:layout_marginEnd="7dp"
     android:clickable="true"
-    android:clipChildren="false"
-    android:clipToPadding="false"
     android:focusable="true"
     android:focusableInTouchMode="false"
     android:defaultFocusHighlightEnabled="false">
@@ -16,8 +20,7 @@
         android:id="@+id/iconContainer"
         android:layout_width="match_parent"
         android:layout_height="96dp"
-        android:layout_gravity="center"
-        android:clipChildren="false">
+        android:layout_gravity="center">
 
         <View
             android:id="@+id/plateView"

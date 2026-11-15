@@ -9,6 +9,7 @@ import android.graphics.Paint;
 import android.graphics.Typeface;
 import android.util.AttributeSet;
 import android.view.View;
+import android.view.animation.AnimationUtils;
 import android.view.animation.LinearInterpolator;
 
 import androidx.core.content.ContextCompat;
@@ -50,7 +51,6 @@ public final class PreviewParticlesView extends View {
 
     private ValueAnimator animator;
     private long lastFrame;
-    private long lastDraw;
     private float time;
     private float spin;
     private float energy;
@@ -146,7 +146,6 @@ public final class PreviewParticlesView extends View {
     private void startClock() {
         if (animator != null) animator.cancel();
         lastFrame = System.nanoTime();
-        lastDraw = 0L;
         animator = ValueAnimator.ofFloat(0f, 1f);
         animator.setDuration(100_000L);
         animator.setRepeatCount(ValueAnimator.INFINITE);
@@ -157,12 +156,24 @@ public final class PreviewParticlesView extends View {
             lastFrame = now;
             update(dt);
             // Thirty frames per second is enough for this scene and leaves headroom on Fire TV.
-            if (now - lastDraw >= 33_000_000L) {
-                lastDraw = now;
-                invalidate();
-            }
+            // The shared cadence also puts these frames in step with the focused-card effect.
+            if (AmbientFrames.isDrawFrame(AnimationUtils.currentAnimationTimeMillis())) invalidate();
         });
         animator.start();
+        if (isAttachedToWindow() && !hasWindowFocus()) animator.pause();
+    }
+
+    /** A dialog or menu over Home pauses the sphere; it continues from the same pose afterwards. */
+    @Override
+    public void onWindowFocusChanged(boolean hasWindowFocus) {
+        super.onWindowFocusChanged(hasWindowFocus);
+        if (animator == null) return;
+        if (!hasWindowFocus) {
+            animator.pause();
+        } else if (animator.isPaused()) {
+            lastFrame = System.nanoTime();
+            animator.resume();
+        }
     }
 
     private void update(float dt) {

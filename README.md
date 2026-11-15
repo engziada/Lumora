@@ -1,4 +1,4 @@
-# Lumora — v5.5.1
+# Lumora — v5.5.2
 
 ![Android CI](https://github.com/engziada/Lumora/actions/workflows/android-build.yml/badge.svg)
 ![License: MIT](https://img.shields.io/badge/license-MIT-E3A15A)

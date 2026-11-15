@@ -292,7 +292,9 @@ public class AppRowAdapter extends RecyclerView.Adapter<AppRowAdapter.AppViewHol
         private void applyFocus(boolean focused) {
             boolean lifted = focused || moving;
             float scale = preferences.reducedMotion() ? 1f : lifted ? (style == STYLE_WIDE ? 1.06f : 1.08f) : 1f;
-            iconContainer.animate().scaleX(scale).scaleY(scale).translationZ(lifted ? 12f : 0f).setDuration(preferences.reducedMotion() ? 0 : 140).start();
+            // No translationZ: without a background the container casts no shadow, and a non-zero Z
+            // makes the renderer redraw the whole row on every frame of the lift.
+            iconContainer.animate().scaleX(scale).scaleY(scale).setDuration(preferences.reducedMotion() ? 0 : 140).start();
             focusRingView.setVisibility(lifted ? View.VISIBLE : View.INVISIBLE);
             label.setSelected(focused);
             label.setTextColor(lifted ? labelFocused : labelIdle);

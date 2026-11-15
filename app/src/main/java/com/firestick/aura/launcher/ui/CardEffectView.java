@@ -9,6 +9,7 @@ import android.graphics.Typeface;
 import android.os.SystemClock;
 import android.util.AttributeSet;
 import android.view.View;
+import android.view.animation.AnimationUtils;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -21,7 +22,9 @@ import java.util.Random;
 /**
  * Background of the focused card: random lightning strikes or Arabic letters and eight-point stars
  * that fade in and out, in the theme colour, clipped to the card plate. It draws only while the
- * card is focused (and while the last items fade out), so idle cards cost nothing.
+ * card is focused (and while the last items fade out), so idle cards cost nothing. Frames follow
+ * the shared {@link AmbientFrames} cadence, skip the gaps between strikes, and no new items start
+ * while a dialog or menu covers Home.
  */
 public final class CardEffectView extends View {
     private static final int MAX_BOLTS = 2, MAX_GLYPHS = 6;
@@ -66,11 +69,12 @@ public final class CardEffectView extends View {
     private final Paint star = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Path clip = new Path();
     private final Path starShape = new Path();
+    private final Runnable tick = this::tick;
     private final float density, radius;
     private String mode = CardEffects.DEFAULT;
     private int accent = 0xFFE3A15A, boltCore = 0xFFF0C890;
-    private boolean active;
-    private long nextSpawn;
+    private boolean active, ticking, painted;
+    private long nextSpawn, tickDue;
 
     public CardEffectView(Context context) {
         this(context, null);
@@ -124,7 +128,7 @@ public final class CardEffectView extends View {
         if (CardEffects.OFF.equals(mode)) return;
         if (!active) nextSpawn = SystemClock.uptimeMillis() + 120L;
         active = true;
-        postInvalidateOnAnimation();
+        schedule(0L);
     }
 
     /** Stops new strikes; the ones on screen finish fading. */
@@ -134,8 +138,16 @@ public final class CardEffectView extends View {
 
     public void reset() {
         active = false;
+        clearItems();
+    }
+
+    /** Drops every item and the pending tick; the next draw shows an empty card. */
+    private void clearItems() {
         bolts.clear();
         glyphs.clear();
+        painted = false;
+        removeCallbacks(tick);
+        ticking = false;
         invalidate();
     }
 
@@ -145,6 +157,7 @@ public final class CardEffectView extends View {
         clip.addRoundRect(new RectF(0f, 0f, w, h), radius, radius, Path.Direction.CW);
         bolts.clear();
         glyphs.clear();
+        if (active) schedule(0L);
     }
 
     @Override protected void onDetachedFromWindow() {
@@ -152,18 +165,79 @@ public final class CardEffectView extends View {
         super.onDetachedFromWindow();
     }
 
+    @Override public void onWindowFocusChanged(boolean hasWindowFocus) {
+        super.onWindowFocusChanged(hasWindowFocus);
+        if (hasWindowFocus && active) schedule(0L);
+    }
+
+    /**
+     * Hidden by another app or by a gone parent (tab switch), the card is no longer drawn, so the
+     * frame that would clear its last item never comes. Stop ticking and drop the items at once
+     * rather than waking every frame in the background; a still-focused card resumes when shown.
+     */
+    @Override public void onVisibilityAggregated(boolean isVisible) {
+        super.onVisibilityAggregated(isVisible);
+        if (!isVisible) clearItems();
+        else if (active) schedule(0L);
+    }
+
     @Override protected void onDraw(@NonNull Canvas canvas) {
         super.onDraw(canvas);
         int w = getWidth(), h = getHeight();
         if (w <= 0 || h <= 0) return;
         long now = SystemClock.uptimeMillis();
-        if (active && now >= nextSpawn) spawn(now, w, h);
         canvas.save();
         canvas.clipPath(clip);
         drawBolts(canvas, now);
         drawGlyphs(canvas, now);
         canvas.restore();
-        if (active || !bolts.isEmpty() || !glyphs.isEmpty()) postInvalidateOnAnimation();
+        painted = !bolts.isEmpty() || !glyphs.isEmpty();
+    }
+
+    /**
+     * One step per display frame while something is on screen: spawn when due, redraw on the
+     * shared ambient cadence, then sleep until the next strike once the card is empty. No new
+     * items start while another window (dialog, menu) has focus.
+     */
+    private void tick() {
+        ticking = false;
+        int w = getWidth(), h = getHeight();
+        if (w <= 0 || h <= 0 || !isAttachedToWindow()) return;
+        long now = SystemClock.uptimeMillis();
+        prune(now);
+        boolean spawning = active && hasWindowFocus();
+        if (spawning && now >= nextSpawn) spawn(now, w, h);
+        if (!bolts.isEmpty() || !glyphs.isEmpty() || painted) {
+            // A painted but now empty card needs one more frame to clear the last faint item.
+            if (AmbientFrames.isDrawFrame(AnimationUtils.currentAnimationTimeMillis())) invalidate();
+            schedule(0L);
+        } else if (spawning) {
+            schedule(nextSpawn - now);
+        }
+    }
+
+    /** Runs {@link #tick()} on a display frame after {@code delayMs}, keeping the earlier of two requests. */
+    private void schedule(long delayMs) {
+        long due = SystemClock.uptimeMillis() + Math.max(0L, delayMs);
+        if (ticking && tickDue <= due) return;
+        removeCallbacks(tick);
+        ticking = true;
+        tickDue = due;
+        if (delayMs <= 0L) postOnAnimation(tick);
+        else postOnAnimationDelayed(tick, delayMs);
+    }
+
+    private void prune(long now) {
+        Iterator<Bolt> bolt = bolts.iterator();
+        while (bolt.hasNext()) {
+            Bolt next = bolt.next();
+            if (now - next.born >= next.life) bolt.remove();
+        }
+        Iterator<Glyph> glyph = glyphs.iterator();
+        while (glyph.hasNext()) {
+            Glyph next = glyph.next();
+            if (now - next.born >= next.life) glyph.remove();
+        }
     }
 
     private void spawn(long now, int w, int h) {

@@ -94,7 +94,7 @@
     <string name="show_watch_on">Watch on %1$s</string>
     
     <!-- IPTV Specific Strings -->
-    <string name="iptv_search_placeholder">Search channels...</string>
+    <string name="iptv_search_placeholder">Search channels…</string>
     <string name="iptv_favorites">Favorites</string>
     <string name="iptv_add_favorite">Long-press to add %1$s to favorites</string>
     <string name="iptv_remove_favorite">Long-press to remove %1$s from favorites</string>
