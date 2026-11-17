@@ -1,7 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Lumora base theme: espresso surfaces, cream text, amber accent, Poppins. -->
-    <style name="Theme.AuraLauncher" parent="Theme.AppCompat.NoActionBar">
+    <!-- Glass fills shared by every Lumora window theme (attrs.xml describes each role). -->
+    <style name="Theme.Lumora.Glass" parent="Theme.AppCompat.NoActionBar">
+        <item name="lumoraGlassPanel">@color/glass_panel_fill</item>
+        <item name="lumoraGlassCard">@color/glass_card_fill</item>
+        <item name="lumoraGlassControl">@color/glass_control_fill</item>
+        <item name="lumoraGlassFocus">@color/glass_focus_fill</item>
+        <item name="lumoraGlassPill">@color/glass_pill_fill</item>
+        <item name="lumoraGlassSheet">@color/glass_sheet_fill</item>
+        <item name="lumoraGlassBar">@color/glass_bar_fill</item>
+        <item name="lumoraGlassInset">@color/glass_inset_fill</item>
+    </style>
+
+    <!-- Lumora base theme: cool ink surfaces, ice-white text and accent, glass fills, Poppins. -->
+    <style name="Theme.AuraLauncher" parent="Theme.Lumora.Glass">
         <item name="android:windowBackground">@color/nova_bg</item>
         <item name="android:colorBackground">@color/nova_bg</item>
         <item name="android:textColorPrimary">@color/nova_text</item>
@@ -20,6 +32,27 @@
         <item name="android:textColorSecondary">@color/nova_text_dim</item>
         <item name="android:fontFamily">@font/poppins</item>
         <item name="colorAccent">@color/nova_accent</item>
+        <item name="lumoraGlassPanel">@color/glass_panel_fill</item>
+        <item name="lumoraGlassCard">@color/glass_card_fill</item>
+        <item name="lumoraGlassControl">@color/glass_control_fill</item>
+        <item name="lumoraGlassFocus">@color/glass_focus_fill</item>
+        <item name="lumoraGlassPill">@color/glass_pill_fill</item>
+        <item name="lumoraGlassSheet">@color/glass_sheet_fill</item>
+        <item name="lumoraGlassBar">@color/glass_bar_fill</item>
+        <item name="lumoraGlassInset">@color/glass_inset_fill</item>
+    </style>
+
+    <!-- Reduce transparency: opaque twins of the glass fills, applied over any Lumora theme
+         by ui/Glass.applyTheme before the layout inflates. -->
+    <style name="ThemeOverlay.Lumora.Solid" parent="">
+        <item name="lumoraGlassPanel">@color/glass_panel_solid</item>
+        <item name="lumoraGlassCard">@color/glass_card_solid</item>
+        <item name="lumoraGlassControl">@color/glass_control_solid</item>
+        <item name="lumoraGlassFocus">@color/glass_focus_solid</item>
+        <item name="lumoraGlassPill">@color/glass_pill_solid</item>
+        <item name="lumoraGlassSheet">@color/glass_sheet_solid</item>
+        <item name="lumoraGlassBar">@color/glass_bar_solid</item>
+        <item name="lumoraGlassInset">@color/glass_inset_solid</item>
     </style>
 
     <!-- Shared text styles -->

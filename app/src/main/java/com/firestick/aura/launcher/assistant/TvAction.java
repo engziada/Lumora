@@ -17,7 +17,7 @@ public final class TvAction {
             PREVIOUS = "previous", STOP = "stop", FORWARD = "forward", REWIND = "rewind";
     public static final String VOLUME_UP = "volume_up", VOLUME_DOWN = "volume_down", MUTE = "mute", UNMUTE = "unmute";
     public static final String BACK = "back", HOME = "home", SCREENSHOT = "screenshot", POWER_MENU = "power_menu";
-    public static final String SETTINGS = "settings", SEARCH = "search", THEME = "theme";
+    public static final String SETTINGS = "settings", SEARCH = "search";
 
     public static final int DEFAULT_STEPS = 2, MAX_STEPS = 10, MAX_QUERY = 200;
 
@@ -25,11 +25,10 @@ public final class TvAction {
     static final Set<String> SIMPLE = set(PLAY, PAUSE, PLAY_PAUSE, NEXT, PREVIOUS, STOP, FORWARD, REWIND,
             MUTE, UNMUTE, BACK, HOME, SCREENSHOT, POWER_MENU);
     public static final Set<String> SETTINGS_PAGES = set("main", "wifi", "bluetooth", "display", "sound", "apps", "about");
-    public static final Set<String> THEMES = set("amber", "copper", "rose", "moonlight");
     private static final Pattern PACKAGE = Pattern.compile("[A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z0-9_]+)+");
 
     public final String name;
-    /** Settings page, theme or package; empty when unused. */
+    /** Settings page or package; empty when unused. */
     public final String arg;
     /** Search text; empty when unused. */
     public final String query;
@@ -65,10 +64,6 @@ public final class TvAction {
             case SETTINGS: {
                 String page = arg.isEmpty() ? "main" : arg.toLowerCase(Locale.ROOT);
                 return SETTINGS_PAGES.contains(page) ? new TvAction(name, page, "", 0) : null;
-            }
-            case THEME: {
-                String theme = arg.toLowerCase(Locale.ROOT);
-                return THEMES.contains(theme) ? new TvAction(name, theme, "", 0) : null;
             }
             case SEARCH:
                 if (!PACKAGE.matcher(arg).matches() || query.isEmpty()) return null;

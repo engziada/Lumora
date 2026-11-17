@@ -12,11 +12,7 @@ import android.os.SystemClock;
 import android.provider.Settings;
 import android.view.KeyEvent;
 
-import androidx.core.content.ContextCompat;
-
-import com.firestick.aura.launcher.R;
 import com.firestick.aura.launcher.manager.AppSearch;
-import com.firestick.aura.launcher.manager.PreferenceManager;
 import com.firestick.aura.launcher.service.QuickActionService;
 
 /**
@@ -70,8 +66,6 @@ public final class TvController {
                 int result = AppSearch.start(context, action.arg, action.query);
                 return result == AppSearch.SEARCHED ? OK : result == AppSearch.OPENED_ONLY ? OPENED_ONLY : NOT_INSTALLED;
             }
-            case TvAction.THEME:
-                return theme(context, action.arg);
             default:
                 return UNSUPPORTED;
         }
@@ -187,25 +181,5 @@ public final class TvController {
         } catch (ActivityNotFoundException | SecurityException exception) {
             return false;
         }
-    }
-
-    private static int theme(Context context, String theme) {
-        int color;
-        switch (theme) {
-            case "copper":
-                color = R.color.accent_copper;
-                break;
-            case "rose":
-                color = R.color.accent_rose;
-                break;
-            case "moonlight":
-                color = R.color.accent_moonlight;
-                break;
-            default:
-                color = R.color.accent_amber;
-                break;
-        }
-        new PreferenceManager(context).setAccentColor(ContextCompat.getColor(context, color));
-        return OK;
     }
 }

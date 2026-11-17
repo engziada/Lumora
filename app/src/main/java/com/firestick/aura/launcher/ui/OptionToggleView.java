@@ -4,14 +4,15 @@ import android.animation.ValueAnimator;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.util.AttributeSet;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.accessibility.AccessibilityNodeInfo;
 import android.view.animation.DecelerateInterpolator;
+import android.widget.CheckBox;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -69,6 +70,11 @@ public final class OptionToggleView extends LinearLayout {
         setOnClickListener(v -> toggle());
     }
 
+    public OptionToggleView label(int text) {
+        label.setText(text);
+        return this;
+    }
+
     public OptionToggleView accentColor(int color) {
         indicator.accent = color;
         indicator.invalidate();
@@ -102,13 +108,24 @@ public final class OptionToggleView extends LinearLayout {
         setAlpha(enabled ? 1f : .5f);
     }
 
+    // Screen readers announce the row as a checkbox with its state, like the platform widget.
+    @Override public CharSequence getAccessibilityClassName() {
+        return CheckBox.class.getName();
+    }
+
+    @Override public void onInitializeAccessibilityNodeInfo(AccessibilityNodeInfo info) {
+        super.onInitializeAccessibilityNodeInfo(info);
+        info.setCheckable(true);
+        info.setChecked(checked);
+    }
+
     /** Rounded-square box: outline when empty, accent fill and tick when checked. */
     private final class CheckIndicator extends View {
         private final Paint box = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint tick = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Path tickPath = new Path();
-        private int accent = 0xFFE3A15A;
+        private int accent = 0xFFDCEAFF;
         private float progress; // 0 = empty, 1 = filled with the tick
 
         CheckIndicator(Context context) {
@@ -118,7 +135,7 @@ public final class OptionToggleView extends LinearLayout {
             tick.setStyle(Paint.Style.STROKE);
             tick.setStrokeCap(Paint.Cap.ROUND);
             tick.setStrokeJoin(Paint.Join.ROUND);
-            tick.setColor(Color.WHITE);
+            tick.setColor(context.getColor(R.color.nova_text_on_accent));
             snap();
         }
 
@@ -153,13 +170,13 @@ public final class OptionToggleView extends LinearLayout {
         @Override protected void onDraw(Canvas canvas) {
             int side = getWidth();
             float radius = side * .24f;
-            box.setColor(isEnabled() ? 0x8CF3E6D6 : 0x3DF3E6D6);
+            box.setColor(isEnabled() ? 0x8CF2F5FA : 0x3DF2F5FA);
             canvas.drawRoundRect(0, 0, side, side, radius, radius, box);
             if (progress <= 0f) return;
             fill.setColor(accent);
             fill.setAlpha((int) (255 * progress));
             canvas.drawRoundRect(0, 0, side, side, radius, radius, fill);
-            box.setColor(isEnabled() ? accent : 0x3DF3E6D6);
+            box.setColor(isEnabled() ? accent : 0x3DF2F5FA);
             box.setStrokeWidth(getResources().getDisplayMetrics().density);
             canvas.drawRoundRect(0, 0, side, side, radius, radius, box);
             float reveal = Math.min(1f, (progress - .35f) / .65f);

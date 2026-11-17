@@ -3,4 +3,24 @@
     <declare-styleable name="OptionToggleView">
         <attr name="toggleLabel" format="string" />
     </declare-styleable>
+
+    <!-- Glass surface fills by role. Window themes set translucent values; the
+         ThemeOverlay.Lumora.Solid overlay swaps in opaque ones for Reduce transparency. -->
+    <!-- Large panels: settings columns, dialogs. -->
+    <attr name="lumoraGlassPanel" format="color" />
+    <!-- Tiles and poster frames. -->
+    <attr name="lumoraGlassCard" format="color" />
+    <!-- Buttons and options at rest. -->
+    <attr name="lumoraGlassControl" format="color" />
+    <!-- Buttons and options with focus. -->
+    <attr name="lumoraGlassFocus" format="color" />
+    <!-- Dense glass: hints, tooltips and badges. -->
+    <attr name="lumoraGlassPill" format="color" />
+    <!-- Near-opaque glass for sheets over other windows or video, where nothing behind
+         can be blurred and crisp text would otherwise show through. -->
+    <attr name="lumoraGlassSheet" format="color" />
+    <!-- Navigation dock and round buttons over the wallpaper. -->
+    <attr name="lumoraGlassBar" format="color" />
+    <!-- Recessed wells such as command blocks. -->
+    <attr name="lumoraGlassInset" format="color" />
 </resources>

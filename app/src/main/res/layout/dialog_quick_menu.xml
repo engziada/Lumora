@@ -22,7 +22,7 @@
         <Button android:id="@+id/btnQuickSetup" style="@style/Lumora.Option"
             android:layout_width="match_parent" android:text="@string/quick_setup_button" />
     </LinearLayout>
-    <View android:layout_width="1dp" android:layout_height="match_parent" android:background="#33F3E6D6" />
+    <View android:layout_width="1dp" android:layout_height="match_parent" android:background="#33FFFFFF" />
     <ScrollView android:layout_width="0dp" android:layout_weight="1" android:layout_height="350dp"
         android:fillViewport="true" android:paddingStart="22dp" android:clipToPadding="false">
         <LinearLayout android:id="@+id/quickDetail" android:layout_width="match_parent"

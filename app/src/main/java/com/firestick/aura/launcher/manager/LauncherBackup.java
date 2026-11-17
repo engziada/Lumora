@@ -10,10 +10,12 @@ public final class LauncherBackup {
             "pref_home_sections", "pref_tile_size", "pref_appearance_profiles"));
     private static final Set<String> BOOLS = new HashSet<>(Arrays.asList(
             "pref_sound_enabled", "pref_hd_icons", "pref_app_preview_demo", "pref_shows_enabled",
-            "pref_lock_settings", "pref_home_redirect", "pref_reduced_motion"));
+            "pref_lock_settings", "pref_home_redirect", "pref_reduced_motion", "pref_reduce_transparency",
+            "pref_sub_embedded"));
     private static final Set<String> INTS = new HashSet<>(Arrays.asList(
-            "pref_accent_color", "pref_wallpaper_interval", "pref_wallpaper_source", "pref_launch_count",
-            "pref_lock_length", "pref_panel_content"));
+            "pref_wallpaper_interval", "pref_wallpaper_source", "pref_launch_count",
+            "pref_lock_length", "pref_panel_content", "pref_sub_size", "pref_sub_color", "pref_sub_bg",
+            "pref_sub_edge", "pref_sub_position"));
     private static final Set<String> SETS = new HashSet<>(Arrays.asList(
             "pref_favorites", "pref_iptv_favorites", "pref_hidden", "pref_wall_categories",
             "pref_force_streaming", "pref_force_apps", "pref_locked_apps"));

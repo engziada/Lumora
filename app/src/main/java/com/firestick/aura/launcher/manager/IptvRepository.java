@@ -37,8 +37,11 @@ public final class IptvRepository {
     private static final String PLAYLISTS = "https://iptv-org.github.io/iptv/countries";
     private static final long CACHE_MAX_AGE_MS = 2L * 60L * 60L * 1000L;
     private static final Pattern ATTRIBUTE = Pattern.compile("(?:^|\\s)%s=\"([^\"]*)\"");
+    /** Source preference: the FAST lineup region, {@link FastGuide#AUTO} or a region code. */
+    public static final String FAST_REGION = "fast_region";
 
     private final android.content.SharedPreferences sources;
+    private final List<PlaylistCatalog.Entry> catalog;
     private final File cacheDir;
     private final ExecutorService io = Executors.newSingleThreadExecutor();
     private final ExecutorService downloads = Executors.newFixedThreadPool(3);
@@ -48,6 +51,8 @@ public final class IptvRepository {
     // of JSON rows and the worldwide curated playlist.
     private List<IptvChannel> curatedChannels;
     private java.util.Map<String, List<ApiFeed>> apiFeeds;
+    /** Channel IDs iptv-org blocks as NSFW. Its own playlists leave them out; other playlists may not. */
+    private java.util.Set<String> nsfwIds;
     private final java.util.Map<String, List<IptvChannel>> customChannels = new java.util.HashMap<>();
 
     private static final class ApiFeed {
@@ -63,6 +68,7 @@ public final class IptvRepository {
 
     public IptvRepository(Context context) {
         sources = context.getApplicationContext().getSharedPreferences("iptv_sources", Context.MODE_PRIVATE);
+        catalog = PlaylistCatalog.load(context.getApplicationContext());
         cacheDir = new File(context.getApplicationContext().getCacheDir(), "iptv");
         //noinspection ResultOfMethodCallIgnored
         cacheDir.mkdirs();
@@ -85,16 +91,27 @@ public final class IptvRepository {
             return;
         }
         io.execute(() -> {
+            // Saved feed checks must be in memory before the guide filters this list.
+            StreamAvailability.restore(cacheDir);
             java.util.concurrent.Future<String> primary = download(worldwide ? "https://iptv-org.github.io/iptv/index.m3u"
                     : PLAYLISTS + "/" + code + ".m3u", "country-" + code + ".m3u");
+            String fastRegion = sources.getString(FAST_REGION, FastGuide.AUTO);
+            java.util.concurrent.Future<List<IptvChannel>> pluto = sources.getBoolean(FastGuide.PLUTO, true)
+                    ? fast(FastGuide.PLUTO, FastGuide.region(FastGuide.PLUTO, fastRegion, worldwide ? "" : code)) : null;
+            java.util.concurrent.Future<List<IptvChannel>> samsung = sources.getBoolean(FastGuide.SAMSUNG, false)
+                    ? fast(FastGuide.SAMSUNG, FastGuide.region(FastGuide.SAMSUNG, fastRegion, worldwide ? "" : code)) : null;
             boolean useCurated = sources.getBoolean("free_tv", true);
             java.util.concurrent.Future<String> curated = useCurated && curatedChannels == null ? download(
                     "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8", "free-tv.m3u") : null;
             java.util.concurrent.Future<String> api = apiFeeds == null ? download(API + "/streams.json", "streams.json") : null;
+            java.util.concurrent.Future<String> blocklist = nsfwIds == null ? download(API + "/blocklist.json", "blocklist.json") : null;
             List<IptvSources.Source> configuredSources = IptvSources.read(sources);
             List<java.util.concurrent.Future<String>> custom = new ArrayList<>();
             for (IptvSources.Source source : configuredSources)
                 custom.add(download(source.url, "custom-" + Http.sha1(source.url) + ".m3u"));
+            List<PlaylistCatalog.Entry> picked = PlaylistCatalog.picked(catalog, sources);
+            List<java.util.concurrent.Future<String>> lists = new ArrayList<>();
+            for (PlaylistCatalog.Entry entry : picked) lists.add(download(entry.url, "catalog-" + entry.id + ".m3u"));
             String playlist = downloaded(primary);
             List<IptvChannel> channels = parsePlaylist(playlist, code.toUpperCase(Locale.ROOT));
             if (channels == null) channels = new ArrayList<>();
@@ -112,11 +129,31 @@ public final class IptvRepository {
                 }
                 if (additions != null) channels = merge(channels, filterCountry(additions, countryCode));
             }
+            for (int i = 0; i < lists.size(); i++) {
+                PlaylistCatalog.Entry entry = picked.get(i);
+                List<IptvChannel> additions = customChannels.get("catalog:" + entry.id);
+                if (additions == null) {
+                    additions = parsePlaylist(entry.clean(downloaded(lists.get(i))), entry.region);
+                    if (additions != null) customChannels.put("catalog:" + entry.id, additions);
+                }
+                if (additions != null) channels = merge(channels, filterCountry(additions, countryCode));
+            }
             if (apiFeeds == null) {
                 String json = downloaded(api);
                 if (json != null) apiFeeds = parseApiFeeds(json);
             }
             channels = addApiFeeds(channels, apiFeeds);
+            if (nsfwIds == null) {
+                String json = downloaded(blocklist);
+                if (json != null) nsfwIds = parseNsfwIds(json);
+            }
+            channels = markNsfw(channels, nsfwIds);
+            List<IptvChannel> fastRows = new ArrayList<>();
+            for (java.util.concurrent.Future<List<IptvChannel>> lineup : java.util.Arrays.asList(pluto, samsung)) {
+                List<IptvChannel> rows = lineup == null ? null : downloaded(lineup);
+                if (rows != null) fastRows.addAll(rows);
+            }
+            channels = FastGuide.attach(channels, fastRows, worldwide ? "ALL" : code.toUpperCase(Locale.ROOT));
             boolean failed = channels.isEmpty() && playlist == null;
             final List<IptvChannel> result = channels;
             main.post(() -> callback.onLoaded(failed ? Collections.emptyList() : result, failed));
@@ -127,7 +164,11 @@ public final class IptvRepository {
         return downloads.submit(() -> fetch(url, cacheName));
     }
 
-    private static String downloaded(java.util.concurrent.Future<String> future) {
+    private java.util.concurrent.Future<List<IptvChannel>> fast(String service, String region) {
+        return downloads.submit(() -> FastChannels.load(cacheDir, service, region));
+    }
+
+    private static <T> T downloaded(java.util.concurrent.Future<T> future) {
         try { return future.get(); }
         catch (InterruptedException stopped) { Thread.currentThread().interrupt(); return null; }
         catch (java.util.concurrent.ExecutionException unavailable) { return null; }
@@ -224,11 +265,13 @@ public final class IptvRepository {
                 switch (normalized.toLowerCase(Locale.ROOT)) {
                     case "movie": case "movies": case "cinema": normalized = "Movies"; break;
                     case "music": normalized = "Music"; break;
-                    case "adult": case "adults": case "xxx": case "nsfw": normalized = "18+"; break;
-                    default: break;
+                    // iptv-org's label for channels it has not categorised.
+                    case "undefined": normalized = IptvChannel.OTHER; break;
+                    default: if (IptvChannel.isAdultGroup(normalized)) normalized = "18+"; break;
                 }
                 if (!normalized.isEmpty() && !categories.contains(normalized)) categories.add(normalized);
             }
+            if (!categories.contains("18+") && IptvChannel.isAdultName(name)) categories.add("18+");
             if (!name.isEmpty() && IptvSources.validUrl(line) && !IptvSources.isWebPage(line)) {
                 String identity = id.isEmpty()
                         ? country + "|" + name.toLowerCase(Locale.ROOT) : id;
@@ -282,6 +325,30 @@ public final class IptvRepository {
     public static List<IptvChannel> parseCurated(String text) {
         // This provider uses country names as groups, rather than content categories.
         return parsePlaylist(text == null ? null : text.replaceAll("group-title=\"[^\"]*\"", "group-title=\"General\""), "ALL");
+    }
+
+    /** The channel IDs that iptv-org's blocklist.json gives the reason "nsfw". */
+    public static java.util.Set<String> parseNsfwIds(String json) {
+        java.util.Set<String> ids = new HashSet<>();
+        try {
+            JSONArray rows = new JSONArray(json);
+            for (int i = 0; i < rows.length(); i++) {
+                JSONObject row = rows.optJSONObject(i);
+                if (row != null && "nsfw".equals(row.optString("reason"))) ids.add(row.optString("channel"));
+            }
+        } catch (Exception ignored) {
+            // A broken download leaves the list empty; group and name matching still apply.
+        }
+        ids.remove("");
+        return ids;
+    }
+
+    /** Files rows whose tvg-id is on the NSFW list under 18+ as well. */
+    public static List<IptvChannel> markNsfw(List<IptvChannel> channels, java.util.Set<String> nsfwIds) {
+        if (nsfwIds == null || nsfwIds.isEmpty()) return channels;
+        List<IptvChannel> marked = new ArrayList<>(channels.size());
+        for (IptvChannel channel : channels) marked.add(nsfwIds.contains(channel.channelId) ? channel.asAdult() : channel);
+        return marked;
     }
 
     public static List<IptvChannel> filterCountry(List<IptvChannel> rows, String country) {
@@ -397,7 +464,9 @@ public final class IptvRepository {
             if (files != null) for (File cache : files) if (cache.isFile()) cache.setLastModified(0);
             curatedChannels = null;
             apiFeeds = null;
+            nsfwIds = null;
             customChannels.clear();
+            FastChannels.clear();
             loadChannels(countryCode, callback);
         });
     }

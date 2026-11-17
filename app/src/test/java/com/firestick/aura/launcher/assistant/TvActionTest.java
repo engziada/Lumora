@@ -29,12 +29,11 @@ public class TvActionTest {
     }
 
     @Test
-    public void settingsThemeAndSearchValidateArguments() {
+    public void settingsAndSearchValidateArguments() {
         assertEquals("main", TvAction.of("settings", null, null).arg);
         assertEquals("wifi", TvAction.of("settings", "WiFi", null).arg);
         assertNull(TvAction.of("settings", "developer", null));
-        assertEquals("rose", TvAction.of("theme", "Rose", null).arg);
-        assertNull(TvAction.of("theme", "purple", null));
+        assertNull(TvAction.of("theme", "rose", null));
         TvAction search = TvAction.of("search", "com.netflix.ninja", " Dark ");
         assertEquals("com.netflix.ninja", search.arg);
         assertEquals("Dark", search.query);

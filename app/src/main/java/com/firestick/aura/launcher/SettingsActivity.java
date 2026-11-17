@@ -13,7 +13,6 @@ import android.content.pm.ResolveInfo;
 import android.content.res.ColorStateList;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
-import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -59,6 +58,7 @@ import com.firestick.aura.launcher.ui.GlassMenu;
 import com.firestick.aura.launcher.ui.LockPad;
 import com.firestick.aura.launcher.ui.OptionToggleView;
 import com.firestick.aura.launcher.ui.PhonePairDialog;
+import com.firestick.aura.launcher.ui.SubtitleStyle;
 import com.firestick.aura.launcher.ui.TextPrompt;
 import com.firestick.aura.launcher.ui.UpdateFlow;
 import com.firestick.aura.launcher.update.UpdateManager;
@@ -89,13 +89,9 @@ public class SettingsActivity extends AppCompatActivity {
     private static final int[] PANELS = {R.id.panelAppearance, R.id.panelWallpaper, R.id.panelAudio, R.id.panelShows,
             R.id.panelLock, R.id.panelAssistant, R.id.panelSetup, R.id.panelSystem, R.id.panelTools, R.id.panelDevice,
             R.id.scrollAdb, R.id.panelAbout};
-    private static final int[] FIRST_FOCUS = {R.id.btnThemeAmber, R.id.btnWallpaperSource, R.id.toggleSound,
+    private static final int[] FIRST_FOCUS = {R.id.toggleIconStyle, R.id.btnWallpaperSource, R.id.toggleSound,
             R.id.toggleShows, R.id.btnLockCode, R.id.btnAiKey, R.id.setupRows, R.id.btnQuickPermission, R.id.toolsRows,
             R.id.panelDevice, R.id.scrollAdb, R.id.btnAboutEmail};
-
-    private static final int[] THEME_BUTTONS = {R.id.btnThemeAmber, R.id.btnThemeCopper, R.id.btnThemeRose, R.id.btnThemeMoon};
-    private static final int[] THEME_COLORS = {R.color.accent_amber, R.color.accent_copper, R.color.accent_rose, R.color.accent_moonlight};
-    private static final int[] THEME_NAMES = {R.string.accent_amber, R.string.accent_copper, R.string.accent_rose, R.string.accent_moonlight};
 
     private static final int[] WALL_BUTTONS = {R.id.btnWall30s, R.id.btnWall1m, R.id.btnWall5m, R.id.btnWallOff};
     private static final int[] WALL_SECONDS = {30, 60, 300, 0};
@@ -113,7 +109,7 @@ public class SettingsActivity extends AppCompatActivity {
     private PreferenceManager preferences;
     private AssistantSettings assistant;
     private WallpaperManager wallpapers;
-    private TextView stats, themeHint;
+    private TextView stats;
     private OptionToggleView iconStyle, sound, showsToggle, lockSettings, homeRedirect;
     private OptionToggleView aiFloating, aiRemote, aiShareApps, aiControl;
     private Button wallpaperSource, wallCategories, showsCountry, lockCode, lockedApps, quickPermission;
@@ -166,13 +162,17 @@ public class SettingsActivity extends AppCompatActivity {
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
+        Glass.applyTheme(this);
         setContentView(R.layout.activity_settings);
         preferences = new PreferenceManager(this);
         assistant = new AssistantSettings(this);
         monitor = new DeviceMonitor(this);
         wallpapers = new WallpaperManager(this, preferences, findViewById(R.id.imgSettingsBack), findViewById(R.id.imgSettingsFront));
+        // Both panels sit on the full-screen glass_shade, so their frost uses the same shade.
+        int shade = ContextCompat.getColor(this, R.color.glass_shade);
+        wallpapers.frost().apply(findViewById(R.id.settingsRail), 24f, R.attr.lumoraGlassPanel, shade);
+        wallpapers.frost().apply(findViewById(R.id.settingsPanels), 24f, R.attr.lumoraGlassPanel, shade);
         stats = findViewById(R.id.txtStats);
-        themeHint = findViewById(R.id.txtThemeHint);
         iconStyle = findViewById(R.id.toggleIconStyle);
         wallpaperSource = findViewById(R.id.btnWallpaperSource);
         wallCategories = findViewById(R.id.btnWallCategories);
@@ -248,7 +248,6 @@ public class SettingsActivity extends AppCompatActivity {
 
     private void refreshAll() {
         refreshStats();
-        updateThemeButtons();
         updateIconStyleButton();
         updateAppPreviewButton();
         updateCardEffectButton();
@@ -347,24 +346,6 @@ public class SettingsActivity extends AppCompatActivity {
     private void bindAppearance() {
         appPreviewBtn = findViewById(R.id.btnAppPreview);
         appPreviewBtn.setOnClickListener(v -> pickPanelContent());
-        for (int i = 0; i < THEME_BUTTONS.length; i++) {
-            int index = i;
-            Button button = findViewById(THEME_BUTTONS[i]);
-            GradientDrawable swatch = new GradientDrawable();
-            swatch.setShape(GradientDrawable.OVAL);
-            swatch.setColor(color(THEME_COLORS[i]));
-            swatch.setSize(dp(14), dp(14));
-            button.setCompoundDrawablesRelativeWithIntrinsicBounds(swatch, null, null, null);
-            button.setCompoundDrawablePadding(dp(8));
-            button.setOnClickListener(v -> {
-                SoundManager.playClick(v, preferences);
-                preferences.setAccentColor(color(THEME_COLORS[index]));
-                updateThemeButtons();
-                refreshStats();
-                wallpapers.next();
-                toast(getString(R.string.accent_saved, getString(THEME_NAMES[index])));
-            });
-        }
         iconStyle = findViewById(R.id.toggleIconStyle);
         bindToggle(iconStyle, preferences.isHdIconsEnabled());
         iconStyle.listener(checked -> {
@@ -416,24 +397,6 @@ public class SettingsActivity extends AppCompatActivity {
                 getString(mode == PreferenceManager.PANEL_CONTENT_PARTICLES ? R.string.panel_mode_particles
                         : mode == PreferenceManager.PANEL_CONTENT_VIDEOS ? R.string.panel_mode_videos
                         : R.string.panel_mode_off)));
-    }
-
-    private String themeName() {
-        int current = preferences.getAccentColor(color(R.color.nova_accent));
-        for (int i = 0; i < THEME_COLORS.length; i++) if (color(THEME_COLORS[i]) == current) return getString(THEME_NAMES[i]);
-        return getString(R.string.accent_custom);
-    }
-
-    private void updateThemeButtons() {
-        int current = preferences.getAccentColor(color(R.color.nova_accent));
-        for (int i = 0; i < THEME_BUTTONS.length; i++) {
-            Button button = findViewById(THEME_BUTTONS[i]);
-            boolean active = color(THEME_COLORS[i]) == current;
-            button.setTextColor(color(active ? R.color.nova_text : R.color.nova_text_dim));
-            button.setTypeface(null, active ? Typeface.BOLD : Typeface.NORMAL);
-            button.setSelected(active);
-        }
-        themeHint.setText(getString(R.string.theme_hint, themeName()));
     }
 
     private void updateIconStyleButton() {
@@ -542,6 +505,7 @@ public class SettingsActivity extends AppCompatActivity {
                 updateShowsButtons();
             });
         });
+        findViewById(R.id.btnSubtitleStyle).setOnClickListener(v -> SubtitleStyle.show(this, preferences, null));
     }
 
     private String countryLabel(String code) {
@@ -665,7 +629,10 @@ public class SettingsActivity extends AppCompatActivity {
             assistant.setShareAppsEnabled(checked);
             updateAssistantButtons();
         });
-        findViewById(R.id.btnAiOpen).setOnClickListener(v -> startActivity(new Intent(this, AssistantActivity.class)));
+        findViewById(R.id.btnAiOpen).setOnClickListener(v -> {
+            Glass.handOff(this);
+            startActivity(new Intent(this, AssistantActivity.class));
+        });
         // User guide below the settings; each block is focusable so the D-pad scrolls through it.
         assistantList.addView(getLayoutInflater().inflate(R.layout.section_ai_manual, assistantList, false));
     }
@@ -954,7 +921,7 @@ public class SettingsActivity extends AppCompatActivity {
     }
 
     private void refreshStats() {
-        stats.setText(getString(R.string.settings_stats, themeName(),
+        stats.setText(getString(R.string.settings_stats,
                 preferences.getHiddenApps().size(), preferences.getLaunchCount()));
     }
 

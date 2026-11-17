@@ -11,13 +11,12 @@
     "cream-100": { "android": "nova_text", "oklch": "oklch(93.1% 0.026 73.2)", "hex": "#F3E6D6", "rgb": [243, 230, 214] },
     "sand-300": { "android": "nova_text_dim", "oklch": "oklch(77.9% 0.041 68.4)", "hex": "#C9B39C", "rgb": [201, 179, 156] },
     "taupe-500": { "android": "nova_text_muted", "oklch": "oklch(65.6% 0.040 63.1)", "hex": "#A38C78", "rgb": [163, 140, 120] },
-    "amber-400": { "android": "accent_amber", "oklch": "oklch(75.9% 0.118 66.4)", "hex": "#E3A15A", "rgb": [227, 161, 90] },
-    "moon-200": { "android": "accent_moonlight", "oklch": "oklch(88.1% 0.075 79.9)", "hex": "#F2D3A0", "rgb": [242, 211, 160] },
-    "copper-500": { "android": "accent_copper", "oklch": "oklch(66.3% 0.127 50.7)", "hex": "#D07A45", "rgb": [208, 122, 69] },
-    "rose-400": { "android": "accent_rose", "oklch": "oklch(71.2% 0.099 29.1)", "hex": "#D98A7E", "rgb": [217, 138, 126] },
+    "amber-400": { "android": "nova_accent", "oklch": "oklch(75.9% 0.118 66.4)", "hex": "#E3A15A", "rgb": [227, 161, 90] },
+    "moon-200": { "android": "nova_accent_2", "oklch": "oklch(88.1% 0.075 79.9)", "hex": "#F2D3A0", "rgb": [242, 211, 160] },
+    "copper-500": { "android": null, "oklch": "oklch(66.3% 0.127 50.7)", "hex": "#D07A45", "rgb": [208, 122, 69] },
+    "rose-400": { "android": null, "oklch": "oklch(71.2% 0.099 29.1)", "hex": "#D98A7E", "rgb": [217, 138, 126] },
     "bronze-600": { "android": "accent_bronze", "oklch": "oklch(51.5% 0.085 56.7)", "hex": "#8C5A34", "rgb": [140, 90, 52] },
     "error-400": { "android": "state_error", "oklch": "oklch(68.4% 0.146 31.4)", "hex": "#E5735F", "rgb": [229, 115, 95] },
     "success-400": { "android": "state_success", "oklch": "oklch(77.7% 0.091 136.2)", "hex": "#9CC48A", "rgb": [156, 196, 138] }
-  },
-  "userAccents": ["amber-400", "copper-500", "rose-400", "moon-200"]
+  }
 }

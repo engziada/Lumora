@@ -92,7 +92,6 @@ public final class AssistantText {
                     .append("[[do:volume_up|N]] [[do:volume_down|N]] (N = 1 to 10 steps) [[do:mute]] [[do:unmute]], ")
                     .append("[[do:back]] [[do:home]] [[do:screenshot]] [[do:power_menu]], ")
                     .append("[[do:settings|PAGE]] (PAGE: main, wifi, bluetooth, display, sound, apps, about), ")
-                    .append("[[do:theme|NAME]] (Lumora theme: amber, copper, rose, moonlight), ")
                     .append("[[do:search|PACKAGE|QUERY]] (search inside an installed app). ")
                     .append("Only add directives the user asked for. You cannot power off, sleep, change the ")
                     .append("TV input or tap inside other apps; say so if asked. ");

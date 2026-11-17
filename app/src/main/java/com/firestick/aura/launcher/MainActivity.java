@@ -11,8 +11,6 @@ import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
-import android.graphics.drawable.GradientDrawable;
-import android.graphics.drawable.StateListDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.SystemClock;
@@ -42,12 +40,15 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.firestick.aura.launcher.adapter.AppRowAdapter;
-import com.firestick.aura.launcher.adapter.IptvAdapter;
+import com.firestick.aura.launcher.adapter.GuideAdapter;
+import com.firestick.aura.launcher.adapter.GuideRailAdapter;
 import com.firestick.aura.launcher.assistant.AssistantSettings;
 import com.firestick.aura.launcher.assistant.LongPress;
 import com.firestick.aura.launcher.manager.AppLock;
 import com.firestick.aura.launcher.manager.AppRepository;
 import com.firestick.aura.launcher.manager.DebloatManager;
+import com.firestick.aura.launcher.manager.FastGuide;
+import com.firestick.aura.launcher.manager.ProgramRatings;
 import com.firestick.aura.launcher.manager.IptvRepository;
 import com.firestick.aura.launcher.manager.PreferenceManager;
 import com.firestick.aura.launcher.manager.QuickAccess;
@@ -61,7 +62,11 @@ import com.firestick.aura.launcher.service.QuickActionService;
 import com.firestick.aura.launcher.ui.Glass;
 import com.firestick.aura.launcher.ui.AppPreview;
 import com.firestick.aura.launcher.ui.GlassMenu;
+import com.firestick.aura.launcher.ui.GuidePreview;
+import com.firestick.aura.launcher.ui.GuideText;
+import com.firestick.aura.launcher.ui.RatingBadge;
 import com.firestick.aura.launcher.ui.LockPad;
+import com.firestick.aura.launcher.ui.MoviesTab;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -73,12 +78,15 @@ public class MainActivity extends AppCompatActivity
         implements AppRowAdapter.OnAppActionListener, ShowDetails.Host {
     /** Package to launch on arrival; sent by the assistant so locks and launch history apply. */
     public static final String EXTRA_LAUNCH_PACKAGE = "com.firestick.aura.launcher.extra.LAUNCH_PACKAGE";
-    private static final int TAB_HOME = 0, TAB_SHOWS = 1, TAB_APPS = 2, TAB_STREAMING = 3;
-    private static final int GRID_COLUMNS = 7, IPTV_COLUMNS = 8, HOME_FALLBACK = 8;
+    private static final int TAB_HOME = 0, TAB_SHOWS = 1, TAB_APPS = 2, TAB_STREAMING = 3, TAB_MOVIES = 4;
+    private static final int GRID_COLUMNS = 7, HOME_FALLBACK = 8;
+    /** How long focus rests on a guide category before the guide switches to it. */
+    private static final long RAIL_REST_MS = 250L;
+    private static final String ADULTS = "category:18+";
     private static final long SHOWS_MAX_AGE_MS = 60L * 60L * 1000L;
     private static final long GEAR_DELAY_MS = 350L, GEAR_KEY_WINDOW_MS = 600L, GEAR_REOPEN_GUARD_MS = 900L;
     /** Bridge targets for a DOWN key that a tile of the ribbon or a grid cannot resolve. */
-    private static final int[] NAV_TARGETS = {R.id.navHome, R.id.navShows, R.id.navApps,
+    private static final int[] NAV_TARGETS = {R.id.navHome, R.id.navShows, R.id.navFilms, R.id.navApps,
             R.id.navMovies};
 
     private com.firestick.aura.launcher.ui.HomeRows homeRows;
@@ -91,7 +99,10 @@ public class MainActivity extends AppCompatActivity
     private final Runnable updateOnline = this::applyIptvFilters;
     private RecyclerView homeView, gridView, showsView;
     private AppRowAdapter homeAdapter, appsAdapter, streamingAdapter;
-    private IptvAdapter iptvAdapter;
+    private GuideAdapter guideAdapter;
+    private GuideRailAdapter railAdapter;
+    private RecyclerView railView;
+    private GuidePreview guidePreview;
     private AppRepository repository;
     private IptvRepository iptvRepository;
     private PreferenceManager preferences;
@@ -110,8 +121,29 @@ public class MainActivity extends AppCompatActivity
     private ImageView assistantIcon;
     private AutoCompleteTextView iptvCountry;
     private EditText iptvSearch;
-    private View homePanel, gridPanel, showsPanel, gear, assistantButton;
-    private TextView iptvFilter;
+    private View homeScroll, homePanel, gridPanel, showsPanel, moviesPanel, gear, assistantButton;
+    private MoviesTab moviesTab;
+    private TextView guideEyebrow, guideTitle, guideMeta, guideSynopsis;
+    private ProgramRatings programRatings;
+    private android.widget.ProgressBar guideProgress;
+    private View greetingBlock;
+    /** The guide row focus last rested on; the top of the guide describes it. */
+    private long guideFocusedId = Long.MIN_VALUE;
+    private String pendingRailKey;
+    /** Set by the screen-off broadcast; the guide preview stays stopped until a key press. */
+    private boolean screenOff;
+    private final Runnable applyRail = () -> {
+        if (pendingRailKey != null) pickIptvCategory(pendingRailKey, false);
+    };
+    /** Moves the guide to the next minute while it is on screen. */
+    private final Runnable guideTick = new Runnable() {
+        @Override public void run() {
+            if (!previewResumed || currentTab != TAB_SHOWS || guideAdapter == null) return;
+            guideAdapter.tick();
+            updateGuideInfo();
+            scheduleGuideTick();
+        }
+    };
     private android.app.Dialog countryPicker;
     private PopupWindow gearMenu;
     private final Map<String, List<AppModel>> rows = new HashMap<>();
@@ -154,20 +186,23 @@ public class MainActivity extends AppCompatActivity
     private final BroadcastReceiver screenReceiver = new BroadcastReceiver() {
         @Override public void onReceive(Context context, Intent intent) {
             if (appPreview == null) return;
-            if (Intent.ACTION_SCREEN_OFF.equals(intent.getAction())) appPreview.hide();
-            else homeView.post(MainActivity.this::updateAppPreview);
+            if (Intent.ACTION_SCREEN_OFF.equals(intent.getAction())) {
+                appPreview.hide();
+                screenOff = true;
+                if (guidePreview != null) guidePreview.release();
+            } else homeView.post(MainActivity.this::updateAppPreview);
         }
     };
     private boolean screenReceiverRegistered;
+    /** Whether onCreate applied the opaque Reduce transparency theme; a change needs a recreate. */
+    private boolean appliedSolid;
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
+        appliedSolid = Glass.applyTheme(this);
         setContentView(R.layout.activity_main);
         preferences = new PreferenceManager(this);
         assistant = new AssistantSettings(this);
-        int amber = ContextCompat.getColor(this, R.color.accent_amber);
-        preferences.migrateAccent(new int[]{amber, ContextCompat.getColor(this, R.color.accent_copper),
-                ContextCompat.getColor(this, R.color.accent_rose), ContextCompat.getColor(this, R.color.accent_moonlight)}, amber);
         repository = new AppRepository(this);
         iptvRepository = new IptvRepository(this);
         quickMenu = new QuickMenu(this, preferences, this::launchPackage);
@@ -177,6 +212,9 @@ public class MainActivity extends AppCompatActivity
         registerScreenReceiver();
         wallpapers = new WallpaperManager(this, preferences,
                 findViewById(R.id.imgWallpaperBack), findViewById(R.id.imgWallpaperFront));
+        // The vignette darkens the wallpaper around the dock; its frost gets a matching shade.
+        wallpapers.frost().apply(findViewById(R.id.navDock), 26f, R.attr.lumoraGlassBar,
+                ContextCompat.getColor(this, R.color.glass_shade));
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override public void handleOnBackPressed() {
                 // A home screen never finishes on Back: return to Home, then to the first card.
@@ -196,6 +234,7 @@ public class MainActivity extends AppCompatActivity
         heroTitle = findViewById(R.id.txtHeroTitle);
         heroMeta = findViewById(R.id.txtHeroMeta);
         moveHint = findViewById(R.id.txtMoveHint);
+        homeScroll = findViewById(R.id.homeScroll);
         homePanel = findViewById(R.id.homePanel);
         gridPanel = findViewById(R.id.gridPanel);
         gridEmpty = findViewById(R.id.txtGridEmpty);
@@ -205,7 +244,7 @@ public class MainActivity extends AppCompatActivity
         homeAdapter = new AppRowAdapter(preferences, this, AppRepository.ROW_HOME, AppRowAdapter.STYLE_WIDE,
                 (rowId, app) -> setHero(app));
         homeView.setAdapter(homeAdapter);
-        findViewById(R.id.homeScroll).setOnScrollChangeListener((view, x, y, oldX, oldY) -> updateAppPreview());
+        homeScroll.setOnScrollChangeListener((view, x, y, oldX, oldY) -> updateAppPreview());
         homeView.setNestedScrollingEnabled(false);
         homeView.setItemAnimator(null);
         homeRows = new com.firestick.aura.launcher.ui.HomeRows(this, preferences, this, this::playIptvChannel, this::setHero);
@@ -232,44 +271,34 @@ public class MainActivity extends AppCompatActivity
         streamingAdapter = new AppRowAdapter(preferences, this, AppRepository.ROW_STREAMING, AppRowAdapter.STYLE_TILE, null);
 
         showsPanel = findViewById(R.id.showsPanel);
-        ((android.widget.CheckBox) findViewById(R.id.iptvOnlineOnly)).setOnCheckedChangeListener((button, checked) -> {
-            onlineOnly = checked;
-            if (checked) onlineResults.clear();
-            onlineScanGeneration++;
-            onlineScanRunning = false;
-            applyIptvFilters();
-        });
-        iptvFilter = findViewById(R.id.iptvFilter);
-        iptvFilter.setOnClickListener(v -> openCategoryMenu());
+        moviesPanel = findViewById(R.id.moviesPanel);
+        moviesTab = new MoviesTab(this, preferences);
+        greetingBlock = findViewById(R.id.greetingBlock);
         findViewById(R.id.iptvRefresh).setOnClickListener(v -> {
             onlineScanGeneration++;
             onlineScanRunning = false;
-            onlineResults.clear();
+            onlineAttempted.clear();
             com.firestick.aura.launcher.manager.StreamAvailability.clear();
             channelsLoaded = false;
             loadCountryChannels(selectedIptvCountry == null ? preferences.getShowsCountry() : selectedIptvCountry, true);
         });
         showsStatus = findViewById(R.id.txtShowsStatus);
-        showsView = findViewById(R.id.recyclerShows);
-        showsView.setLayoutManager(new GridLayoutManager(this, IPTV_COLUMNS));
-        iptvAdapter = new IptvAdapter(preferences, this::playIptvChannel, this::toggleIptvFavorite);
-        showsView.setAdapter(iptvAdapter);
+        initGuide();
         iptvCountry = findViewById(R.id.iptvCountry);
         iptvCountry.setThreshold(0);
+        // Right would walk the caret through the country name first; Down enters the selected category.
         iptvCountry.setOnKeyListener((view, code, event) -> {
-            if (code == KeyEvent.KEYCODE_DPAD_DOWN) {
-                if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) openCountryPicker();
+            if (code == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                if (event.getAction() == KeyEvent.ACTION_DOWN) iptvSearch.requestFocus();
                 return true;
             }
-            if (code != KeyEvent.KEYCODE_DPAD_RIGHT) return false;
-            if (event.getAction() == KeyEvent.ACTION_DOWN) iptvFilter.requestFocus();
-            return true;
+            return code == KeyEvent.KEYCODE_DPAD_DOWN && event.getAction() == KeyEvent.ACTION_DOWN && focusSelectedRail();
         });
         iptvCountry.setOnClickListener(view -> openCountryPicker());
         iptvSearch = findViewById(R.id.iptvSearch);
         iptvSearch.setOnKeyListener((view, code, event) -> {
             if (code != KeyEvent.KEYCODE_DPAD_LEFT || iptvSearch.getSelectionStart() > 0) return false;
-            if (event.getAction() == KeyEvent.ACTION_DOWN) findViewById(R.id.iptvOnlineOnly).requestFocus();
+            if (event.getAction() == KeyEvent.ACTION_DOWN) iptvCountry.requestFocus();
             return true;
         });
         iptvSearch.addTextChangedListener(new TextWatcher() {
@@ -286,6 +315,7 @@ public class MainActivity extends AppCompatActivity
 
         bindNav(R.id.navHome, TAB_HOME);
         bindNav(R.id.navShows, TAB_SHOWS);
+        bindNav(R.id.navFilms, TAB_MOVIES);
         bindNav(R.id.navApps, TAB_APPS);
         bindNav(R.id.navMovies, TAB_STREAMING);
         View quick = findViewById(R.id.navQuick);
@@ -331,6 +361,20 @@ public class MainActivity extends AppCompatActivity
             SoundManager.playClick(source, preferences);
             selectTab(tab);
         });
+        // On Live TV and Movies, UP returns to the card focus left rather than the nearest edge row.
+        view.setOnKeyListener((source, code, event) -> {
+            if (code != KeyEvent.KEYCODE_DPAD_UP || event.getAction() != KeyEvent.ACTION_DOWN
+                    || movingPackage != null) {
+                return false;
+            }
+            if (currentTab == TAB_SHOWS) {
+                return guideAdapter != null && guideAdapter.getItemCount() > 0 && focusGuideRow();
+            }
+            if (currentTab != TAB_MOVIES) return false;
+            View remembered = tabFocus.get(TAB_MOVIES);
+            return remembered != null && remembered.isShown() && inside(remembered, moviesPanel)
+                    && remembered.requestFocus();
+        });
         bindNavFocus(view);
     }
 
@@ -344,6 +388,7 @@ public class MainActivity extends AppCompatActivity
     // ------------------------------------------------------------ assistant
 
     private void openAssistant() {
+        Glass.handOff(this);
         startActivity(new Intent(this, AssistantActivity.class));
     }
 
@@ -424,8 +469,23 @@ public class MainActivity extends AppCompatActivity
      */
     private boolean bridgeFocusToNav() {
         View focused = getCurrentFocus();
-        if (focused == null || !insideRecyclerView(focused)) return false;
-        if (focused.focusSearch(View.FOCUS_DOWN) != null) return false;
+        if (focused == null) return false;
+        // Leaving the shelves lands on Movies; this also covers the 18+ pill outside the lists.
+        if (currentTab == TAB_MOVIES && inside(focused, moviesPanel)) {
+            View next = focused.focusSearch(View.FOCUS_DOWN);
+            if (next != null && inside(next, moviesPanel)) return false;
+            View nav = findViewById(R.id.navFilms);
+            return nav.isShown() && nav.requestFocus(View.FOCUS_DOWN);
+        }
+        if (!insideRecyclerView(focused)) return false;
+        View next = focused.focusSearch(View.FOCUS_DOWN);
+        // Leaving the guide lands on its own tab, so OK after overshooting the rail cannot switch tabs.
+        if (currentTab == TAB_SHOWS && inside(focused, showsPanel)) {
+            if (next != null && inside(next, showsPanel)) return false;
+            View nav = findViewById(R.id.navShows);
+            return nav.isShown() && nav.requestFocus(View.FOCUS_DOWN);
+        }
+        if (next != null) return false;
         int[] location = new int[2];
         focused.getLocationOnScreen(location);
         int focusCenter = location[0] + focused.getWidth() / 2;
@@ -454,6 +514,29 @@ public class MainActivity extends AppCompatActivity
         return false;
     }
 
+    /**
+     * A held arrow runs the rail, the rows or the film shelves to their end and stops there. Without
+     * this, the key repeat carries on into the toolbar, the header or the nav, where OK does something else.
+     */
+    private boolean heldAtGuideEdge(int code) {
+        if (code != KeyEvent.KEYCODE_DPAD_UP && code != KeyEvent.KEYCODE_DPAD_DOWN) return false;
+        View focused = getCurrentFocus();
+        if (focused == null) return false;
+        View area = currentTab == TAB_MOVIES ? moviesPanel
+                : currentTab != TAB_SHOWS ? null
+                : inside(focused, railView) ? railView : inside(focused, showsView) ? showsView : null;
+        if (area == null || !inside(focused, area)) return false;
+        View next = focused.focusSearch(code == KeyEvent.KEYCODE_DPAD_UP ? View.FOCUS_UP : View.FOCUS_DOWN);
+        return next == null || !inside(next, area);
+    }
+
+    private static boolean inside(View view, View ancestor) {
+        for (ViewParent parent = view.getParent(); parent != null; parent = parent.getParent()) {
+            if (parent == ancestor) return true;
+        }
+        return false;
+    }
+
     // ----------------------------------------------------------------- tabs
 
     public void selectTab(int tab) {
@@ -461,6 +544,7 @@ public class MainActivity extends AppCompatActivity
         if (currentTab == tab) {
             if (tab == TAB_SHOWS) showsView.smoothScrollToPosition(0);
             else if (tab == TAB_HOME) homeView.smoothScrollToPosition(0);
+            else if (tab == TAB_MOVIES) moviesTab.scrollToTop();
             else gridView.smoothScrollToPosition(0);
             return;
         }
@@ -469,6 +553,7 @@ public class MainActivity extends AppCompatActivity
         updateGreeting();
         updateNavSelection();
         if (tab == TAB_SHOWS) loadIptv();
+        else if (tab == TAB_MOVIES) moviesTab.show();
         else applyRows();
         View remembered = tabFocus.get(tab);
         if (remembered != null) remembered.post(() -> { if (remembered.isShown()) remembered.requestFocus(); });
@@ -476,8 +561,20 @@ public class MainActivity extends AppCompatActivity
 
     private void applyTabVisibility() {
         if (currentTab != TAB_HOME && appPreview != null) appPreview.hide();
-        homePanel.setVisibility(currentTab == TAB_HOME ? View.VISIBLE : View.GONE);
-        showsPanel.setVisibility(currentTab == TAB_SHOWS ? View.VISIBLE : View.GONE);
+        int home = currentTab == TAB_HOME ? View.VISIBLE : View.GONE;
+        homePanel.setVisibility(home);
+        // Left visible but empty, the ScrollView would take focus above the nav on other tabs.
+        homeScroll.setVisibility(home);
+        boolean shows = currentTab == TAB_SHOWS;
+        boolean movies = currentTab == TAB_MOVIES;
+        showsPanel.setVisibility(shows ? View.VISIBLE : View.GONE);
+        moviesPanel.setVisibility(movies ? View.VISIBLE : View.GONE);
+        // The guide and the shelves need the height; their own headers name the item in focus.
+        greetingBlock.setVisibility(shows || movies ? View.GONE : View.VISIBLE);
+        if (!shows && guidePreview != null) guidePreview.release();
+        // Rows hidden or paused for a while show old times until the next minute; move them now.
+        if (shows && guideAdapter != null) guideAdapter.tick();
+        scheduleGuideTick();
         boolean grid = currentTab == TAB_APPS || currentTab == TAB_STREAMING;
         gridPanel.setVisibility(grid ? View.VISIBLE : View.GONE);
         if (grid) {
@@ -499,6 +596,7 @@ public class MainActivity extends AppCompatActivity
     private void updateNavSelection() {
         styleNav(R.id.txtNavHome, R.id.imgNavHome, currentTab == TAB_HOME);
         styleNav(R.id.txtNavShows, R.id.imgNavShows, currentTab == TAB_SHOWS);
+        styleNav(R.id.txtNavFilms, R.id.imgNavFilms, currentTab == TAB_MOVIES);
         styleNav(R.id.txtNavApps, R.id.imgNavApps, currentTab == TAB_APPS);
         styleNav(R.id.txtNavMovies, R.id.imgNavMovies, currentTab == TAB_STREAMING);
 
@@ -544,6 +642,9 @@ public class MainActivity extends AppCompatActivity
         onlineScanGeneration++;
         if (quickMenu != null) quickMenu.dismiss();
         if (appPreview != null) appPreview.destroy();
+        if (guidePreview != null) guidePreview.release();
+        if (moviesTab != null) moviesTab.release();
+        if (programRatings != null) programRatings.shutdown();
         homeView.getRootView().getViewTreeObserver().removeOnGlobalFocusChangeListener(previewFocusListener);
         if (packageReceiverRegistered) {
             try {
@@ -567,9 +668,15 @@ public class MainActivity extends AppCompatActivity
 
     @Override protected void onResume() {
         super.onResume();
+        if (appliedSolid != PreferenceManager.reduceTransparency(this)) {
+            // Reduce transparency changed in Settings; themes only apply at creation.
+            recreate();
+            return;
+        }
         String sources = getSharedPreferences("iptv_sources", MODE_PRIVATE).getAll().toString();
         if (!sourceRevision.equals(sources)) { sourceRevision = sources; channelsLoaded = false; }
         previewResumed = true;
+        screenOff = false;
         // Keeps the quick-actions service on once WRITE_SECURE_SETTINGS has been granted over ADB.
         QuickAccess.ensureServiceEnabled(this);
         boolean changed = appliedHomeRevision != preferences.getHomeRevision();
@@ -583,6 +690,7 @@ public class MainActivity extends AppCompatActivity
         updateBadge();
         updateHomeIptvFavorites();
         if (currentTab == TAB_SHOWS) loadIptv();
+        else if (currentTab == TAB_MOVIES) moviesTab.show();
         if (wallpapers != null) wallpapers.start();
         homeView.post(this::updateAppPreview);
         homePanel.post(() -> {
@@ -595,7 +703,8 @@ public class MainActivity extends AppCompatActivity
 
     @Override protected void onStop() {
         adultUnlocked = false;
-        if ("category:18+".equals(selectedIptvCategory)) selectedIptvCategory = "all";
+        if (moviesTab != null) moviesTab.stop();
+        if (ADULTS.equals(selectedIptvCategory)) selectedIptvCategory = "all";
         onlineScanGeneration++;
         onlineScanRunning = false;
         super.onStop();
@@ -606,6 +715,9 @@ public class MainActivity extends AppCompatActivity
         if (currentTab == TAB_HOME && getCurrentFocus() != null) lastHomeFocusTag = getCurrentFocus().getTag();
         previewResumed = false;
         appPreview.hide();
+        filterHandler.removeCallbacks(guideTick);
+        filterHandler.removeCallbacks(applyRail);
+        if (guidePreview != null) guidePreview.release();
         if (movingPackage != null) finishMove();
         if (gearMenu != null) gearMenu.dismiss();
         if (wallpapers != null) wallpapers.stop();
@@ -616,6 +728,10 @@ public class MainActivity extends AppCompatActivity
     @Override public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
         if (appPreview == null) return;
+        if (currentTab == TAB_SHOWS && guidePreview != null) {
+            if (hasFocus) updateGuideInfo();
+            else guidePreview.stop();
+        }
         if (hasFocus) updateBadge();
         if (!hasFocus) appPreview.hide();
         else homeView.post(this::updateAppPreview);
@@ -660,11 +776,18 @@ public class MainActivity extends AppCompatActivity
             if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled()) quickMenu.show();
             return true;
         }
+        if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() > 0
+                && movingPackage == null && heldAtGuideEdge(event.getKeyCode())) {
+            return true;
+        }
         if (event.getAction() == KeyEvent.ACTION_DOWN
                 && event.getKeyCode() == KeyEvent.KEYCODE_DPAD_DOWN && movingPackage == null) {
             if (bridgeFocusToNav()) return true;
         }
-        if (event.getAction() == KeyEvent.ACTION_DOWN) lastKeyDownAt = SystemClock.uptimeMillis();
+        if (event.getAction() == KeyEvent.ACTION_DOWN) {
+            lastKeyDownAt = SystemClock.uptimeMillis();
+            screenOff = false;
+        }
         if (handleMenuHold(event)) return true;
         if (movingPackage == null) return super.dispatchKeyEvent(event);
         int code = event.getKeyCode();
@@ -1010,8 +1133,10 @@ public class MainActivity extends AppCompatActivity
             iptvGeneration++;
             countryChannels = new ArrayList<>();
             channelsLoaded = false;
-            iptvFilter.setEnabled(false);
-            iptvAdapter.setItems(null);
+            visibleChannels.clear();
+            railAdapter.setEntries(new ArrayList<>(), selectedIptvCategory);
+            guideAdapter.setItems(null);
+            updateGuideInfo();
             setShowsStatus(R.string.shows_disabled);
             return;
         }
@@ -1089,6 +1214,7 @@ public class MainActivity extends AppCompatActivity
     private void loadCountryChannels(String countryCode, boolean refresh) {
         onlineScanGeneration++;
         onlineScanRunning = false;
+        onlineAttempted.clear();
         int request = ++iptvGeneration;
         channelsLoaded = false;
         // Keep the existing rows attached while the next country loads. Clearing a focused
@@ -1122,71 +1248,308 @@ public class MainActivity extends AppCompatActivity
             }
             channelsLoaded = true;
             iptvLoadedAt = System.currentTimeMillis();
-            iptvFilter.setEnabled(true);
+            buildRail();
             applyIptvFilters();
         };
         if (refresh) iptvRepository.refreshChannels(countryCode, loaded);
         else iptvRepository.loadChannels(countryCode, loaded);
     }
 
-    private String categoryLabel(String key) {
-        if ("category:18+".equals(key)) return getString(R.string.iptv_adults);
-        if ("all".equals(key)) return getString(R.string.iptv_all_categories);
-        if ("favorites".equals(key)) return getString(R.string.iptv_favorites);
-        return key.substring("category:".length());
+    // ------------------------------------------------------------- Live TV guide
+
+    private void initGuide() {
+        guideEyebrow = findViewById(R.id.guideEyebrow);
+        guideTitle = findViewById(R.id.guideTitle);
+        guideMeta = findViewById(R.id.guideMeta);
+        guideProgress = findViewById(R.id.guideProgress);
+        guideSynopsis = findViewById(R.id.guideSynopsis);
+        guidePreview = new GuidePreview(findViewById(R.id.guidePreview), preferences);
+        railView = findViewById(R.id.guideRail);
+        railView.setLayoutManager(new LinearLayoutManager(this));
+        railView.setItemAnimator(null);
+        // RecyclerView makes itself focusable; empty, it would take focus and show no focus ring.
+        railView.setFocusable(false);
+        railAdapter = new GuideRailAdapter(preferences, new GuideRailAdapter.Listener() {
+            @Override public void onRest(String key) {
+                pendingRailKey = key;
+                filterHandler.removeCallbacks(applyRail);
+                // Adults asks for the code, so passing over it never opens it.
+                if (!ADULTS.equals(key)) filterHandler.postDelayed(applyRail, RAIL_REST_MS);
+            }
+
+            @Override public void onPick(String key) {
+                filterHandler.removeCallbacks(applyRail);
+                pickIptvCategory(key, true);
+            }
+
+            @Override public boolean onRight(String key) {
+                filterHandler.removeCallbacks(applyRail);
+                if (key.equals(selectedIptvCategory)) return focusGuideRow();
+                pickIptvCategory(key, true);
+                return true;
+            }
+        });
+        railView.setAdapter(railAdapter);
+        showsView = findViewById(R.id.recyclerShows);
+        showsView.setLayoutManager(new LinearLayoutManager(this));
+        showsView.setItemAnimator(null);
+        showsView.setFocusable(false);
+        guideAdapter = new GuideAdapter(preferences, new GuideAdapter.Listener() {
+            @Override public void onPlay(IptvChannel channel) {
+                playIptvChannel(channel);
+            }
+
+            @Override public void onFavorite(IptvChannel channel, boolean favorite) {
+                toggleIptvFavorite(channel, favorite);
+            }
+
+            @Override public void onFocus(IptvChannel channel) {
+                guideFocusedId = channel.id;
+                updateGuideInfo();
+            }
+
+            @Override public boolean onLeft() {
+                return focusSelectedRail();
+            }
+
+            @Override public boolean onUpFromTop() {
+                return iptvSearch.requestFocus();
+            }
+        });
+        showsView.setAdapter(guideAdapter);
     }
 
-    private int categoryCount(String key) {
-        int count = 0;
+    /**
+     * Rebuilds the category rail from the loaded channels: All channels, Favorites, genres A to Z,
+     * then Adults last. Adult rows count only toward Adults, which matches what each one lists.
+     */
+    private void buildRail() {
+        java.util.TreeMap<String, Integer> genres = new java.util.TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+        java.util.Set<String> seen = new java.util.TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+        int all = 0, favorites = 0, adults = 0;
         for (IptvChannel channel : countryChannels) {
-            if ("all".equals(key) || ("favorites".equals(key) && channel.isFavorite)
-                    || (key.startsWith("category:") && channel.genres.contains(key.substring("category:".length())))) count++;
+            if (channel.genres.contains("18+")) {
+                adults++;
+                continue;
+            }
+            all++;
+            if (channel.isFavorite) favorites++;
+            seen.clear();
+            for (String genre : channel.genres) {
+                String name = genre.trim();
+                if (!name.isEmpty() && seen.add(name)) genres.merge(name, 1, Integer::sum);
+            }
         }
-        return count;
+        List<GuideRailAdapter.Entry> entries = new ArrayList<>(genres.size() + 3);
+        entries.add(new GuideRailAdapter.Entry("all", getString(R.string.guide_all_channels), all));
+        entries.add(new GuideRailAdapter.Entry("favorites", getString(R.string.iptv_favorites), favorites));
+        Integer other = genres.remove(IptvChannel.OTHER);
+        for (Map.Entry<String, Integer> genre : genres.entrySet()) {
+            entries.add(new GuideRailAdapter.Entry("category:" + genre.getKey(), genre.getKey(), genre.getValue()));
+        }
+        if (other != null) {
+            entries.add(new GuideRailAdapter.Entry("category:" + IptvChannel.OTHER, IptvChannel.OTHER, other));
+        }
+        entries.add(new GuideRailAdapter.Entry(ADULTS, getString(R.string.iptv_adults), adults));
+        // Another country may spell a genre differently or lack it; fall back to All channels.
+        if (selectedIptvCategory.startsWith("category:") && !ADULTS.equals(selectedIptvCategory)) {
+            String name = selectedIptvCategory.substring("category:".length());
+            String spelled = genres.ceilingKey(name);
+            if (IptvChannel.OTHER.equalsIgnoreCase(name)) spelled = other != null ? IptvChannel.OTHER : null;
+            selectedIptvCategory = spelled != null && spelled.equalsIgnoreCase(name) ? "category:" + spelled : "all";
+        }
+        railAdapter.setEntries(entries, selectedIptvCategory);
     }
 
-    private void openCategoryMenu() {
-        java.util.Set<String> genres = new java.util.TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-
-        for (IptvChannel channel : countryChannels) genres.addAll(channel.genres);
-        List<String> keys = new ArrayList<>();
-        keys.add("all");
-        keys.add("favorites");
-        genres.remove("18+");
-        for (String genre : genres) if (!genre.trim().isEmpty()) keys.add("category:" + genre);
-        keys.add("category:18+");
-        List<GlassMenu.Item> items = new ArrayList<>();
-        for (String key : keys) items.add(new GlassMenu.Item(R.drawable.ic_tv, categoryLabel(key) + " · " + categoryCount(key))
-                .checked(key.equals(selectedIptvCategory)));
-        GlassMenu.show(this, getString(R.string.iptv_all_categories), null, null, items, false,
-                (index, item) -> {
-                    Runnable select = () -> {
-                        onlineScanGeneration++;
-                        onlineScanRunning = false;
-                        selectedIptvCategory = keys.get(index);
-                        applyIptvFilters();
-                        showsView.scrollToPosition(0);
-                    };
-                    if ("category:18+".equals(keys.get(index))) {
-                        LockPad.verify(this, preferences, getString(R.string.iptv_adults_unlock), () -> {
-                            adultUnlocked = true;
-                            select.run();
-                        });
-                    } else select.run();
-                });
+    /** Switches the guide to a category. Adults needs the lock code once per visit. */
+    private void pickIptvCategory(String key, boolean focusRows) {
+        pendingRailKey = null;
+        Runnable apply = () -> {
+            if (!key.equals(selectedIptvCategory)) {
+                onlineScanGeneration++;
+                onlineScanRunning = false;
+                selectedIptvCategory = key;
+                guideFocusedId = Long.MIN_VALUE;
+                applyIptvFilters();
+                showsView.scrollToPosition(0);
+            }
+            if (focusRows) focusGuideRow();
+        };
+        if (ADULTS.equals(key) && !adultUnlocked) {
+            LockPad.verify(this, preferences, getString(R.string.iptv_adults_unlock), () -> {
+                adultUnlocked = true;
+                apply.run();
+            });
+        } else {
+            apply.run();
+        }
     }
 
-    private boolean onlineOnly, adultUnlocked, onlineScanRunning;
-    private int onlineScanGeneration;
-    private final Map<String, Boolean> onlineResults = new HashMap<>();
+    /** Moves focus into the guide: the row focus last rested on when in view, else the first row in view. */
+    private boolean focusGuideRow() {
+        if (guideAdapter.getItemCount() == 0) return true;
+        if (showsView.hasPendingAdapterUpdates() || showsView.isLayoutRequested()) {
+            showsView.post(this::focusGuideRowNow);
+            return true;
+        }
+        return focusGuideRowNow();
+    }
+
+    private boolean focusGuideRowNow() {
+        if (guideAdapter.getItemCount() == 0) return false;
+        LinearLayoutManager layout = (LinearLayoutManager) showsView.getLayoutManager();
+        int first = layout == null ? 0 : Math.max(0, layout.findFirstCompletelyVisibleItemPosition());
+        int last = layout == null ? 0 : layout.findLastCompletelyVisibleItemPosition();
+        int position = guideAdapter.indexOf(guideFocusedId);
+        if (position < first || position > last) position = first;
+        return focusPosition(showsView, position);
+    }
+
+    /** Returns focus to the selected category in the rail. */
+    private boolean focusSelectedRail() {
+        if (railAdapter.getItemCount() == 0) return false;
+        return focusPosition(railView, Math.max(0, railAdapter.indexOf(selectedIptvCategory)));
+    }
+
+    /**
+     * Keeps focus in the guide when the focused row leaves the list: unfavorited under Favorites,
+     * or found offline by the stream check. A removed row hands focus to the first view on screen,
+     * the header's update pill, where OK starts an update. Focus moves first, while the rows are
+     * still on screen: to the next row that stays, else the nearest one above, else the category.
+     */
+    private void keepGuideFocus(List<IptvChannel> next) {
+        View focused = getCurrentFocus();
+        if (focused == null || !inside(focused, showsView)) return;
+        RecyclerView.ViewHolder holder = showsView.findContainingViewHolder(focused);
+        if (holder == null) return;
+        java.util.Set<Long> staying = new java.util.HashSet<>(next.size() * 2);
+        for (IptvChannel channel : next) staying.add(channel.id);
+        if (staying.contains(holder.getItemId())) return;
+        int from = holder.getBindingAdapterPosition();
+        if (from != RecyclerView.NO_POSITION) {
+            for (int step = 1; step >= -1; step -= 2) {
+                for (int i = from + step; ; i += step) {
+                    RecyclerView.ViewHolder row = showsView.findViewHolderForAdapterPosition(i);
+                    if (row == null) break;
+                    if (staying.contains(row.getItemId())) {
+                        row.itemView.requestFocus();
+                        return;
+                    }
+                }
+            }
+        }
+        focusSelectedRail();
+    }
+
+    private boolean focusPosition(RecyclerView list, int position) {
+        RecyclerView.ViewHolder holder = list.findViewHolderForAdapterPosition(position);
+        if (holder != null) return holder.itemView.requestFocus();
+        list.scrollToPosition(position);
+        list.post(() -> {
+            RecyclerView.ViewHolder later = list.findViewHolderForAdapterPosition(position);
+            if (later != null) later.itemView.requestFocus();
+        });
+        return true;
+    }
+
+    /** The top of the guide: the focused (or first) channel, what is on, and the preview window. */
+    private void updateGuideInfo() {
+        if (guideAdapter == null) return;
+        int position = guideAdapter.indexOf(guideFocusedId);
+        IptvChannel channel = guideAdapter.get(position < 0 ? 0 : position);
+        if (channel == null) {
+            guideEyebrow.setText("");
+            guideTitle.setText("");
+            guideMeta.setText("");
+            guideSynopsis.setText("");
+            guideProgress.setVisibility(View.INVISIBLE);
+            guidePreview.show(null, false);
+            return;
+        }
+        long now = System.currentTimeMillis();
+        FastGuide.Schedule schedule = FastGuide.schedule(channel.channelId);
+        if (FastGuide.isFast(channel)) {
+            int onAir = schedule == null ? -1 : schedule.indexAt(now);
+            guideEyebrow.setText(schedule != null && schedule.number > 0 ? schedule.number + "  ·  " + channel.name : channel.name);
+            String title = onAir < 0 ? "" : schedule.title(onAir);
+            guideTitle.setText(ratedGuideTitle(channel, title.isEmpty() ? channel.name : title, now));
+            if (onAir < 0) {
+                guideMeta.setText(R.string.guide_live);
+            } else {
+                String left = GuideText.left(this, schedule, now);
+                String range = GuideText.range(GuideText.clock(this), schedule, onAir);
+                guideMeta.setText(left.isEmpty() ? range : range + "  ·  " + left);
+            }
+            int percent = schedule == null ? -1 : schedule.progressPercent(now);
+            guideProgress.setVisibility(percent < 0 ? View.INVISIBLE : View.VISIBLE);
+            if (percent >= 0) guideProgress.setProgress(percent);
+            guideSynopsis.setText(schedule == null ? "" : schedule.description);
+        } else {
+            guideEyebrow.setText(countryName(channel.country));
+            guideTitle.setText(channel.name);
+            String genres = android.text.TextUtils.join(", ", channel.genres);
+            guideMeta.setText(genres.isEmpty() ? getString(R.string.guide_live)
+                    : getString(R.string.guide_live) + "  ·  " + genres);
+            guideProgress.setVisibility(View.INVISIBLE);
+            guideSynopsis.setText("");
+        }
+        boolean playback = previewResumed && !screenOff && hasWindowFocus() && currentTab == TAB_SHOWS
+                && !preferences.reducedMotion() && (!channel.genres.contains("18+") || adultUnlocked);
+        guidePreview.show(channel, playback);
+    }
+
+    /** The guide title with the rating of what is on air beside it; an unknown rating is looked up in the background. */
+    private CharSequence ratedGuideTitle(IptvChannel channel, CharSequence title, long now) {
+        if (programRatings == null) programRatings = new ProgramRatings(this);
+        String rating = programRatings.cached(channel, now);
+        if (rating == null) {
+            long id = channel.id;
+            programRatings.request(channel, () -> {
+                if (guideAdapter == null || currentTab != TAB_SHOWS) return;
+                int position = guideAdapter.indexOf(guideFocusedId);
+                IptvChannel shown = guideAdapter.get(position < 0 ? 0 : position);
+                if (shown != null && shown.id == id) updateGuideInfo();
+            });
+        }
+        return RatingBadge.fit(guideTitle, title, rating);
+    }
+
+    /** Runs {@link #guideTick} just after the next minute starts, while the guide is on screen. */
+    private void scheduleGuideTick() {
+        filterHandler.removeCallbacks(guideTick);
+        if (!previewResumed || currentTab != TAB_SHOWS) return;
+        filterHandler.postDelayed(guideTick, 60_000L - System.currentTimeMillis() % 60_000L + 250L);
+    }
+
+    private String countryName(String code) {
+        if (code == null || code.isEmpty() || "ALL".equalsIgnoreCase(code)) return "";
+        try {
+            String name = new java.util.Locale.Builder().setRegion("UK".equalsIgnoreCase(code) ? "GB" : code)
+                    .build().getDisplayCountry();
+            return name.isEmpty() ? code : name;
+        } catch (java.util.IllformedLocaleException notARegion) {
+            return code;
+        }
+    }
+
+    private static boolean hasGenre(IptvChannel channel, String name) {
+        for (String genre : channel.genres) if (genre.trim().equalsIgnoreCase(name)) return true;
+        return false;
+    }
+
+    private boolean adultUnlocked, onlineScanRunning;
+    private int onlineScanGeneration, offlineHidden;
+    /** Rows a scan already tried since the list loaded; a busy checker or a full cache cannot loop on them. */
+    private final java.util.Set<String> onlineAttempted = new java.util.HashSet<>();
 
     private void scanOnline(List<IptvChannel> candidates, int offset, int generation) {
-        if (generation != onlineScanGeneration || !onlineOnly || isDestroyed()) return;
+        if (generation != onlineScanGeneration || isDestroyed()) return;
         if (offset >= candidates.size()) return;
         onlinePending++;
-        com.firestick.aura.launcher.manager.StreamAvailability.checkChannel(candidates.get(offset), reachable -> {
+        IptvChannel candidate = candidates.get(offset);
+        onlineAttempted.add(candidate.url);
+        com.firestick.aura.launcher.manager.StreamAvailability.checkChannel(candidate, reachable -> {
             if (generation != onlineScanGeneration || isDestroyed()) return;
-            onlineResults.put(candidates.get(offset).url, Boolean.TRUE.equals(reachable));
             onlineChecked++;
             onlinePending--;
             if (offset + 3 < candidates.size()) scanOnline(candidates, offset + 3, generation);
@@ -1196,22 +1559,38 @@ public class MainActivity extends AppCompatActivity
         });
     }
 
+    /**
+     * Shows the rows of the selected category that are on air. FAST rows always count as online;
+     * other rows appear once a feed check (saved for a day) finds them reachable, and unchecked
+     * rows are checked in list order. Favorites stay listed whatever their state.
+     */
     private void applyIptvFilters() {
-        if (iptvAdapter == null || !channelsLoaded) return;
-        iptvFilter.setText(categoryLabel(selectedIptvCategory));
+        if (guideAdapter == null || !channelsLoaded) return;
+        String genre = selectedIptvCategory.startsWith("category:")
+                ? selectedIptvCategory.substring("category:".length()) : null;
+        boolean favorites = "favorites".equals(selectedIptvCategory);
         List<IptvChannel> filtered = new ArrayList<>();
         List<IptvChannel> unchecked = new ArrayList<>();
+        boolean anyFavorite = false, anyAdult = false;
+        int offline = 0;
         for (IptvChannel channel : countryChannels) {
-            if (channel.genres.contains("18+") && (!adultUnlocked || !"category:18+".equals(selectedIptvCategory))) continue;
-            if ("favorites".equals(selectedIptvCategory) && !channel.isFavorite) continue;
-            if (selectedIptvCategory.startsWith("category:")
-                    && !channel.genres.contains(selectedIptvCategory.substring("category:".length()))) continue;
+            if (channel.genres.contains("18+") && (!adultUnlocked || !ADULTS.equals(selectedIptvCategory))) continue;
+            if (channel.isFavorite) anyFavorite = true;
+            if (channel.genres.contains("18+")) anyAdult = true;
+            if (favorites && !channel.isFavorite) continue;
+            if (genre != null && !hasGenre(channel, genre)) continue;
             if (!iptvSearchQuery.isEmpty()
                     && !channel.name.toLowerCase(java.util.Locale.ROOT).contains(iptvSearchQuery)) continue;
-            if (onlineOnly && !onlineResults.containsKey(channel.url)) unchecked.add(channel);
-            if (!onlineOnly || Boolean.TRUE.equals(onlineResults.get(channel.url))) filtered.add(channel);
+            // FAST lineups are curated and on air around the clock; probing hundreds of redirects
+            // would only load the relay, so they count as online.
+            Boolean online = FastGuide.isFast(channel) ? Boolean.TRUE
+                    : com.firestick.aura.launcher.manager.StreamAvailability.cached(channel);
+            if (online == null && !onlineAttempted.contains(channel.url)) unchecked.add(channel);
+            if (Boolean.FALSE.equals(online) && !favorites) offline++;
+            if (favorites || Boolean.TRUE.equals(online)) filtered.add(channel);
         }
-        if (onlineOnly && !onlineScanRunning && !unchecked.isEmpty()) {
+        offlineHidden = offline;
+        if (!onlineScanRunning && !unchecked.isEmpty()) {
             onlineScanRunning = true;
             int generation = onlineScanGeneration;
             onlineChecked = 0;
@@ -1223,15 +1602,24 @@ public class MainActivity extends AppCompatActivity
         }
         visibleChannels.clear();
         visibleChannels.addAll(filtered);
-        ((TextView) findViewById(R.id.onlineProgress)).setText(onlineOnly
-                ? getString(R.string.online_progress, onlineChecked, onlineTotal, filtered.size()) : "");
-        iptvAdapter.setItems(filtered);
+        ((TextView) findViewById(R.id.onlineProgress)).setText(onlineScanRunning
+                ? getString(R.string.online_progress, Math.min(onlineChecked, onlineTotal), onlineTotal)
+                : offlineHidden > 0 ? getResources().getQuantityString(R.plurals.online_hidden, offlineHidden, offlineHidden)
+                : "");
+        railAdapter.setSelected(selectedIptvCategory);
+        keepGuideFocus(filtered);
+        guideAdapter.setItems(filtered);
         if (filtered.isEmpty()) {
-            int message = countryChannels.isEmpty() ? R.string.iptv_no_channels : R.string.iptv_no_results;
-            setShowsStatus(onlineOnly && onlineScanRunning ? R.string.iptv_online_checking : message);
+            int message = countryChannels.isEmpty() ? R.string.iptv_no_channels
+                    : favorites && !anyFavorite ? R.string.iptv_no_favorites
+                    : ADULTS.equals(selectedIptvCategory) && !anyAdult ? R.string.iptv_no_adults
+                    : offlineHidden > 0 ? R.string.iptv_none_online
+                    : R.string.iptv_no_results;
+            setShowsStatus(onlineScanRunning ? R.string.iptv_online_checking : message);
         } else {
             showsStatus.setVisibility(View.GONE);
         }
+        updateGuideInfo();
     }
 
     private void toggleIptvFavorite(IptvChannel channel, boolean favorite) {
@@ -1243,6 +1631,7 @@ public class MainActivity extends AppCompatActivity
                 break;
             }
         }
+        buildRail();
         applyIptvFilters();
         updateHomeIptvFavorites();
         Toast.makeText(this, favorite ? R.string.iptv_favorite_added : R.string.iptv_favorite_removed,
@@ -1302,7 +1691,11 @@ public class MainActivity extends AppCompatActivity
         if (channel.url == null || channel.url.isEmpty()) return;
         List<IptvChannel> queue = visibleChannels.contains(channel) ? new ArrayList<>(visibleChannels)
                 : preferences.recentChannels();
-        Runnable play = () -> com.firestick.aura.launcher.manager.PlaybackSession.open(this, queue, channel);
+        Runnable play = () -> {
+            // Hand the decoder to the full-screen player.
+            guidePreview.release();
+            com.firestick.aura.launcher.manager.PlaybackSession.open(this, queue, channel);
+        };
         if (channel.isAdult() && !adultUnlocked)
             LockPad.verify(this, preferences, getString(R.string.iptv_adults_unlock), play::run);
         else play.run();
@@ -1313,27 +1706,6 @@ public class MainActivity extends AppCompatActivity
         showsStatus.setVisibility(View.VISIBLE);
     }
 
-    private StateListDrawable chipBackground() {
-        int accent = accent();
-        StateListDrawable states = new StateListDrawable();
-        states.addState(new int[]{android.R.attr.state_selected, android.R.attr.state_focused},
-                pill(accent, ContextCompat.getColor(this, R.color.nova_text), 2));
-        states.addState(new int[]{android.R.attr.state_selected}, pill(accent, accent, 1));
-        states.addState(new int[]{android.R.attr.state_focused},
-                pill(ContextCompat.getColor(this, R.color.nova_card_hi), accent, 2));
-        states.addState(new int[]{}, pill(ContextCompat.getColor(this, R.color.glass_plate),
-                ContextCompat.getColor(this, R.color.glass_card_stroke), 1));
-        return states;
-    }
-
-    private GradientDrawable pill(int fill, int stroke, int strokeDp) {
-        GradientDrawable drawable = new GradientDrawable();
-        drawable.setShape(GradientDrawable.RECTANGLE);
-        drawable.setCornerRadius(dp(16));
-        drawable.setColor(fill);
-        drawable.setStroke(dp(strokeDp), stroke);
-        return drawable;
-    }
     private int dp(int value) {
         return Math.round(value * getResources().getDisplayMetrics().density);
     }

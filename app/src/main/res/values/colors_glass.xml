@@ -1,5 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Warm shade laid over blurred backdrops and the settings wallpaper. -->
-    <color name="glass_shade">#8C140A06</color>
+    <!-- Cool ink shade laid over blurred backdrops and the settings wallpaper. -->
+    <color name="glass_shade">#8C0A0D14</color>
+
+    <!-- Glass fills: translucent ink for each surface role, and the opaque twin that
+         ThemeOverlay.Lumora.Solid swaps in when Reduce transparency is on. -->
+    <color name="glass_panel_fill">#800E1320</color>
+    <color name="glass_panel_solid">#FF141A27</color>
+    <color name="glass_card_fill">#660E1320</color>
+    <color name="glass_card_solid">#FF1B2130</color>
+    <color name="glass_control_fill">#1AFFFFFF</color>
+    <color name="glass_control_solid">#FF262F42</color>
+    <color name="glass_focus_fill">#33FFFFFF</color>
+    <color name="glass_focus_solid">#FF39445C</color>
+    <color name="glass_pill_fill">#CC0E1320</color>
+    <color name="glass_pill_solid">#FF161C29</color>
+    <color name="glass_sheet_fill">#F20E1320</color>
+    <color name="glass_sheet_solid">#FF161C29</color>
+    <color name="glass_bar_fill">#8C0E1320</color>
+    <color name="glass_bar_solid">#FF10141E</color>
+    <color name="glass_inset_fill">#40000000</color>
+    <color name="glass_inset_solid">#FF0D1119</color>
+
+    <!-- Light on the glass: hairline edges, top sheen, faint row wash, pressed wash. -->
+    <color name="glass_edge">#33FFFFFF</color>
+    <color name="glass_edge_soft">#14FFFFFF</color>
+    <color name="glass_sheen">#1AFFFFFF</color>
+    <color name="glass_wash">#0DFFFFFF</color>
+    <color name="glass_pressed_fill">#40FFFFFF</color>
+
+    <!-- Plate and hairline used directly by code and older drawables. -->
+    <color name="glass_plate">#660E1320</color>
+    <color name="glass_card_stroke">#26FFFFFF</color>
 </resources>

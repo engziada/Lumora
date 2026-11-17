@@ -1,16 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Floating assistant button: glass disc, amber ring when focused. -->
+<!-- Floating assistant button: dark glass disc, light wash and ice ring when focused. -->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:state_focused="true">
-        <shape android:shape="oval">
-            <solid android:color="@color/nova_card_hi" />
-            <stroke android:width="2dp" android:color="@color/nova_accent" />
-        </shape>
+        <layer-list>
+            <item>
+                <shape android:shape="oval">
+                    <solid android:color="?attr/lumoraGlassBar" />
+                </shape>
+            </item>
+            <item>
+                <shape android:shape="oval">
+                    <solid android:color="@color/glass_focus_fill" />
+                    <stroke android:width="2dp" android:color="@color/nova_accent" />
+                </shape>
+            </item>
+        </layer-list>
     </item>
     <item>
         <shape android:shape="oval">
-            <solid android:color="@color/glass_plate" />
-            <stroke android:width="1dp" android:color="@color/glass_card_stroke" />
+            <solid android:color="?attr/lumoraGlassBar" />
+            <stroke android:width="1dp" android:color="@color/glass_edge" />
         </shape>
     </item>
 </selector>

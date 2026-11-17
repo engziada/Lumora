@@ -2,10 +2,14 @@ package com.firestick.aura.launcher.ui;
 
 import android.app.Activity;
 import android.app.Dialog;
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.ColorDrawable;
+import android.os.SystemClock;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -19,6 +23,7 @@ import android.widget.TextView;
 import androidx.core.content.ContextCompat;
 
 import com.firestick.aura.launcher.R;
+import com.firestick.aura.launcher.manager.PreferenceManager;
 
 /**
  * Glassmorphism without platform blur: Fire OS (Android 9/11) has no backdrop blur, so overlays
@@ -27,11 +32,36 @@ import com.firestick.aura.launcher.R;
 public final class Glass {
     private static final int SCALE = 8;
     private static final int BLUR_RADIUS = 4;
+    /** A handoff older than this was never picked up, so it no longer matches the screen. */
+    private static final long HANDOFF_MS = 10_000;
+
+    private static Bitmap handoff;
+    private static long handoffAt;
 
     private Glass() {
     }
 
-    /** Full-screen dialog: blurred snapshot, warm shade, and the given panel layout at {@code gravity}. */
+    /**
+     * Swaps the translucent glass fills for opaque ones when Reduce transparency is on. Call
+     * after {@code super.onCreate} and before {@code setContentView}; returns whether it did.
+     */
+    public static boolean applyTheme(Activity activity) {
+        boolean solid = PreferenceManager.reduceTransparency(activity);
+        if (solid) activity.getTheme().applyStyle(R.style.ThemeOverlay_Lumora_Solid, true);
+        return solid;
+    }
+
+    /** Colour of a theme attribute such as {@code R.attr.lumoraGlassBar}, or transparent. */
+    static int color(Context context, int attr) {
+        TypedValue value = new TypedValue();
+        if (!context.getTheme().resolveAttribute(attr, value, true)) return Color.TRANSPARENT;
+        if (value.type >= TypedValue.TYPE_FIRST_COLOR_INT && value.type <= TypedValue.TYPE_LAST_COLOR_INT) {
+            return value.data;
+        }
+        return value.resourceId != 0 ? ContextCompat.getColor(context, value.resourceId) : Color.TRANSPARENT;
+    }
+
+    /** Full-screen dialog: blurred snapshot, cool ink shade, and the given panel layout at {@code gravity}. */
     public static Dialog overlay(Activity activity, int layoutRes, int gravity) {
         Bitmap backdrop = snapshot(activity);
         Dialog dialog = new Dialog(activity, R.style.Theme_Lumora_Overlay);
@@ -109,6 +139,28 @@ public final class Glass {
             // Hardware bitmaps cannot be drawn into a software canvas; fall back to the plain shade.
             return null;
         }
+    }
+
+    /**
+     * Blurs {@code from} for the translucent activity it is about to start, which shows it through
+     * {@link #applyBackdrop}. Call right before {@code startActivity}.
+     */
+    public static void handOff(Activity from) {
+        handoff = PreferenceManager.reduceTransparency(from) ? null : snapshot(from);
+        handoffAt = SystemClock.uptimeMillis();
+    }
+
+    /**
+     * Shows the screen handed off by {@link #handOff} behind {@code activity}, or clears the window
+     * background when it opened over another app. Returns whether a frosted backdrop is showing.
+     */
+    public static boolean applyBackdrop(Activity activity) {
+        Bitmap backdrop = SystemClock.uptimeMillis() - handoffAt < HANDOFF_MS ? handoff : null;
+        handoff = null;
+        activity.getWindow().setBackgroundDrawable(backdrop != null
+                ? new BitmapDrawable(activity.getResources(), backdrop)
+                : new ColorDrawable(Color.TRANSPARENT));
+        return backdrop != null;
     }
 
     /** Three passes of a separable box blur, which approximates a Gaussian. */

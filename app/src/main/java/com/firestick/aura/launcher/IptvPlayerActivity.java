@@ -18,7 +18,10 @@ import com.firestick.aura.launcher.manager.*;
 import com.firestick.aura.launcher.model.IptvChannel;
 import com.firestick.aura.launcher.ui.Glass;
 import com.firestick.aura.launcher.ui.GlassMenu;
+import com.firestick.aura.launcher.ui.GuideText;
 import com.firestick.aura.launcher.ui.LockPad;
+import com.firestick.aura.launcher.ui.RatingBadge;
+import com.firestick.aura.launcher.ui.SubtitleStyle;
 import java.util.*;
 
 /** Foreground live player with feed fallback and remote controls. */
@@ -35,9 +38,9 @@ public final class IptvPlayerActivity extends AppCompatActivity {
     private List<IptvChannel> channels = new ArrayList<>();
     private int channelIndex, feedIndex;
     private boolean recorded, controlsShowing;
-    private EpgRepository guide;
     private PreferenceManager preferences;
     private StreamHealth health;
+    private ProgramRatings ratings;
     private List<String> orderedFeeds = Collections.emptyList();
     private String observedUrl;
     private long startedAt, firstFrameAt, playingSince, playedMs, bufferingSince, bufferedMs;
@@ -45,11 +48,12 @@ public final class IptvPlayerActivity extends AppCompatActivity {
 
     @Override protected void onCreate(@Nullable Bundle state) {
         super.onCreate(state);
+        Glass.applyTheme(this);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         setContentView(R.layout.activity_iptv_player);
         preferences = new PreferenceManager(this);
         health = new StreamHealth(this);
-        guide = new EpgRepository(this);
+        ratings = new ProgramRatings(this);
         channels = PlaybackSession.read(this);
         channelIndex = state == null ? getIntent().getIntExtra("queue_index", 0) : state.getInt("channel_index");
         long channelId = state == null ? getIntent().getLongExtra("channel_id", Long.MIN_VALUE)
@@ -107,6 +111,7 @@ public final class IptvPlayerActivity extends AppCompatActivity {
         orderedFeeds = health.rank(current().streamUrls);
         feedIndex = 0;
         playerView.setPlayer(player);
+        SubtitleStyle.apply(playerView, preferences);
         playerView.setShowBuffering(PlayerView.SHOW_BUFFERING_ALWAYS);
         playerView.setControllerShowTimeoutMs(5000);
         playerView.setControllerAutoShow(false);
@@ -153,22 +158,43 @@ public final class IptvPlayerActivity extends AppCompatActivity {
         super.onStop();
     }
 
-    @Override protected void onDestroy() { guide.shutdown(); super.onDestroy(); }
+    @Override protected void onDestroy() {
+        ratings.shutdown();
+        super.onDestroy();
+    }
 
     private IptvChannel current() { return channels.get(channelIndex); }
+
+    /** The line under the channel name: country, feed, what is on air and its age rating. */
+    private void showOnAir() {
+        IptvChannel channel = current();
+        long now = System.currentTimeMillis();
+        String feeds = channel.country + " · " + (feedIndex + 1) + "/" + channel.streamUrls.size();
+        FastGuide.Schedule schedule = FastGuide.schedule(channel.channelId);
+        int onAir = schedule == null ? -1 : schedule.indexAt(now);
+        String line = onAir < 0 ? feeds : feeds + " · " + schedule.title(onAir);
+        String rating = ratings.cached(channel, now);
+        if (rating == null) {
+            long id = channel.id;
+            ratings.request(channel, () -> {
+                if (!channels.isEmpty() && current().id == id) showOnAir();
+            });
+        }
+        channelCountry.setText(RatingBadge.append(this, line, rating));
+    }
 
     private void preparePlayback() {
         if (player == null || channels.isEmpty()) return;
         errorPanel.setVisibility(View.GONE);
         channelTitle.setText(current().name);
-        channelCountry.setText(current().country + " · " + (feedIndex + 1) + "/" + current().streamUrls.size());
+        showOnAir();
         String url = orderedFeeds.get(feedIndex);
         player.stop();
         observedUrl = url;
         startedAt = android.os.SystemClock.elapsedRealtime();
         firstFrameAt = playingSince = playedMs = bufferingSince = bufferedMs = 0;
         MediaItem.Builder item = new MediaItem.Builder().setUri(Uri.parse(url));
-        if (url.toLowerCase(Locale.ROOT).contains(".m3u8")) item.setMimeType(MimeTypes.APPLICATION_M3U8);
+        if (FastGuide.isHls(url)) item.setMimeType(MimeTypes.APPLICATION_M3U8);
         androidx.media3.datasource.DefaultHttpDataSource.Factory http = new androidx.media3.datasource.DefaultHttpDataSource.Factory()
                 .setAllowCrossProtocolRedirects(true).setConnectTimeoutMs(8000).setReadTimeoutMs(12000)
                 .setDefaultRequestProperties(current().streamHeaders.getOrDefault(url, Collections.emptyMap()));
@@ -239,6 +265,10 @@ public final class IptvPlayerActivity extends AppCompatActivity {
                                 new TrackSelectionOverride(group.getMediaTrackGroup(), index)).build()));
             }
         }
+        if (type == C.TRACK_TYPE_TEXT) {
+            items.add(new GlassMenu.Item(R.drawable.ic_settings, getString(R.string.sub_style_open)));
+            actions.add(() -> SubtitleStyle.show(this, preferences, playerView));
+        }
         GlassMenu.show(this, getString(type == C.TRACK_TYPE_AUDIO ? R.string.player_audio : R.string.player_subtitles),
                 null, null, items, false, (index, item) -> { if (player != null) actions.get(index).run(); });
     }
@@ -256,12 +286,9 @@ public final class IptvPlayerActivity extends AppCompatActivity {
 
     private void showGuide() {
         if (channels.isEmpty()) return;
-        String id = current().channelId;
-        android.app.Dialog dialog = Glass.info(this, current().name, getString(R.string.guide_loading), null, null, null);
-        guide.load(id, text -> {
-            if (!isDestroyed() && dialog.isShowing()) ((TextView) dialog.findViewById(R.id.infoMessage))
-                    .setText(text.isEmpty() ? getString(R.string.guide_unavailable) : text);
-        });
+        FastGuide.Schedule schedule = FastGuide.schedule(current().channelId);
+        String text = schedule == null ? null : GuideText.summary(this, schedule, System.currentTimeMillis());
+        Glass.info(this, current().name, text == null ? getString(R.string.guide_unavailable) : text, null, null, null);
     }
 
     private void showPlaybackError() {

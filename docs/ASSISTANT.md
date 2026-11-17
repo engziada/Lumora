@@ -104,7 +104,6 @@ Lumora checks against a fixed whitelist (`assistant/TvAction.java`):
 | Volume | volume_up / volume_down (1–10 steps, default 2), mute, unmute | music stream |
 | System | back, home, screenshot, power_menu | need quick actions; screenshot needs Android 9+ |
 | Settings | settings: main, wifi, bluetooth, display, sound, apps, about | falls back to main settings |
-| Theme | theme: amber, copper, rose, moonlight | Lumora accent |
 | Search | search: installed package + query (≤ 200 characters) | e.g. "search Netflix for Dark"; locked apps ask for the code |
 | Open | `[[open:package]]` | installed, launchable apps only; app locks apply |
 

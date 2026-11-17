@@ -21,7 +21,6 @@
     <string name="ctl_volume_down">Volume down (%1$d)</string>
     <string name="ctl_mute">Muted</string>
     <string name="ctl_unmute">Sound on</string>
-    <string name="ctl_theme">Theme: %1$s</string>
     <string name="ctl_needs_quick">That needs quick actions (one-time ADB setup in Settings › Home &amp; system).</string>
     <string name="ctl_volume_fixed">The volume did not change: this TV or soundbar controls volume itself (HDMI-CEC or IR). Use the remote\'s volume buttons.</string>
     <string name="ctl_not_installed">That app is not installed.</string>

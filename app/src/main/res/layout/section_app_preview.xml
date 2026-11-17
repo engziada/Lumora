@@ -13,5 +13,5 @@
      android:visibility="gone" />
  <FrameLayout android:id="@+id/previewPlayerHost" android:layout_width="match_parent" android:layout_height="match_parent" />
  <TextView android:id="@+id/previewService" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" />
- <TextView android:id="@+id/previewStatus" android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:padding="16dp" android:background="#DD140A06" android:textColor="@color/nova_text" android:textSize="12sp" android:visibility="gone" />
+ <TextView android:id="@+id/previewStatus" android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:padding="16dp" android:background="#DD0A0D14" android:textColor="@color/nova_text" android:textSize="12sp" android:visibility="gone" />
 </FrameLayout>

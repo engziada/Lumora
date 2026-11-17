@@ -1,4 +1,4 @@
-# Lumora — v5.5.2
+# Lumora — v5.6.0
 
 ![Android CI](https://github.com/engziada/Lumora/actions/workflows/android-build.yml/badge.svg)
 ![License: MIT](https://img.shields.io/badge/license-MIT-E3A15A)
@@ -12,14 +12,50 @@ Java application with no analytics SDK. The application id stays `com.firestick.
 - **Home**: reorder or hide Favorites, Recently used, IPTV, Apps and Streaming rows in
   Settings → Appearance → Customize Home rows. Choose compact or comfortable tile containers.
 - **Global search**: the header search button finds installed apps, public IPTV channels and settings.
-- **IPTV**: country/category/name filters, favorites, Online-only checks with progress and refresh,
-  an alphabetical country jump column, and one card per channel with automatic alternate-feed fallback. Adults remains locked and is
-  listed last. Player controls include channel switching, audio, subtitles, picture size and an
-  on-demand current/next guide where public XMLTV sources are available.
+- **IPTV**: a Live TV guide in the style of Pluto TV. A category rail (All channels, Favorites, the
+  categories, Other, then the locked Adults) sits beside one row per channel: channel number and logo,
+  the program on air with its progress and time left, then the next two programs. The focused
+  channel's program fills the header. A muted preview (480p at most) starts once focus rests for a
+  second. The guide lists only channels that are on air. Pluto TV and Samsung TV Plus channels count
+  as on air; Lumora checks every other feed in the background, three at a time, and adds the channel
+  once its feed answers. Results stay on the device (working feeds for 24 hours, failed ones for
+  12 hours), so later visits check only new or expired channels. Favorites lists every favorite, and
+  Refresh forgets the results and checks again. The program's rating (such as TV-14 or PG-13) shows
+  beside its title in the header and in the player when Pluto TV or Samsung TV Plus publishes one.
+  Country/name filters, favorites, an alphabetical country jump column and automatic alternate-feed
+  fallback remain. Player controls include channel switching, audio, subtitles, picture size and the
+  current/next guide of Pluto TV and Samsung TV Plus channels.
+- **Subtitle style**: size, text colour, background, edge and position of subtitles in the IPTV and
+  film players, or the Fire TV caption settings (the default). Open it from the player's Subtitles
+  menu, press Menu during a film, or use Settings → IPTV → Subtitle style. Changes apply at once.
 - **Recently watched**: successful live playback appears on Home with Continue live.
-- **IPTV sources**: iptv-org plus Free-TV direct streams, merged into the same country/search/category views.
-  Settings → Tools → IPTV sources can disable Free-TV or add/remove up to five HTTP(S) M3U playlist URLs.
+- **Movies**: films from 1990 on from Pluto TV's free On Demand library, in shelves: Continue
+  watching, Recent releases, Trending now, New this month, Most popular, Action and adventure,
+  Thrillers, Horror, Comedy, Science fiction, Crime, Romance, Drama and A24 films. Genre shelves put
+  the newest first. Each film shows its year, length, genre and rating; most have English subtitles.
+  Films play with Pluto TV's ads and need no account. Lumora remembers where you stopped and shows
+  the time left. The **After dark · 18+** shelf (Pluto TV's late-night films with nudity or strong
+  sexual content) keeps its films hidden until the lock key is entered. They hide again whenever
+  Lumora leaves the screen, including when a film starts. NC-17 films appear only on that shelf.
+  Where Pluto TV does not answer, the tab shows public-domain classics from the Internet Archive
+  instead (Most watched, Film noir, Comedy, Horror, Science fiction, Westerns, Action and adventure,
+  Romance, Drama and an After dark shelf of exploitation, burlesque and nudist films).
+- **IPTV sources**: iptv-org, Free-TV direct streams, and the Pluto TV and Samsung TV Plus lineups
+  that i.mjh.nz republishes with their schedules, merged into the same country/search/category views.
+  Settings → Tools → IPTV sources turns Pluto TV (on by default), Samsung TV Plus (off by default)
+  and Free-TV on or off, and adds or removes up to five HTTP(S) M3U playlist URLs.
+  The Pluto and Samsung region is Automatic by default: it follows the IPTV country and uses the US
+  lineup when a service has none for that country.
+  **Free playlists** in the same menu switches on volunteer-maintained lists of free services: Tubi,
+  The Roku Channel, Xumo Play and DistroTV, all for the United States. Their channels appear under
+  that country and under All countries, and may play only there.
   Custom playlists are checked before saving; entries without country metadata appear under All countries.
+  The locked Adults category collects groups named with an adult word (such as Adult, Adultos, XXX,
+  NSFW, Porn, Erotic or 18+), channel names with an explicit word or an adult TV brand, and channels
+  iptv-org's blocklist marks NSFW. It also lists the adult channels of every Pluto TV and Samsung TV
+  Plus region (such as Pluto TV's softcore channels in the UK, Canada, Germany and Italy), whatever
+  the selected region. iptv-org's own playlists leave NSFW channels out, so add a playlist that
+  carries such channels for more.
   Stream alternatives retain supported User-Agent/Referer headers, including M3U EXTVLCOPT headers.
   Successful playback, startup time, buffering and failures help choose feeds on the next play.
   Observations expire and are bounded to 256 feeds. Source failures retain available catalogs and cached data.
@@ -36,7 +72,7 @@ Java application with no analytics SDK. The application id stays `com.firestick.
 - **Assistant** (OpenRouter, free models): floating button or **hold ☰ Menu** in any app. Speak
   through your phone: scan the QR code and use the phone keyboard's microphone.
 - **TV control**: "pause", "volume up", "next episode", "علي الصوت" run instantly (no key needed);
-  the assistant can also open apps, search inside them, open settings pages and change the theme.
+  the assistant can also open apps, search inside them and open settings pages.
   See [docs/ASSISTANT.md](docs/ASSISTANT.md).
 - **Updates**: Lumora checks this repository's GitHub Releases (daily by default, configurable) and
   installs a verified new build after you confirm.
@@ -45,7 +81,12 @@ Java application with no analytics SDK. The application id stays `com.firestick.
   Lock with code, Hide, App details, Uninstall.
 - **Move**: choose Move once, then the arrows move the app until OK or Back.
 - **App lock**: an arrow-key code (4–8 directions) for chosen apps and, optionally, Lumora settings.
-- Themes: Amber, Copper, Rose, Moonlight. The theme colours the wallpaper grade, focus rings and icons.
+  The same code opens the IPTV Adults category and the Movies After dark shelf.
+- **Glass**: the navigation dock and the Settings panels are frosted glass over a blurred copy of
+  the wallpaper. Fire OS has no backdrop blur, so Lumora blurs each wallpaper once at 1/8 scale.
+  Dialogs sit on a blurred snapshot of the screen; pills, cards and guide cells are translucent tints.
+  Settings → Appearance → Reduce transparency switches every glass surface to a solid fill.
+- One amber accent colours the wallpaper grade, focus rings and icons.
 - HD app icons from dashboard-icons, falling back to the installed icon.
 
 ## Install and update
@@ -145,6 +186,12 @@ Lumora sends no analytics or telemetry. It contacts these hosts only for the lis
 | `cdn.esahubble.org` | Space wallpapers (nebulae, galaxies) | On | Settings › Wallpaper |
 | `images.unsplash.com` | Night sky and desert wallpapers (1280 x 720) | On | Settings › Wallpaper |
 | `openrouter.ai` | Assistant questions and key test | Only with a key set | Settings › AI assistant › Remove key |
+| `iptv-org.github.io` | IPTV channel lists, categories and the NSFW blocklist | When the IPTV tab or search loads channels | — |
+| `raw.githubusercontent.com` (Free-TV/IPTV) | Free-TV channel list | On | Settings › Tools › IPTV sources |
+| `i.mjh.nz`, `raw.githubusercontent.com` (matthuisman/i.mjh.nz), `jmp2.uk` | Pluto TV and Samsung TV Plus lineups, schedules, Samsung TV Plus program ratings and stream redirects | Pluto TV on, Samsung TV Plus off | Settings › Tools › IPTV sources |
+| `raw.githubusercontent.com` (BuddyChewChew/app-m3u-generator), `www.apsattv.com` | Free playlists: Tubi, The Roku Channel, Xumo Play, DistroTV | Off | Settings › Tools › IPTV sources › Free playlists |
+| `boot.pluto.tv` and Pluto TV's service, image and stream hosts (`*.pluto.tv`) | Movies tab: film lists, posters and playback; ratings of the program on air on Pluto TV channels | When the Movies tab opens or a Pluto TV channel is focused or played | Ratings: Settings › Tools › IPTV sources › Pluto TV. Movies: — |
+| `archive.org` and its download servers | Movies tab fallback: film lists, thumbnails and playback | When Pluto TV does not answer | — |
 | `github.com` and GitHub's release-download host (`*.githubusercontent.com`) | Update check (`update.json`) and update download | Daily | Settings › About › Updates › Off |
 
 Incoming: while the assistant's phone link (or *Enter key from phone*) is open, Lumora listens on
@@ -169,6 +216,8 @@ beta update channel, and the phone link modes above. Pre-releases are published 
 the version name carries a beta/rc suffix.
 
 Downloads are cached on the device (icons indefinitely, schedules 3 hours, posters 14 days,
+Pluto TV and Samsung TV Plus lineups 1 hour, Samsung TV Plus ratings 6 hours, film lists 12 hours,
+stream checks 24 hours (12 hours for feeds that failed),
 wallpapers until the cache is cleared; only the last downloaded update APK is kept, replaced by
 the next update download). With every feature off, Lumora makes no network requests.
 
@@ -214,7 +263,8 @@ The focus/lifecycle instrumentation remains available; actual playback and rotat
 player telemetry and device observation rather than static title assertions.
 
 **Movie posters:** TVmaze covers TV and streaming series only. Film posters would need TMDB, which
-requires a free account and API key; it is not integrated.
+requires a free account and API key; it is not integrated. The Movies tab shows Pluto TV's own
+posters, or the Internet Archive's thumbnails when it falls back to the archive.
 
 ## Launcher icon on Fire TV
 
@@ -255,17 +305,22 @@ Distribution options and publishing costs are tracked in [`distribute.md`](distr
 ```text
 app/src/main/java/com/firestick/aura/launcher/
 ├── LumoraApp.java          Application; schedules the automatic update check
-├── MainActivity.java       Home, Shows, Apps, Streaming, gear menu, move mode
+├── MainActivity.java       Home, IPTV guide, Movies, Apps, Streaming, gear menu, move mode
+├── IptvPlayerActivity.java Full-screen IPTV player
+├── MoviePlayerActivity.java Full-screen film player with resume
 ├── AssistantActivity.java  Assistant chat panel, phone link, TV actions
 ├── QuickMenu.java          Quick menu
 ├── ShowDetails.java        Show details, watch-in-app, Appstore hand-off
 ├── SettingsActivity.java
-├── adapter/                App tiles and cards, posters
+├── adapter/                App tiles and cards, posters, guide rows and rail, film cards
 ├── assistant/              OpenRouter client, settings, TV actions and commands, phone link, QR encoder
-├── manager/                Apps, app search, icons, shows, images, wallpapers, lock, preferences, device stats
+├── manager/                Apps, app search, icons, shows, IPTV and FAST lineups, free playlists,
+│                           stream checks, program ratings, films, Pluto TV session, images,
+│                           wallpapers, lock, preferences, device stats
 ├── model/
 ├── service/QuickActionService.java
-├── ui/                     Glass overlays, glass menu, lock pad, text prompt, phone pairing, update flow
+├── ui/                     Frosted glass, glass overlays and menu, guide preview, Movies tab, rating
+│                           badge, subtitle style, lock pad, text prompt, phone pairing, update flow
 └── update/                 update.json parsing, schedule, download and verification
 brand/                      Visual identity, palette, logo SVGs
 docs/ASSISTANT.md           Assistant setup, phone link, TV control, privacy
@@ -285,7 +340,12 @@ APK and publishes it as a GitHub Release (see *Publishing*).
 Listings and posters: [TVmaze](https://www.tvmaze.com) (CC BY-SA 4.0). App logos:
 [dashboard-icons](https://github.com/homarr-labs/dashboard-icons) (Apache-2.0). Space wallpapers:
 ESA/Hubble (CC BY 4.0). Night sky and desert wallpapers: Unsplash. Type: Poppins (SIL OFL 1.1).
-Phone icon: Material Icons (Apache-2.0).
+Phone icon: Material Icons (Apache-2.0). Channel lists: [iptv-org](https://github.com/iptv-org/iptv),
+[Free-TV](https://github.com/Free-TV/IPTV), [i.mjh.nz](https://github.com/matthuisman/i.mjh.nz)
+(Pluto TV and Samsung TV Plus), [app-m3u-generator](https://github.com/BuddyChewChew/app-m3u-generator)
+and [apsattv.com](https://www.apsattv.com) (free playlists). Films: [Pluto TV](https://pluto.tv)
+On Demand (free with ads; Lumora is not affiliated with Pluto TV) and the
+[Internet Archive](https://archive.org), public domain as marked by their uploaders.
 
 Made by Zakaa — support@zakaa-ai.net — https://zakaa-ai.net
 
@@ -324,6 +384,9 @@ The device suite checks the filter focus path, the existing Adults key, online p
 real local-video fallback, successful watch history, player controls, search and Settings entry points.
 Online indicators measure endpoint reachability. Stream decoding and guide coverage depend on the provider.
 
-Guide discovery follows the [iptv-org guide catalog](https://github.com/iptv-org/api#guides).
+Program schedules come from the Pluto TV and Samsung TV Plus lineups that i.mjh.nz republishes.
+Other channels have no schedule. Program ratings come from Samsung TV Plus's XMLTV guide on
+i.mjh.nz and from Pluto TV's own guide, which answers only for the region Pluto TV serves the
+device; Pluto TV channels of other regions show no rating.
 
 During full-screen IPTV playback, remote Up/Down switches next/previous channels. OK opens player controls; Back hides them before exiting playback. Channel Up/Down buttons remain available while controls are visible.

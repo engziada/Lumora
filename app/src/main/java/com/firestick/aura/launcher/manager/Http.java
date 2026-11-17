@@ -10,6 +10,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.util.Map;
 
 /** Minimal blocking HTTP and file helpers. Call from background threads only. */
 public final class Http {
@@ -51,12 +52,19 @@ public final class Http {
     }
 
     public static byte[] getBounded(String url, int connectMs, int readMs, int maxBytes) {
+        return getBounded(url, connectMs, readMs, maxBytes, null);
+    }
+
+    /** Like {@link #getBounded(String, int, int, int)}, with extra request headers such as Authorization. */
+    public static byte[] getBounded(String url, int connectMs, int readMs, int maxBytes, Map<String, String> headers) {
         HttpURLConnection connection = null;
         try {
             connection = (HttpURLConnection) new URL(url).openConnection();
             connection.setConnectTimeout(connectMs);
             connection.setReadTimeout(readMs);
             connection.setRequestProperty("User-Agent", USER_AGENT);
+            if (headers != null) for (Map.Entry<String, String> header : headers.entrySet())
+                connection.setRequestProperty(header.getKey(), header.getValue());
             if (connection.getResponseCode() != 200) return null;
             try (InputStream in = connection.getInputStream(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
                 byte[] buffer = new byte[16384];

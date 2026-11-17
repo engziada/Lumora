@@ -1,5 +1,16 @@
 # Changelog
 
+## 5.6.0 — Glass look, live guide and recent films
+
+- Glass look: frosted dock and Settings panels, translucent cards and dialogs. Settings → Appearance → Reduce transparency gives solid fills. The theme picker is gone; one amber accent remains.
+- IPTV is a live guide like Pluto TV's: category rail, on-air and next programs, and a muted preview. Pluto TV and Samsung TV Plus channels come with schedules. Free playlists adds Tubi, The Roku Channel, Xumo Play and DistroTV.
+- The guide lists only channels that are on air. Stream checks run in the background and are remembered for up to 24 hours.
+- Program ratings such as TV-14 or PG-13 appear beside the title in the guide and the player.
+- Subtitle style: size, colour, background, edge and position, from the player or Settings → IPTV.
+- Adults lists the adult channels of every Pluto TV and Samsung TV Plus region.
+- New Movies tab: films from 1990 on from Pluto TV On Demand, free with ads, with ratings, resume and a locked After dark · 18+ shelf. Where Pluto TV is unavailable, public-domain classics from the Internet Archive show instead.
+- JUnit: `FastGuideTest`, `MovieLibraryTest`, `PlutoSessionTest`, `ProgramRatingsTest`.
+
 ## 5.5.2 — Smoother Home, readability and accessibility
 
 - Lighter idle Home: the focus effect and the particle sphere share one 30 fps cadence and go idle while a dialog, menu or another app covers Home, and lightning rests between strikes. On a Fire TV Stick 4K (2nd Gen), idle Home no longer saturates the GPU: about 31 fps at 7 ms GPU time per frame. Cold start is unchanged.

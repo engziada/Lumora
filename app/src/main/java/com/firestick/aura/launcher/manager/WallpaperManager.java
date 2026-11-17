@@ -4,7 +4,6 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.ColorMatrix;
 import android.graphics.ColorMatrixColorFilter;
 import android.graphics.LinearGradient;
@@ -16,9 +15,7 @@ import android.os.Looper;
 import android.util.DisplayMetrics;
 import android.widget.ImageView;
 
-import androidx.core.content.ContextCompat;
-
-import com.firestick.aura.launcher.R;
+import com.firestick.aura.launcher.ui.Frost;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -28,24 +25,28 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * Rotates the live wallpaper catalog (space, night sky, desert) with a warm beige/brown grade
- * derived from the active theme, falling back to generated offline scenes when offline.
+ * Rotates the live wallpaper catalog (space, night sky, desert) in natural colour, slightly
+ * darkened, falling back to generated offline scenes when offline. Every wallpaper also feeds
+ * {@link Frost}, the blurred backdrop behind the frosted glass surfaces.
  */
 public class WallpaperManager {
     private static final int MAX_WIDTH = 1280, MAX_HEIGHT = 720;
+    /** Brightness kept by the online wallpaper grade, so text and glass stay readable. */
+    private static final float DIM = 0.78f;
 
-    /** Base, mid and glow colour of each offline scene, from the Lumora palette. */
+    /** Base, mid and glow colour of each offline scene: cool ink with a soft coloured glow. */
     private static final int[][] SCENES = {
-            {0xFF140A06, 0xFF3A2216, 0xFFE3A15A},
-            {0xFF0E0806, 0xFF2A1A12, 0xFFF2D3A0},
-            {0xFF160904, 0xFF4A2410, 0xFFD07A45},
-            {0xFF120808, 0xFF3A1E1C, 0xFFD98A7E},
-            {0xFF0C0806, 0xFF26201A, 0xFFC9B39C},
-            {0xFF100A08, 0xFF33200F, 0xFFEDB06A}};
+            {0xFF0A0D14, 0xFF1B2440, 0xFF8FB4FF},
+            {0xFF080B12, 0xFF16203A, 0xFFDCEAFF},
+            {0xFF0B0E18, 0xFF22264A, 0xFFA79BFF},
+            {0xFF090D12, 0xFF15303A, 0xFF7FD6E6},
+            {0xFF0A0C10, 0xFF20242C, 0xFFC3CAD6},
+            {0xFF0C0A16, 0xFF2A1F45, 0xFFF0B8D8}};
 
     private final Context context;
     private final PreferenceManager preferences;
     private final ImageView back, front;
+    private final Frost frost;
     private final Handler main = new Handler(Looper.getMainLooper());
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final List<Bitmap> retired = new ArrayList<>();
@@ -70,7 +71,13 @@ public class WallpaperManager {
         this.preferences = preferences;
         this.back = back;
         this.front = front;
+        frost = new Frost(back);
         applyLocalScene();
+    }
+
+    /** Blurred backdrop of the current wallpaper, for {@link Frost#apply}. */
+    public Frost frost() {
+        return frost;
     }
 
     public void start() {
@@ -118,10 +125,6 @@ public class WallpaperManager {
         return playlist.get(urlIndex++ % playlist.size());
     }
 
-    private int tint() {
-        return preferences.getAccentColor(ContextCompat.getColor(context, R.color.nova_accent));
-    }
-
     private void applyLocalScene() {
         if (destroyed) return;
         int[] colors = SCENES[Math.floorMod(sceneIndex++, SCENES.length)];
@@ -129,8 +132,9 @@ public class WallpaperManager {
         executor.execute(() -> {
             Bitmap bitmap = renderScene(colors);
             if (bitmap == null) return;
+            Bitmap blurred = Frost.render(bitmap);
             main.post(() -> {
-                if (!destroyed && (request == generation || generation == 0)) crossfadeTo(bitmap);
+                if (!destroyed && (request == generation || generation == 0)) crossfadeTo(bitmap, blurred);
                 else if (!bitmap.isRecycled()) bitmap.recycle();
             });
         });
@@ -166,7 +170,6 @@ public class WallpaperManager {
     }
 
     private void loadOnlineWallpaper(String url, int request) {
-        int tint = tint();
         executor.execute(() -> {
             File file = new File(new File(context.getCacheDir(), "wallpapers"), Http.sha1(url) + ".jpg");
             byte[] data = file.exists() && file.length() > 0 ? Http.readFile(file) : null;
@@ -174,12 +177,13 @@ public class WallpaperManager {
                 data = Http.get(url, 5000, 12000);
                 if (data != null) Http.writeFile(file, data);
             }
-            Bitmap bitmap = data == null ? null : decodeWarm(data, tint);
+            Bitmap bitmap = data == null ? null : decodeNatural(data);
+            Bitmap blurred = bitmap == null ? null : Frost.render(bitmap);
             main.post(() -> {
                 if (destroyed || request != generation) {
                     if (bitmap != null && !bitmap.isRecycled()) bitmap.recycle();
                 } else if (bitmap != null) {
-                    crossfadeTo(bitmap);
+                    crossfadeTo(bitmap, blurred);
                 } else {
                     applyLocalScene();
                 }
@@ -188,10 +192,10 @@ public class WallpaperManager {
     }
 
     /**
-     * Decodes at no more than 1280 px wide (power-of-two sampling only above that), then grades
-     * the image: saturation down to 35 %, channels scaled toward the theme colour, slightly darker.
+     * Decodes at no more than 1280 px wide (power-of-two sampling only above that), then darkens
+     * the image slightly. Colours stay natural; the glass surfaces carry the theme.
      */
-    static Bitmap decodeWarm(byte[] data, int tint) {
+    static Bitmap decodeNatural(byte[] data) {
         try {
             BitmapFactory.Options bounds = new BitmapFactory.Options();
             bounds.inJustDecodeBounds = true;
@@ -205,10 +209,7 @@ public class WallpaperManager {
             if (source == null) return null;
             Bitmap graded = Bitmap.createBitmap(source.getWidth(), source.getHeight(), Bitmap.Config.RGB_565);
             ColorMatrix matrix = new ColorMatrix();
-            matrix.setSaturation(0.35f);
-            ColorMatrix warm = new ColorMatrix();
-            warm.setScale(channel(Color.red(tint)), channel(Color.green(tint)), channel(Color.blue(tint)), 1f);
-            matrix.postConcat(warm);
+            matrix.setScale(DIM, DIM, DIM, 1f);
             Paint paint = new Paint(Paint.FILTER_BITMAP_FLAG);
             paint.setColorFilter(new ColorMatrixColorFilter(matrix));
             new Canvas(graded).drawBitmap(source, 0f, 0f, paint);
@@ -219,18 +220,17 @@ public class WallpaperManager {
         }
     }
 
-    private static float channel(int value) {
-        return (0.55f + 0.45f * value / 255f) * 0.9f;
-    }
-
-    private void crossfadeTo(Bitmap bitmap) {
+    /** {@code blurred} is the matching {@link Frost} backdrop; it may be {@code null}. */
+    private void crossfadeTo(Bitmap bitmap, Bitmap blurred) {
         if (destroyed || bitmap == null) return;
         if (pending != null && pending != bitmap) retired.add(pending);
         pending = bitmap;
         long token = ++fadeToken;
+        int fade = preferences.reducedMotion() ? 0 : 900;
+        frost.publish(blurred, fade);
         front.setImageBitmap(bitmap);
         front.setAlpha(0f);
-        front.animate().alpha(1f).setDuration(preferences.reducedMotion() ? 0 : 900).withEndAction(() -> {
+        front.animate().alpha(1f).setDuration(fade).withEndAction(() -> {
             if (token != fadeToken || destroyed) return;
             back.setImageBitmap(bitmap);
             front.setImageDrawable(null);

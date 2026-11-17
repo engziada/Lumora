@@ -11,6 +11,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import com.firestick.aura.launcher.manager.*;
 import com.firestick.aura.launcher.model.*;
+import com.firestick.aura.launcher.ui.Glass;
 import com.firestick.aura.launcher.ui.LockPad;
 import java.util.*;
 
@@ -30,6 +31,7 @@ public final class SearchActivity extends AppCompatActivity {
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
+        Glass.applyTheme(this);
         preferences = new PreferenceManager(this);
         apps = new AppRepository(this);
         iptv = new IptvRepository(this);

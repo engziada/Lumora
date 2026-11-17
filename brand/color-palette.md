@@ -20,15 +20,15 @@ Warm espresso surfaces, cream text and an amber accent. Values are authored in O
 
 | Token | Android resource | OKLCH | HEX | RGB |
 | :--- | :--- | :--- | :--- | :--- |
-| `amber-400` (default accent) | `accent_amber`, `nova_accent` | `oklch(75.9% 0.118 66.4)` | `#E3A15A` | `rgb(227 161 90)` |
-| `moon-200` | `accent_moonlight` | `oklch(88.1% 0.075 79.9)` | `#F2D3A0` | `rgb(242 211 160)` |
-| `copper-500` | `accent_copper` | `oklch(66.3% 0.127 50.7)` | `#D07A45` | `rgb(208 122 69)` |
-| `rose-400` | `accent_rose` | `oklch(71.2% 0.099 29.1)` | `#D98A7E` | `rgb(217 138 126)` |
+| `amber-400` (accent) | `nova_accent` | `oklch(75.9% 0.118 66.4)` | `#E3A15A` | `rgb(227 161 90)` |
+| `moon-200` | `nova_accent_2` | `oklch(88.1% 0.075 79.9)` | `#F2D3A0` | `rgb(242 211 160)` |
+| `copper-500` | brand only | `oklch(66.3% 0.127 50.7)` | `#D07A45` | `rgb(208 122 69)` |
+| `rose-400` | brand only | `oklch(71.2% 0.099 29.1)` | `#D98A7E` | `rgb(217 138 126)` |
 | `bronze-600` | `accent_bronze` | `oklch(51.5% 0.085 56.7)` | `#8C5A34` | `rgb(140 90 52)` |
 | `error-400` | `state_error` | `oklch(68.4% 0.146 31.4)` | `#E5735F` | `rgb(229 115 95)` |
 | `success-400` | `state_success` | `oklch(77.7% 0.091 136.2)` | `#9CC48A` | `rgb(156 196 138)` |
 
-The user can switch the accent between Amber, Copper, Rose and Moonlight. The accent drives focus rings, the selected tab, chips and the favourites row.
+Lumora has one accent, amber. It drives focus rings, the selected tab, chips and the favourites row.
 
 ## Contrast (WCAG 2.x)
 
@@ -37,7 +37,7 @@ The user can switch the accent between Amber, Copper, Rose and Moonlight. The ac
 | `nova_text` | 15.9:1 | 13.3:1 |
 | `nova_text_dim` | 9.7:1 | 8.1:1 |
 | `nova_text_muted` | 6.1:1 | 5.1:1 |
-| `accent_amber` | 8.8:1 | 7.4:1 |
+| `nova_accent` | 8.8:1 | 7.4:1 |
 
 Text placed on an amber fill uses `nova_text_on_accent` (`#1E110B`).
 

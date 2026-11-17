@@ -8,6 +8,7 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import com.firestick.aura.launcher.R;
+import com.firestick.aura.launcher.SettingsActivity;
 import com.firestick.aura.launcher.manager.*;
 import org.json.*;
 import java.io.*;
@@ -26,9 +27,10 @@ public final class LauncherSettings {
     private static final String[] ROWS = {"favorites", "recent", "iptv", "streaming", "apps"};
     private static final int[] NAMES = {R.string.category_favorites, R.string.home_recent_apps,
             R.string.home_recent_channels, R.string.nav_streaming, R.string.nav_apps};
-    private static final Set<String> APPEARANCE = new HashSet<>(Arrays.asList("pref_accent_color",
+    private static final Set<String> APPEARANCE = new HashSet<>(Arrays.asList(
             "pref_wallpaper_interval", "pref_wallpaper_source", "pref_wall_categories", "pref_card_effect",
-            "pref_panel_content", "pref_tile_size", "pref_reduced_motion", "pref_home_sections"));
+            "pref_panel_content", "pref_tile_size", "pref_reduced_motion", "pref_reduce_transparency",
+            "pref_home_sections"));
 
     public LauncherSettings(AppCompatActivity activity, PreferenceManager preferences) {
         this.activity = activity;
@@ -79,14 +81,16 @@ public final class LauncherSettings {
             GlassMenu.show(activity, activity.getString(R.string.home_tile_size), null, null, items, false,
                     (index, item) -> preferences.setTileSize(index == 0 ? "compact" : "comfortable"));
         });
-        CheckBox motion = new CheckBox(activity);
-        motion.setId(android.view.View.generateViewId());
-        motion.setText(R.string.reduced_motion);
-        motion.setTextColor(ContextCompat.getColor(activity, R.color.nova_text));
-        motion.setBackgroundResource(R.drawable.bg_option_selector);
-        motion.setChecked(preferences.reducedMotion());
-        motion.setOnCheckedChangeListener((button, checked) -> preferences.setReducedMotion(checked));
-        appearance.addView(motion);
+        toggle(appearance, android.view.View.generateViewId(), R.string.reduced_motion,
+                preferences.reducedMotion(), preferences::setReducedMotion);
+        // A fixed id lets the window restore focus to this switch after the recreate below.
+        toggle(appearance, R.id.toggleReduceTransparency, R.string.reduce_transparency,
+                preferences.isReduceTransparency(), checked -> {
+                    preferences.setReduceTransparency(checked);
+                    // Glass fills come from the theme, which applies at creation: rebuild on Appearance.
+                    activity.getIntent().putExtra(SettingsActivity.EXTRA_SECTION, 0);
+                    activity.recreate();
+                });
         button(appearance, R.string.profile_save, () -> TextPrompt.show(activity,
                 activity.getString(R.string.profile_save), null, "", false, name -> {
                     try {
@@ -253,6 +257,22 @@ public final class LauncherSettings {
         button.setBackgroundResource(R.drawable.bg_option_selector);
         button.setOnClickListener(view -> action.run());
         parent.addView(button, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                Math.round(44 * activity.getResources().getDisplayMetrics().density)));
+    }
+
+    /** Adds a graphical checkbox row matching the other Settings toggles. */
+    private void toggle(ViewGroup parent, int id, int text, boolean checked,
+                        OptionToggleView.OnCheckedChangeListener listener) {
+        OptionToggleView toggle = new OptionToggleView(activity).label(text)
+                .accentColor(preferences.getAccentColor(ContextCompat.getColor(activity, R.color.nova_accent)));
+        toggle.setId(id);
+        toggle.setCheckedState(checked);
+        toggle.setOnFocusChangeListener((view, focused) -> { if (focused) SoundManager.playFocus(view, preferences); });
+        toggle.listener(value -> {
+            SoundManager.playClick(toggle, preferences);
+            listener.onCheckedChange(value);
+        });
+        parent.addView(toggle, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 Math.round(44 * activity.getResources().getDisplayMetrics().density)));
     }
 

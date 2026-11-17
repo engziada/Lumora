@@ -89,4 +89,22 @@ public class IptvCatalogTest {
         List<String> urls = Arrays.asList("https://299", "https://unknown");
         assertEquals(urls, StreamHealth.rank(urls, data, 8L * 86400000));
     }
+    @Test public void playlistCatalogKeepsSafeEntriesAndCleansGroupPrefixes() throws Exception {
+        List<PlaylistCatalog.Entry> entries = PlaylistCatalog.parse("["
+                + "{\"id\":\"xumo\",\"name\":\"Xumo\",\"region\":\"us\",\"groupPrefix\":\"XUMO: \",\"url\":\"https://a.test/x.m3u\"},"
+                + "{\"id\":\"any\",\"name\":\"Any\",\"region\":\"World\",\"url\":\"https://a.test/y.m3u\"},"
+                + "{\"id\":\"plain\",\"name\":\"Plain\",\"url\":\"http://a.test/z.m3u\"},"
+                + "{\"id\":\"Bad-Id\",\"name\":\"Bad\",\"url\":\"https://a.test/b.m3u\"},"
+                + "{\"id\":\"noname\",\"name\":\"\",\"url\":\"https://a.test/n.m3u\"}]");
+        assertEquals(2, entries.size());
+        assertEquals("US", entries.get(0).region);
+        assertEquals("ALL", entries.get(1).region);
+        List<IptvChannel> rows = IptvRepository.parsePlaylist(entries.get(0).clean(
+                "#EXTINF:-1 group-title=\"XUMO: News\",Daily\nhttps://a.test/daily"), entries.get(0).region);
+        assertEquals("US", rows.get(0).country);
+        assertEquals(Arrays.asList("News"), rows.get(0).genres);
+        String bundled = new String(java.nio.file.Files.readAllBytes(
+                java.nio.file.Paths.get("src/main/res/raw/playlist_catalog.json")), java.nio.charset.StandardCharsets.UTF_8);
+        assertEquals(4, PlaylistCatalog.parse(bundled).size());
+    }
 }

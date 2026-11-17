@@ -8,6 +8,7 @@ import android.view.*;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.*;
 import androidx.media3.exoplayer.ExoPlayer;
+import androidx.recyclerview.widget.RecyclerView;
 import com.firestick.aura.launcher.manager.*;
 import com.firestick.aura.launcher.model.*;
 import java.io.*;
@@ -37,13 +38,6 @@ final class LauncherEnhancementRegression {
             startServer();
             healthPrefs.edit().clear().commit();
             verifyCatalog(sourcePrefs);
-            EpgRepository epg = new EpgRepository(test.getTargetContext());
-            java.lang.reflect.Method read = EpgRepository.class.getDeclaredMethod("readGuide", String.class, String.class, String.class);
-            read.setAccessible(true);
-            String programs = (String) read.invoke(epg, "http://127.0.0.1:" + server.getLocalPort() + "/guide.xml", "Fixture.us", "fixture");
-            check(programs.contains("Current fixture") && programs.contains("Upcoming fixture"),
-                    "XMLTV guide resolves current and upcoming programs");
-            epg.shutdown();
             AppLock.setCode(prefs, "UDLR");
             prefs.setSettingsLocked(false);
             prefs.setReducedMotion(true);
@@ -75,16 +69,12 @@ final class LauncherEnhancementRegression {
                 activity.findViewById(R.id.navShows).performClick();
                 set("countryChannels", new ArrayList<>(fixture));
                 set("channelsLoaded", true);
+                call("buildRail");
                 call("applyIptvFilters");
-                activity.findViewById(R.id.iptvFilter).setEnabled(true);
                 check(activity.findViewById(R.id.iptvCountry).requestFocus(), "Country can focus");
             });
             key(KeyEvent.KEYCODE_DPAD_RIGHT);
-            main(() -> check(activity.getCurrentFocus() == activity.findViewById(R.id.iptvFilter), "Country moves to category"));
-            key(KeyEvent.KEYCODE_DPAD_RIGHT);
-            main(() -> check(activity.getCurrentFocus() == activity.findViewById(R.id.iptvOnlineOnly), "Category moves to Online"));
-            key(KeyEvent.KEYCODE_DPAD_RIGHT);
-            main(() -> check(activity.getCurrentFocus() == activity.findViewById(R.id.iptvSearch), "Online moves to search"));
+            main(() -> check(activity.getCurrentFocus() == activity.findViewById(R.id.iptvSearch), "Country moves to search"));
             capture("enhancement-iptv");
             main(() -> activity.findViewById(R.id.iptvCountry).performClick());
             main(() -> {
@@ -102,10 +92,14 @@ final class LauncherEnhancementRegression {
             });
             capture("enhancement-country-index");
             main(() -> ((Dialog) get("countryPicker")).dismiss());
-            main(() -> activity.findViewById(R.id.iptvFilter).performClick());
-            AccessibilityNodeInfo adults = node("Adults · 1");
-            check(adults != null, "Adults listed last");
-            clickNode("Adults · 1");
+            main(() -> {
+                RecyclerView rail = activity.findViewById(R.id.guideRail);
+                View adults = rail.findViewWithTag("rail:category:18+");
+                check(adults != null, "Guide rail lists Adults");
+                check(rail.getChildAdapterPosition(adults) == rail.getAdapter().getItemCount() - 1, "Adults listed last");
+                check("1".contentEquals(((TextView) adults.findViewById(R.id.guideRailCount)).getText()), "Adults counts its channel");
+                adults.performClick();
+            });
             SystemClock.sleep(300);
             node(activity.getString(R.string.lock_title_verify));
             main(() -> check(!"category:18+".equals(get("selectedIptvCategory")), "Adults stays locked"));
@@ -115,11 +109,9 @@ final class LauncherEnhancementRegression {
             main(() -> {
                 set("selectedIptvCategory", "all");
                 call("applyIptvFilters");
-                ((CheckBox) activity.findViewById(R.id.iptvOnlineOnly)).setChecked(true);
             });
             SystemClock.sleep(2000);
-            main(() -> check(((TextView) activity.findViewById(R.id.onlineProgress)).getText().toString().contains("Checked 2 / 2"),
-                    "Online scan reports progress"));
+            main(() -> check(!Boolean.TRUE.equals(get("onlineScanRunning")), "Online scan runs without a filter switch"));
             main(() -> PlaybackSession.open(activity, fixture, selected));
             activity = waitActivity(IptvPlayerActivity.class);
             awaitPlayback();
@@ -174,6 +166,8 @@ final class LauncherEnhancementRegression {
             node(activity.getString(R.string.home_customize));
             reveal(R.id.panelAppearance, R.string.reduced_motion);
             node(activity.getString(R.string.reduced_motion));
+            reveal(R.id.panelAppearance, R.string.reduce_transparency);
+            node(activity.getString(R.string.reduce_transparency));
             main(() -> activity.findViewById(R.id.secTools).requestFocus());
             reveal(R.id.panelTools, R.string.iptv_sources);
             clickNode(activity.getString(R.string.iptv_sources));
@@ -253,7 +247,7 @@ final class LauncherEnhancementRegression {
                 originals.put(file, file.exists() ? Http.readFile(file) : null);
                 Http.writeFile(file, fixture.getValue().getBytes(java.nio.charset.StandardCharsets.UTF_8));
             }
-            sourcePrefs.edit().clear().putBoolean("free_tv", true).commit();
+            sourcePrefs.edit().clear().putBoolean("free_tv", true).putBoolean(FastGuide.PLUTO, false).commit();
             IptvSources.save(sourcePrefs, Arrays.asList(
                     new IptvSources.Source("Fixture", "http://127.0.0.1:" + server.getLocalPort() + "/playlist.m3u"),
                     new IptvSources.Source("Unavailable", "http://127.0.0.1:" + server.getLocalPort() + "/bad")));
@@ -340,7 +334,10 @@ final class LauncherEnhancementRegression {
         main(() -> {
             View target = findText(activity.findViewById(panel), activity.getString(text));
             check(target != null, "Settings control exists");
-            target.requestFocus();
+            // Toggle rows hold their label in a child view; focus the row itself.
+            View row = target;
+            while (!row.isFocusable() && row.getParent() instanceof View) row = (View) row.getParent();
+            row.requestFocus();
         });
         SystemClock.sleep(300);
     }
@@ -398,18 +395,6 @@ final class LauncherEnhancementRegression {
                     byte[] bytes = ("#EXTM3U\n#EXTINF:-1 tvg-id=\"Custom.us\" group-title=\"Music\",Custom\nhttp://127.0.0.1:"
                             + server.getLocalPort() + "/valid2.mp4\n").getBytes(java.nio.charset.StandardCharsets.UTF_8);
                     output.write(("HTTP/1.1 200 OK\r\nContent-Type: application/x-mpegURL\r\nContent-Length: " + bytes.length
-                            + "\r\nConnection: close\r\n\r\n").getBytes());
-                    output.write(bytes);
-                }
-                else if (line.contains("/guide.xml")) {
-                    java.time.ZonedDateTime now = java.time.ZonedDateTime.now(java.time.ZoneOffset.UTC);
-                    java.time.format.DateTimeFormatter format = java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmmss xx");
-                    String xml = "<tv><programme channel=\"Fixture.us\" start=\"" + format.format(now.minusMinutes(10))
-                            + "\" stop=\"" + format.format(now.plusMinutes(10)) + "\"><title>Current fixture</title></programme>"
-                            + "<programme channel=\"Fixture.us\" start=\"" + format.format(now.plusMinutes(10))
-                            + "\" stop=\"" + format.format(now.plusMinutes(30)) + "\"><title>Upcoming fixture</title></programme></tv>";
-                    byte[] bytes = xml.getBytes(java.nio.charset.StandardCharsets.UTF_8);
-                    output.write(("HTTP/1.1 200 OK\r\nContent-Type: application/xml\r\nContent-Length: " + bytes.length
                             + "\r\nConnection: close\r\n\r\n").getBytes());
                     output.write(bytes);
                 } else {

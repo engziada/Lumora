@@ -39,6 +39,7 @@ public class PreferenceManager {
     private static final String KEY_LOCK_SETTINGS = "pref_lock_settings";
     private static final String KEY_HOME_REDIRECT = "pref_home_redirect";
     private static final String KEY_PANEL_CONTENT = "pref_panel_content";
+    private static final String KEY_REDUCE_TRANSPARENCY = "pref_reduce_transparency";
     private static final int MAX_RECENT = 12;
 
     /** Procedurally rendered offline scenes: zero network, instant. */
@@ -58,6 +59,7 @@ public class PreferenceManager {
     public PreferenceManager(Context context) {
         prefs = context.getApplicationContext().getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
         migrateAppPreview();
+        dropPickedAccent();
     }
 
     /**
@@ -69,6 +71,11 @@ public class PreferenceManager {
         if (prefs.contains(KEY_PANEL_CONTENT) || !prefs.contains(KEY_APP_PREVIEW)) return;
         prefs.edit().putInt(KEY_PANEL_CONTENT,
                 prefs.getBoolean(KEY_APP_PREVIEW, false) ? PANEL_CONTENT_VIDEOS : PANEL_CONTENT_OFF).apply();
+    }
+
+    /** The glass theme has one accent; the Settings theme picker and its stored colour are gone. */
+    private void dropPickedAccent() {
+        if (prefs.contains(KEY_ACCENT)) prefs.edit().remove(KEY_ACCENT).apply();
     }
 
     /** Incremented by every change that affects the app rows, so Home can rebuild on resume. */
@@ -222,24 +229,9 @@ public class PreferenceManager {
 
     // ------------------------------------------------------------- appearance
 
+    /** The single glass-theme accent; callers pass {@code R.color.nova_accent}. */
     public int getAccentColor(int defaultColor) {
-        return prefs.getInt(KEY_ACCENT, defaultColor);
-    }
-
-    public void setAccentColor(int color) {
-        if (!prefs.contains(KEY_ACCENT) || getAccentColor(color) != color) {
-            applyHomeChange(prefs.edit().putInt(KEY_ACCENT, color));
-        }
-    }
-
-    /** Replaces a stored accent from an older palette (for example v4 violet) with {@code fallback}. */
-    public void migrateAccent(int[] allowed, int fallback) {
-        if (!prefs.contains(KEY_ACCENT)) return;
-        int current = prefs.getInt(KEY_ACCENT, fallback);
-        for (int color : allowed) {
-            if (color == current) return;
-        }
-        applyHomeChange(prefs.edit().putInt(KEY_ACCENT, fallback));
+        return defaultColor;
     }
 
     /** HD icon pack (dashboard-icons). On by default; apps without a match keep their own icon. */
@@ -402,6 +394,20 @@ public class PreferenceManager {
     public boolean reducedMotion() { return prefs.getBoolean("pref_reduced_motion", false); }
     public void setReducedMotion(boolean reduced) {
         applyHomeChange(prefs.edit().putBoolean("pref_reduced_motion", reduced));
+    }
+
+    /**
+     * Reduce transparency: glass surfaces use opaque fills instead of the blurred wallpaper.
+     * Static so themes and drawables can read it from any context.
+     */
+    public static boolean reduceTransparency(Context context) {
+        return context.getApplicationContext().getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+                .getBoolean(KEY_REDUCE_TRANSPARENCY, false);
+    }
+
+    public boolean isReduceTransparency() { return prefs.getBoolean(KEY_REDUCE_TRANSPARENCY, false); }
+    public void setReduceTransparency(boolean reduce) {
+        prefs.edit().putBoolean(KEY_REDUCE_TRANSPARENCY, reduce).apply();
     }
 
     public SharedPreferences storage() { return prefs; }

@@ -86,7 +86,7 @@ public class AppRowAdapter extends RecyclerView.Adapter<AppRowAdapter.AppViewHol
         lastApps.addAll(source);
         List<Entry> next = new ArrayList<>();
         boolean hd = preferences.isHdIconsEnabled();
-        int fallback = recyclerView == null ? 0xFFE3A15A : ContextCompat.getColor(recyclerView.getContext(), R.color.nova_accent);
+        int fallback = recyclerView == null ? 0xFFDCEAFF : ContextCompat.getColor(recyclerView.getContext(), R.color.nova_accent);
         int accent = preferences.getAccentColor(fallback);
         String effect = preferences.reducedMotion() ? com.firestick.aura.launcher.ui.CardEffects.OFF : preferences.getCardEffect();
         Set<String> locked = preferences.getLockedApps();

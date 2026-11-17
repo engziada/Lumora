@@ -65,7 +65,8 @@ public final class GlassMenu {
     }
 
     /**
-     * @param multiSelect keep the menu open and toggle the check mark of the chosen row
+     * @param multiSelect keep the menu open and toggle the check mark of the chosen row; rows
+     *                    without a check mark stay as they are and leave the menu open
      */
     public static Dialog show(Activity activity, CharSequence title, CharSequence subtitle, Drawable headerIcon,
                               List<Item> items, boolean multiSelect, OnPick onPick) {
@@ -113,8 +114,11 @@ public final class GlassMenu {
             row.setOnClickListener(v -> {
                 SoundManager.playClick(v, prefs);
                 if (multiSelect) {
-                    item.checked = !item.isChecked();
-                    check.setVisibility(item.isChecked() ? View.VISIBLE : View.INVISIBLE);
+                    // Rows without a check mark are actions; the caller dismisses when it needs to.
+                    if (item.checked != null) {
+                        item.checked = !item.isChecked();
+                        check.setVisibility(item.isChecked() ? View.VISIBLE : View.INVISIBLE);
+                    }
                 } else {
                     dialog.dismiss();
                 }

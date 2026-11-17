@@ -93,6 +93,7 @@
 
             <!-- Section rail -->
             <LinearLayout
+                android:id="@+id/settingsRail"
                 android:layout_width="220dp"
                 android:layout_height="match_parent"
                 android:background="@drawable/bg_panel"
@@ -208,6 +209,7 @@
 
             <!-- Panels -->
             <FrameLayout
+                android:id="@+id/settingsPanels"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_marginStart="16dp"
@@ -226,52 +228,6 @@
                     <TextView
                         style="@style/Lumora.PanelEyebrow"
                         android:layout_marginTop="0dp"
-                        android:text="@string/theme_label" />
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:orientation="horizontal">
-
-                        <Button
-                            android:id="@+id/btnThemeAmber"
-                            style="@style/Lumora.Option"
-                            android:layout_width="0dp"
-                            android:layout_marginEnd="6dp"
-                            android:layout_weight="1"
-                            android:text="@string/accent_amber" />
-
-                        <Button
-                            android:id="@+id/btnThemeCopper"
-                            style="@style/Lumora.Option"
-                            android:layout_width="0dp"
-                            android:layout_marginEnd="6dp"
-                            android:layout_weight="1"
-                            android:text="@string/accent_copper" />
-
-                        <Button
-                            android:id="@+id/btnThemeRose"
-                            style="@style/Lumora.Option"
-                            android:layout_width="0dp"
-                            android:layout_marginEnd="6dp"
-                            android:layout_weight="1"
-                            android:text="@string/accent_rose" />
-
-                        <Button
-                            android:id="@+id/btnThemeMoon"
-                            style="@style/Lumora.Option"
-                            android:layout_width="0dp"
-                            android:layout_weight="1"
-                            android:text="@string/accent_moonlight" />
-                    </LinearLayout>
-
-                    <TextView
-                        android:id="@+id/txtThemeHint"
-                        style="@style/Lumora.Hint" />
-
-                    <TextView
-                        style="@style/Lumora.PanelEyebrow"
                         android:text="@string/icon_style_label" />
 
                     <LinearLayout
@@ -442,6 +398,17 @@
                     <TextView
                         style="@style/Lumora.Hint"
                         android:text="@string/shows_hint" />
+
+                    <Button
+                        android:id="@+id/btnSubtitleStyle"
+                        style="@style/Lumora.Option"
+                        android:layout_width="match_parent"
+                        android:layout_marginTop="8dp"
+                        android:text="@string/sub_style_open" />
+
+                    <TextView
+                        style="@style/Lumora.Hint"
+                        android:text="@string/sub_style_settings_hint" />
                 </LinearLayout>
 
                 <!-- App lock -->

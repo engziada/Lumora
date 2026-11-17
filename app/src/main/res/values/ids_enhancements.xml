@@ -1,1 +1,1 @@
-<resources><item name="globalSearchField" type="id" /></resources>
+<resources><item name="globalSearchField" type="id" /><item name="toggleReduceTransparency" type="id" /></resources>

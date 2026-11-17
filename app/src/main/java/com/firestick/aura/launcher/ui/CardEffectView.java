@@ -28,7 +28,7 @@ import java.util.Random;
  */
 public final class CardEffectView extends View {
     private static final int MAX_BOLTS = 2, MAX_GLYPHS = 6;
-    private static final int CREAM = 0xFFF8EEDF;
+    private static final int ICE_WHITE = 0xFFF4F8FF;
     private static final String[] LETTERS = {"\u0646", "\u0648", "\u0639", "\u0647", "\u0645", "\u0644",
             "\u0633", "\u064A", "\u062D", "\u0628", "\u0643", "\u0631", "\u0636", "\u0646\u0648\u0631",
             "\u0636\u064A\u0627\u0621"};
@@ -72,7 +72,7 @@ public final class CardEffectView extends View {
     private final Runnable tick = this::tick;
     private final float density, radius;
     private String mode = CardEffects.DEFAULT;
-    private int accent = 0xFFE3A15A, boltCore = 0xFFF0C890;
+    private int accent = 0xFFDCEAFF, boltCore = 0xFFEAF2FF;
     private boolean active, ticking, painted;
     private long nextSpawn, tickDue;
 
@@ -120,7 +120,7 @@ public final class CardEffectView extends View {
         if (!normalized.equals(mode)) reset();
         mode = normalized;
         accent = accentColor;
-        boltCore = blend(accentColor, CREAM, 0.6f);
+        boltCore = blend(accentColor, ICE_WHITE, 0.6f);
         if (CardEffects.OFF.equals(mode)) reset();
     }
 
@@ -306,7 +306,7 @@ public final class CardEffectView extends View {
                 it.remove();
                 continue;
             }
-            int color = withAlpha(blend(accent, CREAM, 0.25f), 0.55f * CardEffects.breathe(t));
+            int color = withAlpha(blend(accent, ICE_WHITE, 0.25f), 0.55f * CardEffects.breathe(t));
             canvas.save();
             canvas.translate(glyph.x, glyph.y - glyph.drift * t);
             canvas.rotate(glyph.rotation + 10f * t);

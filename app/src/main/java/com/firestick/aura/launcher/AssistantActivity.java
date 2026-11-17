@@ -34,6 +34,7 @@ import com.firestick.aura.launcher.assistant.TvAction;
 import com.firestick.aura.launcher.assistant.TvController;
 import com.firestick.aura.launcher.manager.PreferenceManager;
 import com.firestick.aura.launcher.manager.SoundManager;
+import com.firestick.aura.launcher.ui.Glass;
 import com.firestick.aura.launcher.ui.LockPad;
 import com.firestick.aura.launcher.ui.PhonePairDialog;
 
@@ -78,7 +79,9 @@ public class AssistantActivity extends AppCompatActivity implements PhoneBridge.
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
+        Glass.applyTheme(this);
         setContentView(R.layout.activity_assistant);
+        applyBackdrop();
         settings = new AssistantSettings(this);
         preferences = new PreferenceManager(this);
         scroll = findViewById(R.id.scrollAssistant);
@@ -139,7 +142,14 @@ public class AssistantActivity extends AppCompatActivity implements PhoneBridge.
 
     @Override protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+        applyBackdrop();
         updateMode();
+    }
+
+    /** Frosted Lumora screen behind a lighter panel; over other apps, dense glass with no blur. */
+    private void applyBackdrop() {
+        boolean frosted = Glass.applyBackdrop(this);
+        findViewById(R.id.assistantPanel).setBackgroundResource(frosted ? R.drawable.bg_glass_panel : R.drawable.bg_dialog_glass);
     }
 
     /** The phone link must not stay open once the assistant is no longer on screen. */
@@ -492,8 +502,6 @@ public class AssistantActivity extends AppCompatActivity implements PhoneBridge.
                 return getString(R.string.ctl_mute);
             case TvAction.UNMUTE:
                 return getString(R.string.ctl_unmute);
-            case TvAction.THEME:
-                return getString(R.string.ctl_theme, action.arg);
             default:
                 return action.name;
         }

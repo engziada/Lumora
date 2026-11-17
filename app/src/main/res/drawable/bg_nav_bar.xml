@@ -1,16 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Floating navigation dock. At runtime ui/Frost paints the blurred wallpaper under the tint. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item>
         <shape android:shape="rectangle">
-            <gradient
-                android:angle="90"
-                android:endColor="#99140A06"
-                android:startColor="#E6140A06" />
+            <solid android:color="?attr/lumoraGlassBar" />
+            <corners android:radius="26dp" />
         </shape>
     </item>
-    <item android:gravity="top" android:height="1dp">
+    <item>
         <shape android:shape="rectangle">
-            <solid android:color="#2EF3E6D6" />
+            <gradient android:angle="270" android:endColor="#00FFFFFF" android:startColor="@color/glass_sheen" />
+            <stroke android:width="1dp" android:color="@color/glass_edge" />
+            <corners android:radius="26dp" />
         </shape>
     </item>
 </layer-list>

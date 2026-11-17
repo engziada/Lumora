@@ -10,11 +10,12 @@
         android:background="@color/glass_shade" />
 
     <LinearLayout
+        android:id="@+id/assistantPanel"
         android:layout_width="620dp"
         android:layout_height="match_parent"
         android:layout_gravity="end"
         android:layout_margin="24dp"
-        android:background="@drawable/bg_glass_panel"
+        android:background="@drawable/bg_dialog_glass"
         android:orientation="vertical"
         android:padding="20dp">
 
