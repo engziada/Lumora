@@ -119,7 +119,7 @@ public final class MoviePlayerActivity extends AppCompatActivity {
             @Override public void onPlaybackStateChanged(int state) {
                 if (state == Player.STATE_READY) errorPanel.setVisibility(View.GONE);
                 if (state != Player.STATE_ENDED) return;
-                MovieLibrary.remember(store, movie, 0, 0);
+                MovieLibrary.finish(store, movie);
                 finish();
             }
 

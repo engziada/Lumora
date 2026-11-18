@@ -2,6 +2,9 @@ package com.firestick.aura.launcher.manager;
 
 import com.firestick.aura.launcher.model.Movie;
 import org.junit.Test;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import static org.junit.Assert.*;
 
@@ -58,6 +61,16 @@ public class MovieLibraryTest {
                 "{\"files\":[{\"name\":\"film_512kb.mp4\",\"format\":\"512Kb MPEG4\"}]}"));
         assertNull(MovieLibrary.pickVideo("../big_film", files));
         assertNull(MovieLibrary.pickVideo("big_film", "{\"result\":[{\"name\":\"film.ogv\",\"format\":\"Ogg Video\"}]}"));
+    }
+
+    @Test public void finishedAndRemovedFilmsLeaveTheShelves() {
+        assertTrue(MovieLibrary.finished(5_300_000L, 5_400_000L));
+        assertFalse(MovieLibrary.finished(600_000L, 5_400_000L));
+        assertFalse("Unknown length is never finished", MovieLibrary.finished(600_000L, 0L));
+        List<Movie> shown = MovieLibrary.visible(Arrays.asList(film("a"), film("b"), film("c")),
+                new HashSet<>(Collections.singleton("b")));
+        assertEquals(2, shown.size());
+        assertEquals("c", shown.get(1).id);
     }
 
     @Test public void historyKeepsUnfinishedFilmsNewestFirst() {

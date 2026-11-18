@@ -115,7 +115,7 @@ public final class MovieLibrary {
     private static final Pattern CLOCK = Pattern.compile("(\\d{1,3}):(\\d{2})(?::(\\d{2}))?");
     private static final Pattern HOURS = Pattern.compile("(\\d+)\\s*h");
     private static final Pattern MINUTES = Pattern.compile("(\\d+)\\s*m");
-    private static final String HISTORY = "history";
+    private static final String HISTORY = "history", HIDDEN = "hidden";
     private static final int ROWS = 40, HISTORY_MAX = 12;
     /** Pluto films released before this year are left out: the tab is for recent films. */
     static final int OLDEST = 1990;
@@ -382,8 +382,50 @@ public final class MovieLibrary {
         return 0;
     }
 
+    /** A film watched to its closing credits; it leaves every shelf. */
+    public static boolean finished(long position, long duration) {
+        return duration > 0 && (duration - position < 180_000L || position > duration * 0.95);
+    }
+
     public static void remember(SharedPreferences prefs, Movie movie, long position, long duration) {
-        prefs.edit().putString(HISTORY, remember(prefs.getString(HISTORY, "[]"), movie, position, duration)).apply();
+        SharedPreferences.Editor edit = prefs.edit()
+                .putString(HISTORY, remember(prefs.getString(HISTORY, "[]"), movie, position, duration));
+        if (finished(position, duration)) edit.putStringSet(HIDDEN, withId(hidden(prefs), movie.id));
+        edit.apply();
+    }
+
+    /** The film played to the end: off Continue watching and off every shelf. */
+    public static void finish(SharedPreferences prefs, Movie movie) {
+        hide(prefs, movie);
+    }
+
+    /** Takes the film off Continue watching and every shelf until {@link #showHidden} is called. */
+    public static void hide(SharedPreferences prefs, Movie movie) {
+        prefs.edit().putString(HISTORY, remember(prefs.getString(HISTORY, "[]"), movie, 0, 0))
+                .putStringSet(HIDDEN, withId(hidden(prefs), movie.id)).apply();
+    }
+
+    public static Set<String> hidden(SharedPreferences prefs) {
+        return new HashSet<>(prefs.getStringSet(HIDDEN, Collections.emptySet()));
+    }
+
+    /** Brings back every film taken off the shelves; returns how many came back. */
+    public static int showHidden(SharedPreferences prefs) {
+        int count = hidden(prefs).size();
+        prefs.edit().remove(HIDDEN).apply();
+        return count;
+    }
+
+    /** The shelf's films without the hidden and finished ones. */
+    public static List<Movie> visible(List<Movie> movies, Set<String> hidden) {
+        List<Movie> shown = new ArrayList<>(movies.size());
+        for (Movie movie : movies) if (!hidden.contains(movie.id)) shown.add(movie);
+        return shown;
+    }
+
+    private static Set<String> withId(Set<String> ids, String id) {
+        ids.add(id);
+        return ids;
     }
 
     /**
@@ -392,7 +434,7 @@ public final class MovieLibrary {
      */
     static String remember(String json, Movie movie, long position, long duration) {
         JSONArray next = new JSONArray();
-        boolean finished = duration > 0 && (duration - position < 180_000L || position > duration * 0.95);
+        boolean finished = finished(position, duration);
         try {
             if (position >= 60_000L && !finished) {
                 next.put(toJson(movie).put("position", position).put("duration", Math.max(0L, duration)));

@@ -1,5 +1,12 @@
 # Changelog
 
+## 5.7.0 — Movie progress and removable films
+
+- Every film shows how much you watched: a progress bar and a percentage on its poster, in every shelf.
+- Films watched to the end leave the shelves by themselves.
+- Hold OK on a film to remove it from every list. Settings → Tools → Show removed films again brings them back.
+- Settings → Lock → Keep adult films open: until you leave the launcher, 5 to 60 minutes, or until the device sleeps. The 18+ shelf also locks when the screen turns off.
+
 ## 5.6.0 — Glass look, live guide and recent films
 
 - Glass look: frosted dock and Settings panels, translucent cards and dialogs. Settings → Appearance → Reduce transparency gives solid fills. The theme picker is gone; one amber accent remains.

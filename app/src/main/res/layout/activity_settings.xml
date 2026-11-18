@@ -452,6 +452,17 @@
                             android:singleLine="true" />
                     </LinearLayout>
 
+                    <Button
+                        android:id="@+id/btnMoviesSession"
+                        style="@style/Lumora.Option"
+                        android:layout_width="match_parent"
+                        android:layout_marginTop="8dp"
+                        android:singleLine="true" />
+
+                    <TextView
+                        style="@style/Lumora.Hint"
+                        android:text="@string/movies_session_hint" />
+
                     <TextView
                         style="@style/Lumora.Hint"
                         android:text="@string/lock_hint_settings" />

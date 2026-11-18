@@ -2,9 +2,14 @@ package com.firestick.aura.launcher.ui;
 
 import android.app.Activity;
 import android.app.Dialog;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.SystemClock;
 import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.View;
@@ -30,12 +35,13 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
+import java.util.Set;
 /**
  * The Movies tab: a details header over shelves of free films, from Pluto TV On Demand or, where
  * Pluto TV is out of reach, public-domain films from the Internet Archive. Shelves load the first
- * time the tab opens and stay hidden until they have films. The 18+ shelf waits for the lock key
- * and locks again whenever the launcher leaves the screen.
+ * time the tab opens and stay hidden until they have films. The 18+ shelf waits for the lock key and
+ * locks again when the launcher is left, after a time, or when the screen goes off, as Settings
+ * chooses. Films watched to the end, or removed with a long press of OK, leave every shelf.
  */
 public final class MoviesTab {
     private static final class Section {
@@ -45,7 +51,8 @@ public final class MoviesTab {
         final RecyclerView list;
         final MovieAdapter adapter;
         TextView pill;
-
+        /** Everything the shelf loaded; the screen shows it without the hidden films. */
+        List<Movie> movies = Collections.emptyList();
         Section(MovieLibrary.Shelf shelf, String name, LinearLayout root, RecyclerView list, MovieAdapter adapter) {
             this.shelf = shelf;
             this.name = name;
@@ -75,6 +82,10 @@ public final class MoviesTab {
     private List<MovieLibrary.Shelf> source = MovieLibrary.PLUTO_SHELVES;
     private boolean built, loaded, unlocked, released, described, describedMature;
     private int generation, pending, openRequest;
+    private long unlockedAt;
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    private final Runnable expire = this::relock;
+    private BroadcastReceiver screenOffReceiver;
 
     public MoviesTab(Activity activity, PreferenceManager preferences) {
         this.activity = activity;
@@ -93,6 +104,7 @@ public final class MoviesTab {
     /** Fills the tab the first time and refreshes Continue watching after each film. */
     public void show() {
         if (released) return;
+        if (unlocked && expired()) relock();
         if (!built) build();
         refreshResume();
         if (!described) intro();
@@ -110,13 +122,31 @@ public final class MoviesTab {
         else scroll.smoothScrollTo(0, y);
     }
 
-    /** Hides the 18+ shelf again and drops a film still being looked up; called from onStop. */
+    /**
+     * Called from onStop: drops a film still being looked up. The 18+ shelf locks again unless
+     * Settings keeps it open for a time, or until the device sleeps.
+     */
     public void stop() {
         openRequest++;
         if (opening != null && opening.isShowing()) opening.dismiss();
         if (!unlocked) return;
+        if (preferences.moviesSession() == 0 || expired()) relock();
+    }
+
+    private boolean expired() {
+        int minutes = preferences.moviesSession();
+        return minutes > 0 && SystemClock.elapsedRealtime() - unlockedAt >= minutes * 60_000L;
+    }
+
+    /** Hides the 18+ shelf again. */
+    private void relock() {
+        handler.removeCallbacks(expire);
+        unregisterScreenOff();
+        if (!unlocked) return;
+        boolean hadFocus = mature != null && mature.list.hasFocus();
         unlocked = false;
         if (mature != null) {
+            mature.movies = Collections.emptyList();
             mature.adapter.setItems(Collections.emptyList(), null);
             mature.list.setVisibility(View.GONE);
             mature.pill.setText(R.string.movies_unlock_pill);
@@ -124,10 +154,39 @@ public final class MoviesTab {
         }
         if (describedMature) intro();
         refreshResume();
+        if (hadFocus) mature.pill.requestFocus();
+    }
+
+    private void startSession() {
+        unlockedAt = SystemClock.elapsedRealtime();
+        handler.removeCallbacks(expire);
+        int minutes = preferences.moviesSession();
+        if (minutes > 0) handler.postDelayed(expire, minutes * 60_000L);
+        if (screenOffReceiver != null) return;
+        // Whatever the session setting, the screen going off locks the shelf again.
+        screenOffReceiver = new BroadcastReceiver() {
+            @Override public void onReceive(Context context, Intent intent) {
+                relock();
+            }
+        };
+        ContextCompat.registerReceiver(activity, screenOffReceiver, new IntentFilter(Intent.ACTION_SCREEN_OFF),
+                ContextCompat.RECEIVER_NOT_EXPORTED);
+    }
+
+    private void unregisterScreenOff() {
+        if (screenOffReceiver == null) return;
+        try {
+            activity.unregisterReceiver(screenOffReceiver);
+        } catch (IllegalArgumentException alreadyGone) {
+            // Nothing left to unregister.
+        }
+        screenOffReceiver = null;
     }
 
     public void release() {
         released = true;
+        handler.removeCallbacks(expire);
+        unregisterScreenOff();
         openRequest++;
         if (opening != null && opening.isShowing()) opening.dismiss();
         library.shutdown();
@@ -171,8 +230,8 @@ public final class MoviesTab {
         if (released || request != generation) return;
         pending--;
         if (!movies.isEmpty()) {
-            section.adapter.setItems(movies, null);
-            section.root.setVisibility(View.VISIBLE);
+            section.movies = movies;
+            shelf(section, MovieLibrary.hidden(store));
             if (!loaded) {
                 loaded = true;
                 status.setVisibility(View.GONE);
@@ -224,6 +283,11 @@ public final class MoviesTab {
             @Override public void onPlay(Movie movie) {
                 play(movie);
             }
+
+            @Override public void onRemove(Movie movie) {
+                Glass.info(activity, movie.title, activity.getString(R.string.movies_remove_body), null,
+                        activity.getString(R.string.movies_remove), () -> remove(self[0], movie));
+            }
         });
         list.setAdapter(adapter);
         root.addView(list);
@@ -273,6 +337,7 @@ public final class MoviesTab {
     private void unlock() {
         if (released || mature == null) return;
         unlocked = true;
+        startSession();
         refreshResume();
         Section section = mature;
         int request = generation;
@@ -283,7 +348,13 @@ public final class MoviesTab {
                 section.pill.setText(R.string.movies_shelf_failed);
                 return;
             }
-            section.adapter.setItems(movies, null);
+            section.movies = movies;
+            List<Movie> shown = MovieLibrary.visible(movies, MovieLibrary.hidden(store));
+            if (shown.isEmpty()) {
+                section.pill.setText(R.string.movies_shelf_cleared);
+                return;
+            }
+            section.adapter.setItems(shown, progress);
             section.list.setVisibility(View.VISIBLE);
             // Hide the pill only once a film can take its focus, so focus never falls out of the tab.
             section.list.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
@@ -301,7 +372,8 @@ public final class MoviesTab {
 
     private void refreshResume() {
         if (resume == null) return;
-        String print = MovieLibrary.historyText(store) + unlocked + loaded;
+        Set<String> hidden = MovieLibrary.hidden(store);
+        String print = MovieLibrary.historyText(store) + hidden + unlocked + loaded;
         if (print.equals(resumePrint)) return;
         resumePrint = print;
         Map<String, long[]> next = new HashMap<>();
@@ -314,8 +386,54 @@ public final class MoviesTab {
         progress = next;
         resume.adapter.setItems(movies, next);
         resume.root.setVisibility(loaded && !movies.isEmpty() ? View.VISIBLE : View.GONE);
+        for (Section section : sections) if (section != resume) shelf(section, hidden);
         // The header shows the time left too; after a film it is out of date.
         if (describedMovie != null) describe(describedShelf, describedMovie);
+    }
+
+    /** Shows a shelf's films without the hidden and finished ones, each with how far it was watched. */
+    private void shelf(Section section, Set<String> hidden) {
+        if (section.movies.isEmpty() || section == mature && !unlocked) return;
+        List<Movie> shown = MovieLibrary.visible(section.movies, hidden);
+        section.adapter.setItems(shown, progress);
+        if (section == mature) {
+            section.list.setVisibility(shown.isEmpty() ? View.GONE : View.VISIBLE);
+            section.pill.setVisibility(shown.isEmpty() ? View.VISIBLE : View.GONE);
+            if (shown.isEmpty()) section.pill.setText(R.string.movies_shelf_cleared);
+        } else {
+            section.root.setVisibility(shown.isEmpty() ? View.GONE : View.VISIBLE);
+        }
+    }
+
+    private void remove(Section section, Movie movie) {
+        int at = Math.max(0, section.adapter.positionOf(movie.id));
+        if (describedMovie != null && describedMovie.id.equals(movie.id)) intro();
+        MovieLibrary.hide(store, movie);
+        refreshResume();
+        // The next film takes focus, or the next shelf when this one is now empty.
+        section.list.post(() -> {
+            if (released) return;
+            if (section.adapter.getItemCount() > 0) {
+                focusAt(section.list, Math.min(at, section.adapter.getItemCount() - 1));
+                return;
+            }
+            for (Section other : sections) {
+                if (other.root.getVisibility() == View.VISIBLE && other.list.getVisibility() == View.VISIBLE
+                        && other.adapter.getItemCount() > 0) {
+                    focusAt(other.list, 0);
+                    return;
+                }
+            }
+            if (section == mature) mature.pill.requestFocus();
+        });
+    }
+
+    private void focusAt(RecyclerView list, int index) {
+        list.scrollToPosition(index);
+        list.post(() -> {
+            RecyclerView.ViewHolder holder = list.findViewHolderForAdapterPosition(index);
+            if (holder != null) holder.itemView.requestFocus();
+        });
     }
 
     // ------------------------------------------------------------------ header

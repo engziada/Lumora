@@ -47,6 +47,41 @@
             android:progressDrawable="@drawable/bg_guide_progress"
             android:visibility="gone" />
 
+        <TextView
+            android:id="@+id/posterPercent"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|start"
+            android:layout_marginStart="8dp"
+            android:layout_marginBottom="12dp"
+            android:background="@drawable/bg_poster_chip"
+            android:importantForAccessibility="no"
+            android:paddingStart="6dp"
+            android:paddingTop="1dp"
+            android:paddingEnd="6dp"
+            android:paddingBottom="1dp"
+            android:textColor="@color/nova_text"
+            android:textSize="8sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/posterRemove"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|end"
+            android:layout_margin="6dp"
+            android:background="@drawable/bg_poster_chip"
+            android:importantForAccessibility="no"
+            android:paddingStart="6dp"
+            android:paddingTop="2dp"
+            android:paddingEnd="6dp"
+            android:paddingBottom="2dp"
+            android:text="@string/movies_remove_chip"
+            android:textColor="@color/nova_text"
+            android:textSize="8sp"
+            android:visibility="gone" />
+
         <ImageView
             android:id="@+id/favoriteBadge"
             android:layout_width="24dp"

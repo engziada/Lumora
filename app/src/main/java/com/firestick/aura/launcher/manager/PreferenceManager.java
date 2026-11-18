@@ -223,6 +223,10 @@ public class PreferenceManager {
         return prefs.getBoolean(KEY_LOCK_SETTINGS, false);
     }
 
+    /** How long the 18+ film shelf stays open: 0 until the launcher is left, minutes, or -1 until the device sleeps. */
+    public int moviesSession() { return prefs.getInt("pref_movies_session", 0); }
+    public void setMoviesSession(int session) { prefs.edit().putInt("pref_movies_session", session).apply(); }
+
     public void setSettingsLocked(boolean locked) {
         prefs.edit().putBoolean(KEY_LOCK_SETTINGS, locked).apply();
     }

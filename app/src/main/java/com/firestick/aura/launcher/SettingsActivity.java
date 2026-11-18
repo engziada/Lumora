@@ -112,7 +112,7 @@ public class SettingsActivity extends AppCompatActivity {
     private TextView stats;
     private OptionToggleView iconStyle, sound, showsToggle, lockSettings, homeRedirect;
     private OptionToggleView aiFloating, aiRemote, aiShareApps, aiControl;
-    private Button wallpaperSource, wallCategories, showsCountry, lockCode, lockedApps, quickPermission;
+    private Button wallpaperSource, wallCategories, showsCountry, lockCode, lockedApps, moviesSession, quickPermission;
     private Button aiKey, aiTest, aiRemoveKey, aiModel;
     private Button updateCheck, updateAuto, cardEffect, appPreviewBtn;
     private TextView updateStatus;
@@ -181,6 +181,7 @@ public class SettingsActivity extends AppCompatActivity {
         showsCountry = findViewById(R.id.btnShowsCountry);
         lockCode = findViewById(R.id.btnLockCode);
         lockedApps = findViewById(R.id.btnLockedApps);
+        moviesSession = findViewById(R.id.btnMoviesSession);
         lockSettings = findViewById(R.id.toggleLockSettings);
         quickPermission = findViewById(R.id.btnQuickPermission);
         homeRedirect = findViewById(R.id.toggleHomeRedirect);
@@ -525,6 +526,13 @@ public class SettingsActivity extends AppCompatActivity {
     // ---------------------------------------------------------------- lock
 
     private void bindLock() {
+        moviesSession.setOnClickListener(v -> {
+            if (AppLock.hasCode(preferences)) {
+                LockPad.verify(this, preferences, getString(R.string.lock_sub_manage), this::chooseMoviesSession);
+            } else {
+                chooseMoviesSession();
+            }
+        });
         lockCode.setOnClickListener(v -> {
             if (AppLock.hasCode(preferences)) LockPad.change(this, preferences, this::updateLockButtons);
             else LockPad.create(this, preferences, this::updateLockButtons);
@@ -573,10 +581,31 @@ public class SettingsActivity extends AppCompatActivity {
                 });
     }
 
+    private static final int[] MOVIE_SESSIONS = {0, 5, 15, 30, 60, -1};
+
+    private String moviesSessionLabel(int session) {
+        if (session == 0) return getString(R.string.movies_session_leave);
+        if (session < 0) return getString(R.string.movies_session_sleep);
+        return getString(R.string.movies_session_minutes, session);
+    }
+
+    private void chooseMoviesSession() {
+        List<GlassMenu.Item> items = new ArrayList<>();
+        for (int session : MOVIE_SESSIONS) {
+            items.add(new GlassMenu.Item(R.drawable.ic_act_lock, moviesSessionLabel(session))
+                    .checked(session == preferences.moviesSession()));
+        }
+        GlassMenu.show(this, getString(R.string.movies_session_title), null, null, items, false, (index, item) -> {
+            preferences.setMoviesSession(MOVIE_SESSIONS[index]);
+            updateLockButtons();
+        });
+    }
+
     private void updateLockButtons() {
         boolean hasCode = AppLock.hasCode(preferences);
         lockCode.setText(hasCode ? R.string.lock_change_code : R.string.lock_set_code);
         lockedApps.setText(getString(R.string.lock_apps_count, preferences.getLockedApps().size()));
+        moviesSession.setText(getString(R.string.movies_session, moviesSessionLabel(preferences.moviesSession())));
         bindToggle(lockSettings, preferences.isSettingsLocked());
     }
 

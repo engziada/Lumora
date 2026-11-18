@@ -73,6 +73,11 @@ public final class LauncherSettings {
 
     public void bind(ViewGroup appearance, ViewGroup tools) {
         button(tools, R.string.iptv_sources, () -> IptvSourceSettings.show(activity, io));
+        button(tools, R.string.movies_hidden_reset, () -> {
+            int back = MovieLibrary.showHidden(activity.getSharedPreferences(MovieLibrary.PREFS, android.content.Context.MODE_PRIVATE));
+            Toast.makeText(activity, back == 0 ? activity.getString(R.string.movies_hidden_reset_none)
+                    : activity.getString(R.string.movies_hidden_reset_done, back), Toast.LENGTH_LONG).show();
+        });
         button(appearance, R.string.home_customize, this::rows);
         button(appearance, R.string.home_tile_size, () -> {
             List<GlassMenu.Item> items = Arrays.asList(

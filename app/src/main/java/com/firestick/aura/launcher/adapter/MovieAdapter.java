@@ -29,6 +29,9 @@ public final class MovieAdapter extends RecyclerView.Adapter<MovieAdapter.Holder
         void onFocus(Movie movie);
 
         void onPlay(Movie movie);
+
+        /** The viewer held OK on a film to take it off the shelves. */
+        void onRemove(Movie movie);
     }
 
     private static final int CARD_WIDTH_DP = 162;
@@ -63,6 +66,11 @@ public final class MovieAdapter extends RecyclerView.Adapter<MovieAdapter.Holder
         notifyDataSetChanged();
     }
 
+    public int positionOf(String id) {
+        for (int i = 0; i < items.size(); i++) if (items.get(i).id.equals(id)) return i;
+        return -1;
+    }
+
     @NonNull
     @Override
     public Holder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
@@ -82,7 +90,7 @@ public final class MovieAdapter extends RecyclerView.Adapter<MovieAdapter.Holder
     final class Holder extends RecyclerView.ViewHolder {
         private final View frame, focusRing;
         private final ImageView poster;
-        private final TextView title, meta;
+        private final TextView title, meta, percent, remove;
         private final ProgressBar bar;
 
         Holder(View view) {
@@ -93,6 +101,8 @@ public final class MovieAdapter extends RecyclerView.Adapter<MovieAdapter.Holder
             title = view.findViewById(R.id.txtPosterTitle);
             meta = view.findViewById(R.id.txtPosterMeta);
             bar = view.findViewById(R.id.posterProgress);
+            percent = view.findViewById(R.id.posterPercent);
+            remove = view.findViewById(R.id.posterRemove);
             poster.setClipToOutline(true);
         }
 
@@ -103,9 +113,12 @@ public final class MovieAdapter extends RecyclerView.Adapter<MovieAdapter.Holder
             String details;
             if (resume != null && resume[1] > 0) {
                 int left = (int) Math.max(1, (resume[1] - resume[0]) / 60_000L);
+                int done = (int) Math.min(100, Math.max(1, 100 * resume[0] / resume[1]));
                 details = context.getString(R.string.movies_left, left);
-                bar.setProgress((int) (100 * resume[0] / resume[1]));
+                bar.setProgress(done);
                 bar.setVisibility(View.VISIBLE);
+                percent.setText(context.getString(R.string.movies_percent, done));
+                percent.setVisibility(View.VISIBLE);
             } else {
                 List<String> parts = new ArrayList<>(3);
                 if (!movie.year.isEmpty()) parts.add(movie.year);
@@ -113,6 +126,7 @@ public final class MovieAdapter extends RecyclerView.Adapter<MovieAdapter.Holder
                 if (!movie.rating.isEmpty()) parts.add(movie.rating);
                 details = android.text.TextUtils.join(" · ", parts);
                 bar.setVisibility(View.GONE);
+                percent.setVisibility(View.GONE);
             }
             meta.setText(details);
             itemView.setContentDescription(details.isEmpty() ? movie.title : movie.title + ", " + details);
@@ -130,6 +144,7 @@ public final class MovieAdapter extends RecyclerView.Adapter<MovieAdapter.Holder
             bar.setProgressTintList(ColorStateList.valueOf(accent));
             itemView.setOnFocusChangeListener((v, focused) -> {
                 focusRing.setVisibility(focused ? View.VISIBLE : View.INVISIBLE);
+                remove.setVisibility(focused ? View.VISIBLE : View.GONE);
                 float scale = focused ? 1.06f : 1f;
                 frame.animate().scaleX(scale).scaleY(scale).setDuration(preferences.reducedMotion() ? 0 : 140).start();
                 title.setSelected(focused);
@@ -141,7 +156,13 @@ public final class MovieAdapter extends RecyclerView.Adapter<MovieAdapter.Holder
                 SoundManager.playClick(v, preferences);
                 listener.onPlay(movie);
             });
+            // Holding OK is the remote's long press; Menu stays free for the assistant.
+            itemView.setOnLongClickListener(v -> {
+                listener.onRemove(movie);
+                return true;
+            });
             focusRing.setVisibility(itemView.isFocused() ? View.VISIBLE : View.INVISIBLE);
+            remove.setVisibility(itemView.isFocused() ? View.VISIBLE : View.GONE);
         }
     }
 }
